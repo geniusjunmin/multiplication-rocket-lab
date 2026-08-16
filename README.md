@@ -1,98 +1,75 @@
-# 乘法火箭实验室 (Multiplication Rocket Lab) 🚀
+# Multiplication Rocket Lab 🚀 (乘法火箭实验室 v2.0.0)
 
-《乘法火箭实验室》是一款专为英国 Year 2 至 Year 4 (约 6 至 9 岁) 儿童设计的 3D 数学学习网页游戏。通过结合九九乘法表答题与 Three.js 3D 火箭建造/发射体验，激发儿童数学学习兴趣，提供正向激励与无挫败感的学习环境。
+[![GitHub Pages Deployment](https://img.shields.io/badge/Live_Demo-GitHub_Pages-6366f1?style=for-the-badge&logo=github)](https.geniusjunmin.github.io/multiplication-rocket-lab/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-10b981.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
----
-
-## 🌟 项目亮点与核心功能
-
-1. **5 款前沿现代火箭 3D 模型**：
-   - 🛰️ **SpaceX 星舰 (Starship)**：亮银不锈钢车身、防热瓦、4 翼上下动翼 (Aero Flaps) 与 Super Heavy 猛禽引擎阵列。
-   - ⚡ **猎鹰重型 (Falcon Heavy)**：三芯级并联结构、黑白相间整流罩、Merlin 引擎群与黑钛网格舵 (Grid Fins)。
-   - 🇨🇳 **长征重载号 (Long March 5 - 胖五)**：5 米大直径芯级、4 大 3.35 米助推器、航天红带饰条。
-   - 🌌 **未来量子号 (Cyber Starship)**：赛博朋克多棱舰体、霓虹蓝色/粉色能量光环、环形离子推进器。
-   - 🚀 **经典探索者号 (Classic Explorer)**：圆润亲和的玩具感经典火箭。
-2. **科学的九九乘法算法**：覆盖 1×1 至 9×9 范围。支持自定义乘法表（如专门练习 2、5、8 乘法表）、智能干扰项生成、错题重复练习队列及简单模式下的点阵阵列图形辅助。若基本题数答完但零件尚未集齐，系统会自动扩充练习题数，保证每个孩子都能完整体验组装。
-3. **完整动感 3D 发射序列**：系统检查绿灯 ➔ 10s 大数字倒计时 ➔ 发动机点火（动态火焰与地面烟雾粒子）➔ 镜头跟随升空 ➔ 穿越云层 ➔ 深空游弋与地球弧面。
-4. **Web Audio API 纯代码音效合成**：无外部 mp3/wav 依赖，实时合成按钮音、欢呼和弦音、错题温和提示音、卡扣安装音、倒计时 Beep 及发动机升空轰鸣。
-5. **家长学习报告**：提供 2~9 乘法表掌握度百分比柱状图、错题汇总及针对性重练/清空记录功能。
-6. **无障碍与多端兼容**：支持全键盘操作（数字键输入、Enter 提交、Backspace 擦除）、自适应手机和平板软键盘布局、支持 `prefers-reduced-motion` 减少动画模式及 WebGL 降级提示。
+**Multiplication Rocket Lab** is a production-grade, gamified 3D math learning application designed specifically for primary school children in the **UK National Curriculum (Year 2 to Year 4, Ages 6-9)**. Combining times table practice with procedural Three.js 3D rocket construction, space launches, and an adaptive spaced-repetition learning engine, it inspires children to master multiplication facts through positive reinforcement without frustration.
 
 ---
 
-## 📁 目录结构说明
+## 🌟 Key Features & Improvements in v2.0.0
 
-```text
-multiplication-rocket/
-├── index.html                # 主单页 HTML 视图与蒙版
-├── test.html                 # 网页版可视化自动化测试面板
-├── css/
-│   ├── style.css             # 视觉设计系统、深空深蓝主题、响应式栅格
-│   └── animations.css        # UI 微交互、按钮脉动、摇晃与减速动画
-├── js/
-│   ├── main.js               # 应用入口、DOM 事件绑定、全屏与 WebGL 检测
-│   ├── game.js               # 统一状态机 (GAME_STATES)、积分连击与游戏流控
-│   ├── math.js               # 乘法题目生成、智能干扰项、自适应难度与错题集
-│   ├── rocket.js             # Three.js 3D 火箭程序化 5 大型号建模与涂装
-│   ├── launch.js             # Three.js 3D 发射序列、倒计时、点火喷焰与太空场景
-│   ├── audio.js              # Web Audio API 动态音效合成引擎
-│   ├── storage.js            # LocalStorage 存档与数据持久化
-│   └── ui.js                 # DOM 渲染、虚拟数字键盘与家长报告柱状图
-├── tests/
-│   ├── runner.js             # 自动化测试框架与 Assert 断言库
-│   ├── run-node-tests.js     # Node.js 命令行自动测试脚本
-│   ├── test-math.js          # 数学引擎单元测试集
-│   ├── test-storage.js       # 存档管理器单元测试集
-│   ├── test-rocket.js        # 3D 火箭构建器单元测试集
-│   ├── test-launch.js        # 3D 发射引擎单元测试集
-│   ├── test-game.js          # 游戏主状态机单元测试集
-│   └── test-ui.js            # UI 渲染器单元测试集
-└── README.md                 # 项目说明文档
-```
+### 1. 🇬🇧 UK National Curriculum Presets & 1×1 to 12×12 Multiplication
+- **Year 2 (Ages 6-7)**: Focus on ×2, ×5, ×10 tables.
+- **Year 3 (Ages 7-8)**: Master ×3, ×4, ×8 & review ×2, ×5, ×10.
+- **Year 4 (Ages 8-9)**: Full 1×1 to 12×12 multiplication tables.
+- **Custom Preset**: Select any custom combination of 1 to 12 tables.
+
+### 2. 🧠 Fact-Level Adaptive Learning Engine
+- Tracks mastery for all **144 individual multiplication facts** (`1x1` to `12x12`).
+- Computes fact-level **Mastery Scores (0-100%)** based on first-try accuracy, streaks, response speed, and recency.
+- Spaced-repetition priority weighting ensures weak facts appear more frequently while preventing repetitive consecutive prompts.
+- **Smart Strategy Hints**: Fact-tailored hints (e.g. ×2 double, ×5 count, ×9 = 10-1, ×10 add 0, near known facts like 6×7=42 → 7×7=42+7).
+
+### 3. 👨‍🚀 Multi-Child Player Profiles
+- Local profile manager ("Who's playing? 🚀 Alex | Amy | ➕ Add Player").
+- Independent stats, year presets, unlocked badges, 3D rockets, and settings per child.
+- **Zero Internet / Zero Server**: All data stays 100% locally on the device (privacy guaranteed).
+
+### 4. 📊 Comprehensive Parent Dashboard & 12×12 Heatmap Matrix
+- **Today's Stats**: Answered count, first-try accuracy %, avg response speed (s), highest streak.
+- **Lifetime Stats**: Total answered, practice time, space launches, overall accuracy.
+- **12×12 Fact Matrix**: Interactive color-coded heatmap grid representing all 144 facts. Click any cell to inspect attempts, accuracy, speed, and last practice date.
+- **Data Portability**: Export/Import JSON data and Export CSV summary report.
+
+### 5. 🌐 Internationalization (Bilingual English & Chinese)
+- Default **UK English (`en`)** experience for UK students.
+- One-click toggle to **Chinese (`zh`)** for bilingual households.
+
+### 6. 🚀 5 Procedural 3D Rocket Models & 5 Themes
+- 🚀 **Classic Explorer**
+- 🛰️ **SpaceX Starship** (Stainless steel, aero flaps, Super Heavy booster base)
+- ⚡ **Falcon Heavy** (Triple-core booster, grid fins)
+- 🇨🇳 **Long March 5** (5m core & strap-on boosters)
+- 🌌 **Cyber Starship** (Neon energy rings, ring engine)
+
+### 7. 📱 PWA & Offline Tablet Play
+- Includes `manifest.webmanifest` and Service Worker (`sw.js`).
+- Full support for iPad, iPhone, Android tablets, and Desktop (touch targets ≥ 48px, 100dvh layout, reduced motion support).
 
 ---
 
-## 🚀 本地运行方式
+## 🧪 Automated Testing Suite
 
-本项目为纯前端静态 Web 应用，无需配置 Node.js 后端或数据库。
+Comprehensive automated test runner with **24 unit & integration assertions**:
 
-### 方法 1：使用 Python 轻量 HTTP 服务器（推荐）
-在项目根目录打开终端，执行：
 ```bash
-python -m http.server 8080
+# Run CLI test suite via Node.js
+npm test
 ```
-- 访问游戏：`http://localhost:8080`
-- 访问自动测试面板：`http://localhost:8080/test.html`
 
-### 方法 2：直接双击运行
-直接在浏览器中打开 `index.html` 或 `test.html` 文件即可运行。
+Or open `test.html` in your browser for the **Interactive Web E2E Dashboard**.
 
 ---
 
-## 🧪 自动化测试项目 (Automated Test Suite)
+## 🚀 Live Demo & Installation
 
-本项目包含**命令行终端测试**与**网页端可视化测试面板**两套完整的自动化测试工具，覆盖所有 6 大核心模块与 27 项断言：
-
-### 1. 命令行自动化测试
-在终端根目录下运行：
-```bash
-node tests/run-node-tests.js
-```
-执行后输出结果：
-```text
-🚀 === 乘法火箭实验室 命令行自动化测试开始 ===
-✓ [1/27] 1.1 应该正确在 1x1 ~ 9x9 范围内生成题目 (0ms)
-...
-✓ [27/27] 6.2 应该在各种答题模式下正确切换输入面板 (0ms)
-------------------------------------------------
-📊 测试总结: 总计 27 项断言 | 通过: 27 | 失败: 0
-------------------------------------------------
-```
-
-### 2. 网页端可视化测试面板
-在浏览器中打开 `test.html` 或访问 `http://localhost:8080/test.html`，即可实时查看所有测试模块的进度条、耗时及 Pass/Fail 报告！
+- **Live Web App**: [https://geniusjunmin.github.io/multiplication-rocket-lab/](https://geniusjunmin.github.io/multiplication-rocket-lab/)
+- **Automated Test Dashboard**: [https://geniusjunmin.github.io/multiplication-rocket-lab/test.html](https://geniusjunmin.github.io/multiplication-rocket-lab/test.html)
+- **GitHub Repository**: [https://github.com/geniusjunmin/multiplication-rocket-lab](https://github.com/geniusjunmin/multiplication-rocket-lab)
 
 ---
 
-## 🔒 隐私保护声明
-本游戏不收集任何姓名、位置、邮箱或用户追踪数据。所有数据与学习记录均安全保存在玩家浏览器的 `LocalStorage` 中。
+## 🔒 Privacy & Safety Statement
+
+This game contains **no ads, no tracking analytics, no user accounts, and no backend servers**. All data stays on the local device browser.
