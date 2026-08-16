@@ -1,6 +1,6 @@
 /**
  * Multiplication Rocket Lab - State Machine & Flow Manager (js/game.js)
- * Supports Version 3.0.0 Free Challenge Presets, Mixed Operations, Prominent Wrong Hints & Session Restoration
+ * Supports Version 3.0.0 Free Challenge Presets, Mixed Operations, Prominent Wrong Hints & Dev Shortcuts
  */
 const GAME_STATES = {
   HOME: "home",
@@ -180,6 +180,23 @@ class MultiplicationGame {
     this.setGameState(GAME_STATES.QUESTION);
   }
 
+  /**
+   * Developer Testing Shortcut: Instantly skip all quiz questions and unlock all 10 rocket parts!
+   */
+  skipAllQuestions() {
+    this.currentQuestionIdx = this.totalQuestionsCount;
+    this.correctAnswersCount = this.totalQuestionsCount;
+    this.score += 1500;
+
+    const allParts = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10"];
+    if (window.storageManager) {
+      window.storageManager.set("unlockedParts", allParts);
+      window.storageManager.set("score", this.score);
+    }
+
+    document.getElementById("modal-rocket-complete")?.classList.remove("hidden");
+  }
+
   nextQuestion() {
     this.attemptCount = 0;
     this.isAnswerLocked = false;
@@ -345,7 +362,6 @@ class MultiplicationGame {
         window.uiManager.updateAnswerDisplay("?");
       }
 
-      // Unlock for child to retry with the prominent hint visible
       setTimeout(() => {
         this.isAnswerLocked = false;
         this.startQuestionTimerIfNeeded();

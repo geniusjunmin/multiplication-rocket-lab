@@ -32,6 +32,14 @@ function bindGlobalNavEvents() {
     if (window.game) window.game.setGameState(GAME_STATES.HOME);
   });
 
+  // Developer Testing Shortcut: Instantly skip all quiz questions and unlock all 10 rocket parts!
+  document.getElementById("btn-dev-skip-quiz")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playUnlock();
+    if (window.game) {
+      window.game.skipAllQuestions();
+    }
+  });
+
   document.getElementById("btn-lang-toggle")?.addEventListener("click", () => {
     if (window.i18n) {
       const next = window.i18n.currentLanguage === "en" ? "zh" : "en";
