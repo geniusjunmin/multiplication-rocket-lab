@@ -1,6 +1,6 @@
 /**
  * Multiplication Rocket Lab - UI & DOM Rendering Manager (js/ui.js)
- * Supports Version 3.0.0 Universal Math Formulas, Division Visual Helpers, Destination Mission Planner & Parent Dashboard
+ * Supports Version 3.0.0 Universal Math Formulas, Prominent Wrong-Answer Hints, Pre-Launch 3D Assembly & Extended Cinematic Journey
  */
 class UIManager {
   constructor() {
@@ -71,6 +71,13 @@ class UIManager {
     const fuelFeedback = document.getElementById("fuel-feedback");
     if (fuelFeedback) { fuelFeedback.className = "quiz-feedback hidden"; fuelFeedback.innerText = ""; }
 
+    // HIDE Strategy Hint initially (Only show after wrong answer!)
+    const hintBox = document.getElementById("strat-hint-box");
+    if (hintBox) {
+      hintBox.classList.add("hidden");
+      hintBox.innerText = "";
+    }
+
     const choicesContainer = document.getElementById("quiz-choices-container");
     const keypadContainer = document.getElementById("quiz-keypad-container");
     const easyHelper = document.getElementById("easy-visual-helper");
@@ -97,14 +104,25 @@ class UIManager {
       if (keypadContainer) keypadContainer.classList.remove("hidden");
       if (easyHelper) easyHelper.classList.add("hidden");
     }
+  }
 
-    // Render Smart Strategy Hint
+  /**
+   * Prominently display clear pedagogical hint ONLY when child answers incorrectly!
+   */
+  showWrongAnswerHint(question) {
     const hintBox = document.getElementById("strat-hint-box");
-    if (hintBox && question.hint) {
-      hintBox.classList.remove("hidden");
-      const isZh = window.i18n && window.i18n.currentLanguage === "zh";
-      hintBox.innerText = isZh ? question.hint.textZh : question.hint.textEn;
-    }
+    if (!hintBox || !question || !question.hint) return;
+
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+    const hintText = isZh ? question.hint.textZh : question.hint.textEn;
+
+    hintBox.className = "strat-hint-box prominent-wrong-hint animate-bounce-short";
+    hintBox.classList.remove("hidden");
+
+    hintBox.innerHTML = `
+      <div class="hint-title-badge">💡 ${isZh ? "答错小提示 (别灰心，再试一次！)" : "Smart Strategy Hint (Try Again!)"}</div>
+      <div class="hint-text-body">${hintText}</div>
+    `;
   }
 
   updateAnswerDisplay(val) {
@@ -277,7 +295,7 @@ class UIManager {
       btn.innerHTML = `
         <span class="dock-icon">${part.icon}</span>
         <span class="dock-title">${isZh ? part.nameZh : part.nameEn}</span>
-        <span class="dock-tag">${isInstalled ? "✅" : (isUnlocked ? "🛠️ Snap" : "🔒")}</span>
+        <span class="dock-tag">${isInstalled ? "✅ Fitted" : (isUnlocked ? "🛠️ Snap Part" : "🔒 Locked")}</span>
       `;
 
       if (isUnlocked && !isInstalled) {

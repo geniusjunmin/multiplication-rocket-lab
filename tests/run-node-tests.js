@@ -53,7 +53,8 @@ global.localStorage = {
 // Mock THREE.js
 global.THREE = {
   Scene: class { add() {} remove() {} traverse(fn) { fn(this); } },
-  PerspectiveCamera: class { constructor() { this.position = { set() {} }; } },
+  Color: class { lerp() { return this; } },
+  PerspectiveCamera: class { constructor() { this.position = { set() {} }; } lookAt() {} },
   WebGLRenderer: class { constructor() { this.shadowMap = {}; this.domElement = createMockElement(); } setSize() {} setPixelRatio() {} dispose() {} render() {} },
   AmbientLight: class {},
   DirectionalLight: class { constructor() { this.position = { set() {} }; } },

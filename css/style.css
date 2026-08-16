@@ -226,6 +226,31 @@ html, body {
 
 .btn-submit-lg { width: 100%; min-height: 54px; font-size: 1.2rem; }
 
+/* Prominent Wrong-Answer Strategy Hint Box */
+.strat-hint-box.prominent-wrong-hint {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.35));
+  border: 2px solid #f59e0b;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+  text-align: left;
+}
+
+.hint-title-badge {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #fde047;
+  margin-bottom: 0.35rem;
+}
+
+.hint-text-body {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.4;
+}
+
 /* Preset Buttons Grid */
 .preset-buttons-grid {
   display: flex;

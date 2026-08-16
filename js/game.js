@@ -1,6 +1,6 @@
 /**
  * Multiplication Rocket Lab - State Machine & Flow Manager (js/game.js)
- * Supports Version 3.0.0 Free Challenge Presets, Mixed Operations, Hard Mode Timers & Session Restoration
+ * Supports Version 3.0.0 Free Challenge Presets, Mixed Operations, Prominent Wrong Hints & Session Restoration
  */
 const GAME_STATES = {
   HOME: "home",
@@ -138,6 +138,12 @@ class MultiplicationGame {
           window.launchSequence.initScene("canvas-container-launch", destId);
         }
         break;
+      case GAME_STATES.COUNTDOWN:
+        break;
+      case GAME_STATES.LAUNCHING:
+        break;
+      case GAME_STATES.SPACE:
+        break;
       case GAME_STATES.PAUSED:
         break;
     }
@@ -254,14 +260,17 @@ class MultiplicationGame {
     this.isAnswerLocked = true;
 
     if (window.audioManager) window.audioManager.playWrong();
-    if (window.uiManager) window.uiManager.showFeedback(false, window.i18n ? window.i18n.t("timeoutFeedback") : "⏰ 时间到！");
+    if (window.uiManager) {
+      window.uiManager.showFeedback(false, window.i18n ? window.i18n.t("timeoutFeedback") : "⏰ 时间到！");
+      window.uiManager.showWrongAnswerHint(this.currentQuestion);
+    }
 
     if (window.mathEngine && this.currentQuestion) {
       window.mathEngine.recordResult(this.currentQuestion, false, true, this.timerSeconds * 1000);
     }
 
     this.comboCount = 0;
-    setTimeout(() => this.nextQuestion(), 1200);
+    setTimeout(() => this.nextQuestion(), 1800);
   }
 
   submitAnswer(userAnswer) {
@@ -325,19 +334,22 @@ class MultiplicationGame {
       }, 800);
 
     } else {
+      // WRONG ANSWER: Show Prominent Hint Box and let child try again!
       this.comboCount = 0;
       if (window.audioManager) window.audioManager.playWrong();
 
       if (window.uiManager) {
-        window.uiManager.showFeedback(false, window.i18n ? window.i18n.t("wrongFeedback") : "差一点点，再试一次！");
+        window.uiManager.showFeedback(false, window.i18n ? window.i18n.t("wrongFeedback") : "差一点点，看下方小提示再试一次！");
+        window.uiManager.showWrongAnswerHint(this.currentQuestion);
         window.uiManager.currentAnswerInput = "";
         window.uiManager.updateAnswerDisplay("?");
       }
 
+      // Unlock for child to retry with the prominent hint visible
       setTimeout(() => {
         this.isAnswerLocked = false;
         this.startQuestionTimerIfNeeded();
-      }, 1000);
+      }, 1200);
     }
   }
 
@@ -399,6 +411,7 @@ class MultiplicationGame {
       if (window.audioManager) window.audioManager.playWrong();
       if (window.uiManager) {
         window.uiManager.showFuelFeedback(false, window.i18n ? window.i18n.t("wrongFeedback") : "计算有误，再试一次！");
+        window.uiManager.showWrongAnswerHint(this.currentQuestion);
         window.uiManager.currentAnswerInput = "";
         window.uiManager.updateAnswerDisplay("?");
       }
