@@ -315,6 +315,7 @@ class UIManager {
     const text = document.getElementById("fuel-percentage");
     const label = document.getElementById("fuel-status-label");
     const launchBtn = document.getElementById("btn-ready-to-launch");
+    const alertBanner = document.getElementById("fuel-full-alert-banner");
 
     if (fill) fill.style.height = `${percentage}%`;
     if (text) text.innerText = `${percentage}%`;
@@ -322,20 +323,26 @@ class UIManager {
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
 
     if (label) {
-      if (percentage >= 100) label.innerText = isZh ? "燃料 100% 加满！可以发射！" : "Fuel 100% Full! Ready to Launch!";
+      if (percentage >= 100) label.innerText = isZh ? "🎉 燃料 100% 加满！火箭发射准备就绪！" : "🎉 Fuel 100% Full! Rocket System Ready!";
       else if (percentage >= 50) label.innerText = isZh ? "燃料加注中..." : "Fuel loading in progress...";
       else label.innerText = isZh ? "燃料不足，等待加注..." : "Fuel low. Waiting for fuel loading...";
     }
 
-    if (launchBtn) {
-      if (percentage >= 100) {
+    if (percentage >= 100) {
+      if (alertBanner) alertBanner.classList.remove("hidden");
+      if (launchBtn) {
         launchBtn.disabled = false;
+        launchBtn.removeAttribute("disabled");
         launchBtn.classList.remove("disabled");
-        launchBtn.classList.add("btn-pulse");
-      } else {
+        launchBtn.style.opacity = "1";
+        launchBtn.style.cursor = "pointer";
+      }
+    } else {
+      if (alertBanner) alertBanner.classList.add("hidden");
+      if (launchBtn) {
         launchBtn.disabled = true;
+        launchBtn.setAttribute("disabled", "true");
         launchBtn.classList.add("disabled");
-        launchBtn.classList.remove("btn-pulse");
       }
     }
   }

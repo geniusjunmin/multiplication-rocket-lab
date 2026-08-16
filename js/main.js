@@ -226,6 +226,15 @@ function bindQuizInputEvents() {
     });
   });
 
+  // Dev Shortcut: Fill 100% fuel instantly
+  document.getElementById("btn-dev-fill-fuel")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playUnlock();
+    if (window.game) {
+      window.game.fuelPercentage = 100;
+      if (window.uiManager) window.uiManager.updateFuelGauge(100);
+    }
+  });
+
   document.querySelectorAll(".fuel-key").forEach(btn => {
     btn.addEventListener("click", () => {
       const key = btn.getAttribute("data-key");
