@@ -1,598 +1,34 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>乘法火箭实验室 | Multiplication Rocket Lab</title>
-  <meta name="description" content="专为儿童设计的 3D 乘法学习网页小游戏。回答乘法题，收集零件，组装火箭并发射到太空！">
-  <!-- Stylesheets -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title data-i18n="appTitle">Multiplication Rocket Lab 🚀</title>
+  
+  <meta name="description" content="Learn Times Tables, Build 3D Rockets & Launch to Deep Space!">
+  <meta name="theme-color" content="#6366f1">
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- Core Styles -->
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/animations.css">
-  <!-- Three.js Library via CDN -->
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+
+  <!-- Three.js 3D Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <!-- OrbitControls for camera interaction -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-</head>
-<body>
-  <!-- Background Starfield Canvas for UI screens -->
-  <canvas id="bg-starfield" class="starfield-canvas"></canvas>
 
-  <!-- Navigation / Global HUD Header -->
-  <header id="global-header" class="global-header hidden">
-    <div class="header-left">
-      <button id="btn-home" class="icon-btn" aria-label="返回首页" title="返回首页">
-        <span class="icon">🏠</span>
-      </button>
-      <div class="player-pill">
-        <span class="avatar">🚀</span>
-        <span id="display-player-name" class="player-name">小宇航员</span>
-      </div>
-    </div>
-    <div class="header-center">
-      <h1 id="screen-title" class="game-title-sm">乘法火箭实验室</h1>
-    </div>
-    <div class="header-right">
-      <div class="score-pill">
-        <span class="label">⭐ 得分</span>
-        <span id="display-score" class="value">0</span>
-      </div>
-      <button id="btn-sound-toggle" class="icon-btn" aria-label="声音开关" title="切换声音">
-        <span id="sound-icon" class="icon">🔊</span>
-      </button>
-      <button id="btn-fullscreen" class="icon-btn" aria-label="全屏切换" title="全屏">
-        <span class="icon">⛶</span>
-      </button>
-    </div>
-  </header>
-
-  <!-- WebGL Not Supported Fallback Alert -->
-  <div id="webgl-fallback-banner" class="fallback-banner hidden">
-    <p>⚠️ 当前浏览器未开启 3D (WebGL) 支持。您可以继续练习乘法，但 3D 火箭组装及发射动画将以 2D 轮廓模式展示。</p>
-  </div>
-
-  <!-- MAIN APP SCENE CONTAINERS -->
-  <main id="app-container" class="app-container">
-
-    <!-- 1. HOME SCREEN (欢迎页面) -->
-    <section id="screen-home" class="screen screen-home active">
-      <div class="home-hero">
-        <div class="title-container">
-          <div class="badge-tag">儿童数学 3D 探索之旅</div>
-          <h1 class="main-title">乘法火箭实验室</h1>
-          <p class="sub-title">Multiplication Rocket Lab</p>
-          <p class="tagline">“回答乘法题，收集零件，建造属于你的专属火箭！”</p>
-        </div>
-
-        <!-- Floating Preview Rocket 3D Canvas Container -->
-        <div class="hero-rocket-preview">
-          <div id="canvas-container-home" class="canvas-3d-wrapper"></div>
-        </div>
-
-        <div class="home-actions">
-          <button id="btn-start-game" class="btn btn-primary btn-large btn-pulse">
-            <span class="btn-icon">🚀</span>
-            <span class="btn-text">开始建造火箭</span>
-          </button>
-          <button id="btn-continue-game" class="btn btn-secondary btn-large hidden">
-            <span class="btn-icon">▶️</span>
-            <span class="btn-text">继续已有进度</span>
-          </button>
-          <div class="home-sub-actions">
-            <button id="btn-open-settings" class="btn btn-outline">
-              <span class="btn-icon">⚙️</span> 学习设置
-            </button>
-            <button id="btn-open-report" class="btn btn-outline">
-              <span class="btn-icon">📊</span> 家长报告
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 2. SETTINGS SCREEN (学习设置页面) -->
-    <section id="screen-settings" class="screen screen-settings hidden">
-      <div class="card settings-card">
-        <h2 class="card-title">⚙️ 学习与游戏设置</h2>
-        
-        <!-- Player Nickname -->
-        <div class="form-group">
-          <label for="input-player-name" class="form-label">宇航员昵称</label>
-          <input type="text" id="input-player-name" class="form-input" maxlength="12" placeholder="请输入你的名字..." value="小宇航员">
-          <span class="form-hint">💡 昵称仅保存在本地设备，不上传任何隐私数据。</span>
-        </div>
-
-        <!-- Multiplication Tables Selection -->
-        <div class="form-group">
-          <label class="form-label">选择要练习的乘法表：</label>
-          <div class="table-selector-grid">
-            <button type="button" class="btn-chip" data-table="2">2 的乘法表</button>
-            <button type="button" class="btn-chip" data-table="3">3 的乘法表</button>
-            <button type="button" class="btn-chip" data-table="4">4 的乘法表</button>
-            <button type="button" class="btn-chip" data-table="5">5 的乘法表</button>
-            <button type="button" class="btn-chip" data-table="6">6 的乘法表</button>
-            <button type="button" class="btn-chip" data-table="7">7 的乘法表</button>
-            <button type="button" class="btn-chip" data-table="8">8 的乘法表</button>
-            <button type="button" class="btn-chip" data-table="9">9 的乘法表</button>
-          </div>
-          <div class="table-selector-actions">
-            <button id="btn-select-all-tables" class="btn-link">全选</button>
-            <button id="btn-select-easy-tables" class="btn-link">选基础 (2, 5, 10)</button>
-          </div>
-        </div>
-
-        <!-- Difficulty Mode -->
-        <div class="form-group">
-          <label class="form-label">选择难度模式：</label>
-          <div class="radio-card-group">
-            <label class="radio-card">
-              <input type="radio" name="difficulty" value="easy">
-              <div class="card-content">
-                <span class="card-title-sm">🌱 简单模式</span>
-                <span class="card-desc">提供 3 个多选答案，不限时间，自带图形助记库。</span>
-              </div>
-            </label>
-            <label class="radio-card">
-              <input type="radio" name="difficulty" value="normal" checked>
-              <div class="card-content">
-                <span class="card-title-sm">🚀 普通模式 (推荐)</span>
-                <span class="card-desc">数字键盘输入答案，支持重复尝试与智能提示。</span>
-              </div>
-            </label>
-            <label class="radio-card">
-              <input type="radio" name="difficulty" value="hard">
-              <div class="card-content">
-                <span class="card-title-sm">⚡ 挑战模式</span>
-                <span class="card-desc">单题倒计时，连击翻倍得分，错题自动重现。</span>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <!-- Question Count Per Round -->
-        <div class="form-group">
-          <label class="form-label">每轮题目数量：</label>
-          <div class="segmented-control">
-            <button type="button" class="segment-btn" data-count="10">10 题</button>
-            <button type="button" class="segment-btn active" data-count="15">15 题 (默认)</button>
-            <button type="button" class="segment-btn" data-count="20">20 题</button>
-          </div>
-        </div>
-
-        <!-- Accessibility options -->
-        <div class="form-group">
-          <label class="form-label">辅助功能：</label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="chk-reduced-motion"> 减少界面过度动画 (Reduced Motion)
-          </label>
-        </div>
-
-        <div class="card-actions">
-          <button id="btn-save-settings" class="btn btn-primary btn-large">保存并开始</button>
-          <button id="btn-back-home" class="btn btn-outline">返回主页</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 3. BLUEPRINT SCREEN (火箭设计图页面) -->
-    <section id="screen-blueprint" class="screen screen-blueprint hidden">
-      <div class="blueprint-container">
-        <div class="blueprint-header">
-          <h2>📐 火箭工程蓝图 Blueprint</h2>
-          <div class="progress-bar-container">
-            <div class="progress-label">
-              <span>建造进度</span>
-              <span id="blueprint-progress-text">0 / 10 零件</span>
-            </div>
-            <div class="progress-track">
-              <div id="blueprint-progress-fill" class="progress-fill" style="width: 0%;"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Blueprint Parts Grid -->
-        <div id="blueprint-grid" class="blueprint-grid">
-          <!-- 10 Parts will be dynamically injected here -->
-        </div>
-
-        <div class="blueprint-footer">
-          <button id="btn-start-answering" class="btn btn-primary btn-large btn-pulse">
-            <span class="btn-icon">✏️</span> 开始答题收集零件
-          </button>
-          <button id="btn-go-assembly" class="btn btn-accent btn-large hidden">
-            <span class="btn-icon">🔧</span> 前往组装车间 (<span id="installable-count">0</span> 可安装)
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 4. QUESTION SCREEN (乘法答题页面) -->
-    <section id="screen-question" class="screen screen-question hidden">
-      <div class="question-layout">
-        
-        <!-- Left Side: Live 3D Progress Rocket -->
-        <div class="question-left-panel">
-          <div class="rocket-status-card">
-            <h3>火箭生成监控</h3>
-            <div id="canvas-container-quiz" class="canvas-3d-wrapper-sm"></div>
-            <div class="parts-collected-badge">
-              <span>已收集零件：</span>
-              <strong id="quiz-parts-count">0/10</strong>
-            </div>
-          </div>
-
-          <!-- Visual Math Representation Card (for hints/easy mode) -->
-          <div id="visual-math-card" class="visual-math-card hidden">
-            <h4>💡 点阵数量辅助库</h4>
-            <div id="visual-dots-grid" class="visual-dots-grid"></div>
-            <div id="visual-math-formula" class="visual-math-formula"></div>
-          </div>
-        </div>
-
-        <!-- Right Side: Multiplication Quiz Console -->
-        <div class="question-right-panel">
-          <div class="quiz-card card">
-            
-            <!-- Quiz HUD Bar -->
-            <div class="quiz-hud">
-              <div class="hud-item">
-                <span class="hud-label">题目</span>
-                <span id="quiz-current-num" class="hud-val">1</span> / <span id="quiz-total-num" class="hud-val">15</span>
-              </div>
-              <div class="hud-item combo-item">
-                <span class="hud-label">连续答对</span>
-                <span id="quiz-combo-count" class="hud-val combo-val">🔥 0</span>
-              </div>
-              <div class="hud-item timer-item hidden" id="quiz-timer-container">
-                <span class="hud-label">时间</span>
-                <span id="quiz-timer-val" class="hud-val">20s</span>
-              </div>
-            </div>
-
-            <!-- Question Display -->
-            <div class="question-box">
-              <div class="formula-display">
-                <span id="factor-a" class="factor">7</span>
-                <span class="operator">×</span>
-                <span id="factor-b" class="factor">8</span>
-                <span class="operator">=</span>
-                <span id="answer-box" class="answer-box-placeholder">?</span>
-              </div>
-            </div>
-
-            <!-- Feedback Alert Msg -->
-            <div id="quiz-feedback" class="quiz-feedback hidden"></div>
-
-            <!-- INPUT MODE 1: Multiple Choice Options (Easy Mode) -->
-            <div id="quiz-choices-container" class="quiz-choices-grid hidden">
-              <button class="choice-btn" data-val="0">48</button>
-              <button class="choice-btn" data-val="0">56</button>
-              <button class="choice-btn" data-val="0">64</button>
-            </div>
-
-            <!-- INPUT MODE 2: Numeric Keypad (Normal/Hard Mode) -->
-            <div id="quiz-keypad-container" class="quiz-keypad-wrapper">
-              <div class="keypad-grid">
-                <button class="key-btn" data-key="1">1</button>
-                <button class="key-btn" data-key="2">2</button>
-                <button class="key-btn" data-key="3">3</button>
-                <button class="key-btn" data-key="4">4</button>
-                <button class="key-btn" data-key="5">5</button>
-                <button class="key-btn" data-key="6">6</button>
-                <button class="key-btn" data-key="7">7</button>
-                <button class="key-btn" data-key="8">8</button>
-                <button class="key-btn" data-key="9">9</button>
-                <button class="key-btn key-action" data-key="clear">清除</button>
-                <button class="key-btn" data-key="0">0</button>
-                <button class="key-btn key-action" data-key="backspace">⌫</button>
-              </div>
-              <button id="btn-submit-answer" class="btn btn-primary btn-large btn-submit-wide">
-                确认提交 ↵
-              </button>
-            </div>
-
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- 5. PART REWARD MODAL / SCREEN (获得新零件弹窗) -->
-    <div id="modal-part-reward" class="modal-overlay hidden">
-      <div class="modal-card reward-card animate-bounce">
-        <div class="reward-sparkles">✨ 🎉 ✨</div>
-        <h2 class="reward-title">新火箭零件已解锁！</h2>
-        <div class="reward-part-name" id="reward-part-name">火箭发动机</div>
-        <div class="reward-3d-preview" id="canvas-container-reward"></div>
-        <p class="reward-desc" id="reward-part-desc">发动机可以产生强大的推力，帮助火箭克制引力离开地面！</p>
-        <div class="modal-actions">
-          <button id="btn-reward-install" class="btn btn-accent btn-large">
-            🛠️ 立即前往安装
-          </button>
-          <button id="btn-reward-continue" class="btn btn-outline">
-            ✏️ 继续答题
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 6. ASSEMBLY SCREEN (3D 火箭组装车间) -->
-    <section id="screen-assembly" class="screen screen-assembly hidden">
-      <div class="assembly-layout">
-        <!-- Main 3D Workshop Canvas -->
-        <div id="canvas-container-assembly" class="assembly-canvas-wrapper"></div>
-
-        <!-- Assembly UI Overlay Overlay -->
-        <div class="assembly-hud">
-          <div class="hud-top-bar">
-            <h2>🛠️ 火箭实验室组装车间</h2>
-            <div class="selectors-group">
-              <div class="picker-item">
-                <span>🚀 火箭型号：</span>
-                <select id="select-rocket-model" class="model-select">
-                  <option value="classic">🚀 经典探索者号</option>
-                  <option value="starship">🛰️ SpaceX 星舰 (Starship)</option>
-                  <option value="falconHeavy">⚡ 猎鹰重型 (Falcon Heavy)</option>
-                  <option value="longMarch">🇨🇳 长征重载号 (Long March 5)</option>
-                  <option value="cyber">🌌 未来量子号 (Cyber Starship)</option>
-                </select>
-              </div>
-              <div class="picker-item">
-                <span>🎨 涂装：</span>
-                <select id="select-rocket-theme" class="theme-select">
-                  <option value="explorer">🚀 探索者 (经典白蓝)</option>
-                  <option value="fire">🔥 火艳号 (酷炫红橙)</option>
-                  <option value="forest">🌲 森林号 (活力翡翠)</option>
-                  <option value="lightning">⚡ 闪电号 (高能炫黄)</option>
-                  <option value="galaxy">🌌 银河号 (幻彩星空)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- Empty Spacer for 3D View Grid Center -->
-          <div></div>
-
-          <!-- Uninstalled Parts Dock Bar at Bottom -->
-          <div class="assembly-dock">
-            <div class="dock-header-bar">
-              <h3>待安装零件箱（点击零件进行安装）：</h3>
-              <button id="btn-install-all" class="btn btn-primary">
-                ⚡ 一键全自动组装
-              </button>
-            </div>
-            <div id="assembly-parts-list" class="parts-dock-list">
-              <!-- Dock items injected dynamically -->
-            </div>
-            <div class="assembly-controls-hint">
-              <span>🖱️ 拖拽可 360° 旋转火箭 | 滚轮缩放</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 7. ROCKET COMPLETE CELEBRATION MODAL (火箭建造完成) -->
-    <div id="modal-rocket-complete" class="modal-overlay hidden">
-      <div class="modal-card complete-card">
-        <div class="trophy-header">🏆</div>
-        <h2>火箭零件全部解锁！</h2>
-        <p class="complete-text">
-          太棒了！你用出色的数学能力解锁了火箭的所有零件！<br>
-          你可以前往 <strong>3D 组装车间</strong> 亲手安装，或者直接去<strong>补充数学燃料</strong>准备发射！
-        </p>
-        <div class="complete-preview-icon">🚀 ➔ 🔧 ➔ ⛽</div>
-        <div class="modal-actions">
-          <button id="btn-complete-assembly" class="btn btn-secondary btn-large">
-            🔧 3D 车间组装
-          </button>
-          <button id="btn-go-fuel" class="btn btn-primary btn-large btn-pulse">
-            ⛽ 冲向燃料挑战
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 8. FUEL CHALLENGE SCREEN (火箭燃料加注挑战) -->
-    <section id="screen-fuel" class="screen screen-fuel hidden">
-      <div class="fuel-layout card">
-        <h2>⛽ 乘法燃料补充舱</h2>
-        <p class="fuel-subtitle">每答对 1 道题加注 10% 燃料，连续答对额外奖励 5%！</p>
-
-        <div class="fuel-gauge-container">
-          <div class="fuel-gauge-bar">
-            <div id="fuel-fill-level" class="fuel-fill" style="height: 0%;"></div>
-            <div class="fuel-gauge-markers">
-              <span>100%</span>
-              <span>75%</span>
-              <span>50%</span>
-              <span>25%</span>
-              <span>0%</span>
-            </div>
-          </div>
-          <div class="fuel-status">
-            <div id="fuel-percentage" class="fuel-percentage-text">0%</div>
-            <div id="fuel-status-label" class="fuel-status-label">燃料不足，等待加注...</div>
-          </div>
-        </div>
-
-        <!-- Fuel Challenge Math Question -->
-        <div class="fuel-quiz-box">
-          <div class="formula-display">
-            <span id="fuel-factor-a" class="factor">6</span>
-            <span class="operator">×</span>
-            <span id="fuel-factor-b" class="factor">7</span>
-            <span class="operator">=</span>
-            <span id="fuel-answer-box" class="answer-box-placeholder">?</span>
-          </div>
-        </div>
-
-        <!-- Fuel Feedback Alert Msg -->
-        <div id="fuel-feedback" class="quiz-feedback hidden"></div>
-
-        <div id="fuel-keypad" class="quiz-keypad-wrapper">
-          <div class="keypad-grid sm">
-            <button class="fuel-key" data-key="1">1</button>
-            <button class="fuel-key" data-key="2">2</button>
-            <button class="fuel-key" data-key="3">3</button>
-            <button class="fuel-key" data-key="4">4</button>
-            <button class="fuel-key" data-key="5">5</button>
-            <button class="fuel-key" data-key="6">6</button>
-            <button class="fuel-key" data-key="7">7</button>
-            <button class="fuel-key" data-key="8">8</button>
-            <button class="fuel-key" data-key="9">9</button>
-            <button class="fuel-key key-action" data-key="clear">C</button>
-            <button class="fuel-key" data-key="0">0</button>
-            <button class="fuel-key key-action" data-key="submit">↵</button>
-          </div>
-        </div>
-
-        <div class="fuel-launch-trigger">
-          <button id="btn-ready-to-launch" class="btn btn-launch btn-large disabled" disabled>
-            🚀 准备发射火箭！
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 9. LAUNCH & SPACE 3D ANIMATION SCREEN (发射与太空场景) -->
-    <section id="screen-launch" class="screen screen-launch hidden">
-      <div id="canvas-container-launch" class="launch-canvas-wrapper"></div>
-      
-      <!-- Launch HUD Overlay -->
-      <div class="launch-hud-overlay">
-        <!-- Stage Checklist -->
-        <div id="launch-checklist" class="launch-checklist">
-          <h3>系统发射检查表 System Check</h3>
-          <ul>
-            <li id="check-item-1"><span>⚙️ 控制系统</span> <strong class="status">检查中...</strong></li>
-            <li id="check-item-2"><span>🔥 发动机点火器</span> <strong class="status">待命</strong></li>
-            <li id="check-item-3"><span>⛽ 乘法高能燃料</span> <strong class="status">待命</strong></li>
-            <li id="check-item-4"><span>🛰️ 太空导航罗盘</span> <strong class="status">待命</strong></li>
-          </ul>
-        </div>
-
-        <!-- Countdown Banner -->
-        <div id="launch-countdown-box" class="launch-countdown-box hidden">
-          <div id="countdown-num" class="countdown-num">10</div>
-          <div class="countdown-sub">COUNTDOWN</div>
-          <button id="btn-skip-countdown" class="btn-skip">跳过倒计时 ⏩</button>
-        </div>
-
-        <!-- Space Victory Banner -->
-        <div id="space-victory-banner" class="space-victory-banner hidden">
-          <h1 class="animate-bounce">🎉 成功进入轨道！</h1>
-          <p>“你用出色的乘法知识，成功把火箭送上了无垠太空！”</p>
-          <button id="btn-view-results" class="btn btn-primary btn-large btn-pulse">
-            🏆 查看成绩与勋章
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 10. RESULTS SCREEN (游戏结算成绩单) -->
-    <section id="screen-results" class="screen screen-results hidden">
-      <div class="results-card card">
-        <h2 class="results-title">🚀 任务成功！学习成果结算</h2>
-        
-        <!-- Star Rating -->
-        <div class="star-rating-box">
-          <span id="star-1" class="star">⭐</span>
-          <span id="star-2" class="star">⭐</span>
-          <span id="star-3" class="star">⭐</span>
-        </div>
-        <div id="rating-title" class="rating-title">三星王牌宇航员！</div>
-
-        <div class="stats-grid">
-          <div class="stat-box">
-            <span class="label">本次得分</span>
-            <span id="res-score" class="value">0</span>
-          </div>
-          <div class="stat-box">
-            <span class="label">正确率</span>
-            <span id="res-accuracy" class="value">100%</span>
-          </div>
-          <div class="stat-box">
-            <span class="label">最长连击</span>
-            <span id="res-max-combo" class="value">0 连胜</span>
-          </div>
-          <div class="stat-box">
-            <span class="label">答题速度</span>
-            <span id="res-avg-time" class="value">0秒/题</span>
-          </div>
-        </div>
-
-        <!-- Newly Unlocked Badges Section -->
-        <div id="unlocked-badges-container" class="badges-earned-section">
-          <h3>🎖️ 本次斩获的航天徽章：</h3>
-          <div id="res-badges-list" class="badges-flex"></div>
-        </div>
-
-        <div class="results-actions">
-          <button id="btn-restart-game" class="btn btn-primary btn-large">
-            🚀 建造新火箭 (再玩一次)
-          </button>
-          <button id="btn-retry-wrongs" class="btn btn-secondary btn-large hidden">
-            📝 专门重练本次错题
-          </button>
-          <button id="btn-results-home" class="btn btn-outline">
-            🏠 返回主菜单
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 11. PARENT LEARNING REPORT MODAL (家长学习报告) -->
-    <div id="modal-report" class="modal-overlay hidden">
-      <div class="modal-card report-card">
-        <div class="report-header">
-          <h2>📊 家长学习分析报告</h2>
-          <button id="btn-close-report" class="btn-close-icon">✖</button>
-        </div>
-
-        <div class="report-body">
-          <div class="report-summary-pills">
-            <div class="pill"><span class="lbl">累计答题:</span> <strong id="rep-total-q">0</strong></div>
-            <div class="pill"><span class="lbl">平均正确率:</span> <strong id="rep-avg-acc">0%</strong></div>
-            <div class="pill"><span class="lbl">火箭发射次数:</span> <strong id="rep-launch-cnt">0</strong></div>
-          </div>
-
-          <!-- HTML/CSS Mastered Bar Charts -->
-          <div class="chart-section">
-            <h3>2 ~ 9 乘法表掌握度分析</h3>
-            <div id="mastery-bars-container" class="mastery-bars-grid">
-              <!-- Bars injected dynamically -->
-            </div>
-          </div>
-
-          <!-- Wrong Questions History -->
-          <div class="wrongs-section">
-            <h3>需进一步强化的错题列表：</h3>
-            <div id="wrong-questions-tags" class="wrongs-tags-list">
-              <span class="empty-hint">暂无常见错题，表现非常棒！</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="report-footer">
-          <button id="btn-practice-wrongs-mode" class="btn btn-accent">
-            ✏️ 针对性练习错题
-          </button>
-          <button id="btn-clear-data" class="btn btn-danger-link">
-            🗑️ 清空所有学习记录
-          </button>
-        </div>
-      </div>
-    </div>
-
-  </main>
-
-  <!-- Audio Context Activation Overlay Modal -->
-  <div id="modal-audio-init" class="audio-init-banner">
-    <span>🔊 点击页面任意位置开启游戏高保真音效系统</span>
-  </div>
-
-  <!-- Application Modules -->
+  <!-- Game Modular Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/profiles.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/achievements.js"></script>
+  <script src="js/missions.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/math.js"></script>
   <script src="js/rocket.js"></script>
@@ -600,5 +36,537 @@
   <script src="js/ui.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>
+</head>
+<body>
+
+  <!-- WebGL Fallback Banner -->
+  <div id="webgl-fallback-banner" class="fallback-banner hidden">
+    <span>⚠️ WebGL Not Supported. Using 2D Rocket Silhouette Mode!</span>
+  </div>
+
+  <div id="app" class="app-container">
+    
+    <!-- Top Navigation Header -->
+    <header id="global-header" class="global-header">
+      <div class="header-brand">
+        <button id="btn-home" class="btn-icon" aria-label="Home">🏠</button>
+        <h1 class="game-logo" data-i18n="appTitle">Multiplication Rocket Lab 🚀</h1>
+      </div>
+
+      <!-- Profile Selector HUD -->
+      <div class="header-profile-box">
+        <span class="profile-avatar">👨‍🚀</span>
+        <span id="hud-player-name" class="profile-name">Alex</span>
+        <span id="hud-player-preset" class="profile-preset-badge">Year 2</span>
+        <button id="btn-add-profile" class="btn-chip-sm" aria-label="Add Profile">➕</button>
+      </div>
+
+      <div class="header-controls">
+        <button id="btn-lang-toggle" class="btn-chip-sm" aria-label="Language Toggle">🇬🇧 EN</button>
+        <button id="btn-sound-toggle" class="btn-icon" aria-label="Sound Toggle"><span id="sound-icon">🔊</span></button>
+        <button id="btn-fullscreen" class="btn-icon" aria-label="Fullscreen Toggle">⛶</button>
+      </div>
+    </header>
+
+    <!-- Main Views Container -->
+    <main class="main-content">
+
+      <!-- 1. HOME SCREEN -->
+      <section id="screen-home" class="screen screen-home">
+        <div class="hero-layout">
+          <div class="hero-text-card card">
+            <span class="badge-pill">🚀 NASA Control Center • Educational Game v2.0</span>
+            <h2 class="hero-title">Build. Learn. Launch!</h2>
+            <p class="hero-subtitle" data-i18n="tagline">Learn Times Tables • Build 3D Rockets • Launch to Deep Space!</p>
+            
+            <div class="hero-actions">
+              <button id="btn-start-game" class="btn btn-primary btn-large btn-pulse" data-i18n="btnStartGame">
+                🚀 Start Rocket Building
+              </button>
+              <button id="btn-continue-game" class="btn btn-secondary btn-large hidden" data-i18n="btnContinueGame">
+                ▶️ Continue Rocket
+              </button>
+              <button id="btn-open-settings" class="btn btn-outline" data-i18n="btnSettings">
+                ⚙️ Learning Settings
+              </button>
+              <button id="btn-open-report" class="btn btn-outline" data-i18n="btnReport">
+                📊 Parent Dashboard
+              </button>
+            </div>
+          </div>
+
+          <div class="hero-3d-preview card">
+            <div id="canvas-container-home" class="canvas-wrapper"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. SETTINGS SCREEN -->
+      <section id="screen-settings" class="screen screen-settings hidden">
+        <div class="settings-card card">
+          <h2 data-i18n="settingsTitle">⚙️ Learning & Difficulty Settings</h2>
+
+          <div class="setting-group">
+            <label class="setting-label" data-i18n="playerNameLabel">Child's Name:</label>
+            <input type="text" id="input-player-name" class="input-text" value="Alex" maxlength="20">
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-label" data-i18n="curriculumPresetLabel">UK Curriculum Quick Presets:</label>
+            <div class="preset-buttons-grid">
+              <button class="btn btn-outline btn-preset" data-preset="year2">Year 2 (×2, ×5, ×10)</button>
+              <button class="btn btn-outline btn-preset" data-preset="year3">Year 3 (×3, ×4, ×8)</button>
+              <button class="btn btn-outline btn-preset" data-preset="year4">Year 4 (×1~×12)</button>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <div class="setting-label-row">
+              <label class="setting-label" data-i18n="selectTablesLabel">Select Multiplication Tables (1-12):</label>
+              <button id="btn-select-all-tables" class="btn-link" data-i18n="selectAll">Select All</button>
+            </div>
+            <div class="tables-chips-grid">
+              <button class="btn-chip selected" data-table="1">×1</button>
+              <button class="btn-chip selected" data-table="2">×2</button>
+              <button class="btn-chip" data-table="3">×3</button>
+              <button class="btn-chip" data-table="4">×4</button>
+              <button class="btn-chip selected" data-table="5">×5</button>
+              <button class="btn-chip" data-table="6">×6</button>
+              <button class="btn-chip" data-table="7">×7</button>
+              <button class="btn-chip" data-table="8">×8</button>
+              <button class="btn-chip" data-table="9">×9</button>
+              <button class="btn-chip selected" data-table="10">×10</button>
+              <button class="btn-chip" data-table="11">×11</button>
+              <button class="btn-chip" data-table="12">×12</button>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-label" data-i18n="difficultyLabel">Difficulty & Mode:</label>
+            <div class="radio-options-grid">
+              <label class="radio-card">
+                <input type="radio" name="difficulty" value="easy">
+                <div class="radio-content">
+                  <span class="radio-title">Easy</span>
+                  <span class="radio-desc" data-i18n="diffEasy">3 Choices + Array Dot Hints</span>
+                </div>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="difficulty" value="normal" checked>
+                <div class="radio-content">
+                  <span class="radio-title">Normal</span>
+                  <span class="radio-desc" data-i18n="diffNormal">Numeric Keypad Input</span>
+                </div>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="difficulty" value="hard">
+                <div class="radio-content">
+                  <span class="radio-title">Hard Challenge</span>
+                  <span class="radio-desc" data-i18n="diffHard">Timer Challenge + Speed Bonus</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-label" data-i18n="timerSelectLabel">Hard Mode Timer:</label>
+            <select id="select-timer-seconds" class="input-select">
+              <option value="5">5 Seconds (Fast)</option>
+              <option value="8" selected>8 Seconds (Standard)</option>
+              <option value="10">10 Seconds (Extended)</option>
+            </select>
+          </div>
+
+          <div class="setting-group checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-reduced-motion">
+              <span data-i18n="reducedMotionLabel">Reduce Motion Effects (Sensory Friendly)</span>
+            </label>
+          </div>
+
+          <div class="settings-actions">
+            <button id="btn-save-settings" class="btn btn-primary btn-large" data-i18n="btnSave">
+              💾 Save Settings
+            </button>
+            <button id="btn-back-home" class="btn btn-outline" data-i18n="btnHome">
+              🏠 Home
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. BLUEPRINT SCREEN -->
+      <section id="screen-blueprint" class="screen screen-blueprint hidden">
+        <div class="blueprint-card card">
+          <div class="blueprint-header">
+            <div>
+              <h2 data-i18n="blueprintTitle">📐 Rocket Engineering Blueprint</h2>
+              <p class="blueprint-subtitle" data-i18n="blueprintSubtitle">Answer multiplication facts to collect all 10 rocket parts!</p>
+            </div>
+            <div class="blueprint-progress-box">
+              <span data-i18n="partsCollected">Parts Collected:</span>
+              <span id="blueprint-progress-text" class="progress-val">0 / 10</span>
+              <div class="progress-bar"><div id="blueprint-progress-fill" class="progress-fill" style="width: 0%;"></div></div>
+            </div>
+          </div>
+
+          <div id="blueprint-grid" class="blueprint-grid"></div>
+
+          <div class="blueprint-actions">
+            <button id="btn-start-answering" class="btn btn-primary btn-large btn-pulse" data-i18n="btnStartAnswering">
+              ✏️ Start Quiz to Collect Parts
+            </button>
+            <button id="btn-go-assembly" class="btn btn-secondary btn-large" data-i18n="btnGoAssembly">
+              🔧 3D Assembly Dock
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. QUIZ SCREEN -->
+      <section id="screen-question" class="screen screen-question hidden">
+        <div class="question-layout-container">
+          
+          <div class="question-left-panel">
+            <div id="canvas-container-quiz" class="canvas-wrapper quiz-3d-wrapper"></div>
+          </div>
+
+          <div class="question-right-panel">
+            <div class="quiz-card card">
+              
+              <!-- Quiz HUD Bar -->
+              <div class="quiz-hud">
+                <div class="hud-item">
+                  <span class="hud-label" data-i18n="hudQuestion">Question</span>
+                  <span id="quiz-current-num" class="hud-val">1</span> / <span id="quiz-total-num" class="hud-val">15</span>
+                </div>
+                <div class="hud-item combo-item">
+                  <span class="hud-label" data-i18n="hudStreak">Streak</span>
+                  <span id="quiz-combo-count" class="hud-val combo-val">🔥 0</span>
+                </div>
+                <div class="hud-item timer-item hidden" id="quiz-timer-container">
+                  <span class="hud-label" data-i18n="hudTime">Time</span>
+                  <span id="quiz-timer-val" class="hud-val">8s</span>
+                  <div class="timer-bar"><div id="quiz-timer-fill" class="timer-fill" style="width: 100%;"></div></div>
+                </div>
+                <div class="hud-item score-item">
+                  <span class="hud-label" data-i18n="hudScore">Score</span>
+                  <span id="display-score" class="hud-val score-val">0</span>
+                </div>
+              </div>
+
+              <!-- Question Display (Giant Formula Typography) -->
+              <div class="question-box">
+                <div class="formula-display">
+                  <span id="factor-a" class="factor">7</span>
+                  <span class="operator">×</span>
+                  <span id="factor-b" class="factor">8</span>
+                  <span class="operator">=</span>
+                  <span id="answer-box" class="answer-box-placeholder">?</span>
+                </div>
+              </div>
+
+              <!-- Easy Mode Visual Helper (Dots & Addition) -->
+              <div id="easy-visual-helper" class="easy-helper-box hidden"></div>
+
+              <!-- Smart Strategy Hint Box -->
+              <div id="strat-hint-box" class="strat-hint-box hidden"></div>
+
+              <!-- Feedback Alert Msg -->
+              <div id="quiz-feedback" class="quiz-feedback hidden"></div>
+
+              <!-- Easy Choice Buttons -->
+              <div id="quiz-choices-container" class="quiz-choices-grid hidden">
+                <button class="choice-btn" data-val="0">48</button>
+                <button class="choice-btn" data-val="0">56</button>
+                <button class="choice-btn" data-val="0">64</button>
+              </div>
+
+              <!-- Numeric Keypad -->
+              <div id="quiz-keypad-container" class="quiz-keypad-wrapper">
+                <div class="keypad-grid">
+                  <button class="key-btn" data-key="1">1</button>
+                  <button class="key-btn" data-key="2">2</button>
+                  <button class="key-btn" data-key="3">3</button>
+                  <button class="key-btn" data-key="4">4</button>
+                  <button class="key-btn" data-key="5">5</button>
+                  <button class="key-btn" data-key="6">6</button>
+                  <button class="key-btn" data-key="7">7</button>
+                  <button class="key-btn" data-key="8">8</button>
+                  <button class="key-btn" data-key="9">9</button>
+                  <button class="key-btn key-action" data-key="clear">C</button>
+                  <button class="key-btn" data-key="0">0</button>
+                  <button class="key-btn key-action" data-key="backspace">⌫</button>
+                </div>
+                <button id="btn-submit-answer" class="btn btn-primary btn-submit-lg" data-i18n="submitAnswer">
+                  Submit Answer ↵
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- 5. ASSEMBLY SCREEN -->
+      <section id="screen-assembly" class="screen screen-assembly hidden">
+        <div class="assembly-layout">
+          <div class="assembly-header-hud card">
+            <h2 data-i18n="assemblyTitle">🔧 3D Rocket Assembly Workshop</h2>
+            <div class="assembly-selectors">
+              <label><span data-i18n="rocketModelLabel">Model:</span>
+                <select id="select-rocket-model" class="input-select-sm">
+                  <option value="classic">🚀 Classic Explorer</option>
+                  <option value="starship">🛰️ SpaceX Starship</option>
+                  <option value="falconHeavy">⚡ Falcon Heavy</option>
+                  <option value="longMarch">🇨🇳 Long March 5</option>
+                  <option value="cyber">🌌 Cyber Starship</option>
+                </select>
+              </label>
+              <label><span data-i18n="rocketThemeLabel">Theme:</span>
+                <select id="select-rocket-theme" class="input-select-sm">
+                  <option value="explorer">🔵 Classic Explorer</option>
+                  <option value="fire">🔥 Crimson Flame</option>
+                  <option value="forest">🌲 Emerald Forest</option>
+                  <option value="lightning">⚡ Lightning Yellow</option>
+                  <option value="galaxy">🌌 Deep Galaxy</option>
+                </select>
+              </label>
+              <button id="btn-install-all" class="btn btn-secondary btn-sm" data-i18n="btnInstallAll">
+                ⚡ Auto-Assemble All
+              </button>
+            </div>
+          </div>
+
+          <div class="assembly-canvas-box card">
+            <div id="canvas-container-assembly" class="canvas-wrapper"></div>
+          </div>
+
+          <div class="assembly-dock-hud card">
+            <p class="dock-subtitle" data-i18n="assemblySubtitle">Click unlocked parts to snap them onto your 3D rocket!</p>
+            <div id="assembly-parts-list" class="assembly-parts-grid"></div>
+            <div class="dock-actions">
+              <button id="btn-go-fuel" class="btn btn-primary btn-large btn-pulse" data-i18n="btnGoFuel">
+                ⛽ Proceed to Fuel Chamber
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. FUEL SCREEN -->
+      <section id="screen-fuel" class="screen screen-fuel hidden">
+        <div class="fuel-layout card">
+          <h2 data-i18n="fuelTitle">⛽ Multiplication Fuel Chamber</h2>
+          <p class="fuel-subtitle" data-i18n="fuelSubtitle">Each correct answer adds +10% fuel! Maintain a streak for +5% bonus!</p>
+
+          <div class="fuel-gauge-container">
+            <div class="fuel-gauge-bar">
+              <div id="fuel-fill-level" class="fuel-fill" style="height: 0%;"></div>
+            </div>
+            <div class="fuel-status">
+              <div id="fuel-percentage" class="fuel-percentage-text">0%</div>
+              <div id="fuel-status-label" class="fuel-status-label" data-i18n="fuelStatusEmpty">Fuel low. Waiting for fuel loading...</div>
+            </div>
+          </div>
+
+          <div class="fuel-quiz-box">
+            <div class="formula-display">
+              <span id="fuel-factor-a" class="factor">6</span>
+              <span class="operator">×</span>
+              <span id="fuel-factor-b" class="factor">7</span>
+              <span class="operator">=</span>
+              <span id="fuel-answer-box" class="answer-box-placeholder">?</span>
+            </div>
+          </div>
+
+          <div id="fuel-feedback" class="quiz-feedback hidden"></div>
+
+          <div id="fuel-keypad" class="quiz-keypad-wrapper">
+            <div class="keypad-grid sm">
+              <button class="fuel-key" data-key="1">1</button>
+              <button class="fuel-key" data-key="2">2</button>
+              <button class="fuel-key" data-key="3">3</button>
+              <button class="fuel-key" data-key="4">4</button>
+              <button class="fuel-key" data-key="5">5</button>
+              <button class="fuel-key" data-key="6">6</button>
+              <button class="fuel-key" data-key="7">7</button>
+              <button class="fuel-key" data-key="8">8</button>
+              <button class="fuel-key" data-key="9">9</button>
+              <button class="fuel-key key-action" data-key="clear">C</button>
+              <button class="fuel-key" data-key="0">0</button>
+              <button class="fuel-key key-action" data-key="submit">↵</button>
+            </div>
+          </div>
+
+          <div class="fuel-launch-trigger">
+            <button id="btn-ready-to-launch" class="btn btn-launch btn-large disabled" disabled data-i18n="btnReadyLaunch">
+              🚀 Ready to Launch Rocket!
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. LAUNCH SCREEN -->
+      <section id="screen-launch" class="screen screen-launch hidden">
+        <div id="canvas-container-launch" class="launch-canvas-wrapper"></div>
+
+        <div class="launch-hud-overlay">
+          <div id="launch-checklist" class="launch-card card">
+            <h3 data-i18n="checklistTitle">System Pre-flight Checklist</h3>
+            <ul class="checklist">
+              <li id="check-item-1"><span data-i18n="sysNav">⚙️ Guidance & Navigation</span> <span class="status">Checking...</span></li>
+              <li id="check-item-2"><span data-i18n="sysEng">🔥 Engine Ignition System</span> <span class="status">Standby</span></li>
+              <li id="check-item-3"><span data-i18n="sysFuel">⛽ High-Energy Fuel</span> <span class="status">Standby</span></li>
+              <li id="check-item-4"><span data-i18n="sysComp">🛰️ Math Core Processor</span> <span class="status">Standby</span></li>
+            </ul>
+          </div>
+
+          <div id="launch-countdown-box" class="countdown-box hidden">
+            <div id="countdown-num" class="countdown-num">5</div>
+            <button id="btn-skip-countdown" class="btn btn-chip-sm" data-i18n="btnSkipCountdown">⏩ Skip Countdown</button>
+          </div>
+
+          <div id="space-victory-banner" class="victory-banner hidden">
+            <h2 data-i18n="spaceVictoryTitle">MISSION SUCCESS! ROCKET IN ORBIT! 🌌</h2>
+            <button id="btn-view-results" class="btn btn-primary btn-large btn-pulse" data-i18n="btnViewResults">
+              📊 View Performance & Results
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. RESULTS SCREEN -->
+      <section id="screen-results" class="screen screen-results hidden">
+        <div class="results-card card">
+          <h2 data-i18n="resultsTitle">🏆 Rocket Launch Mission Summary</h2>
+          <div class="star-rating">
+            <span id="star-1" class="star">⭐</span>
+            <span id="star-2" class="star">⭐</span>
+            <span id="star-3" class="star">⭐</span>
+          </div>
+          <div class="results-stats-grid">
+            <div class="res-stat-box">
+              <span class="res-label" data-i18n="resScoreLabel">Final Score</span>
+              <span id="res-score" class="res-val">0</span>
+            </div>
+            <div class="res-stat-box">
+              <span class="res-label" data-i18n="resAccuracyLabel">Accuracy</span>
+              <span id="res-accuracy" class="res-val">100%</span>
+            </div>
+            <div class="res-stat-box">
+              <span class="res-label" data-i18n="resMaxComboLabel">Highest Streak</span>
+              <span id="res-max-combo" class="res-val">0</span>
+            </div>
+          </div>
+          <div class="results-actions">
+            <button id="btn-restart-game" class="btn btn-primary btn-large" data-i18n="btnRestartGame">🚀 Build New Rocket</button>
+            <button id="btn-retry-wrongs" class="btn btn-secondary btn-large" data-i18n="btnRetryWrongs">📝 Practice Missed Facts</button>
+            <button id="btn-results-home" class="btn btn-outline" data-i18n="btnHome">🏠 Home</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- MODALS -->
+    <!-- Part Unlocked Modal -->
+    <div id="modal-part-reward" class="modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal-card reward-card">
+        <div class="reward-icon">🚀</div>
+        <h2 data-i18n="modalRewardTitle">New Rocket Part Unlocked!</h2>
+        <h3 class="reward-name">Rocket Body</h3>
+        <div class="modal-actions">
+          <button id="btn-reward-install" class="btn btn-primary" data-i18n="btnRewardInstall">🛠️ Go to 3D Assembly</button>
+          <button id="btn-reward-continue" class="btn btn-outline" data-i18n="btnRewardContinue">✏️ Continue Answering</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rocket Complete Modal -->
+    <div id="modal-rocket-complete" class="modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal-card complete-card">
+        <div class="trophy-header">🏆</div>
+        <h2 data-i18n="modalCompleteTitle">All Rocket Parts Unlocked!</h2>
+        <div class="modal-actions">
+          <button id="btn-complete-assembly" class="btn btn-secondary btn-large" data-i18n="btnRewardInstall">🔧 3D Assembly Workshop</button>
+          <button id="btn-go-fuel" class="btn btn-primary btn-large btn-pulse" data-i18n="btnGoFuel">⛽ Proceed to Fuel Chamber</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Profile Modal -->
+    <div id="modal-add-profile" class="modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <h2 data-i18n="addPlayer">➕ Add Child Player Profile</h2>
+        <div class="setting-group">
+          <label class="setting-label" data-i18n="profileNamePrompt">Child's Name:</label>
+          <input type="text" id="input-new-profile-name" class="input-text" value="Alex">
+        </div>
+        <div class="setting-group">
+          <label class="setting-label" data-i18n="selectYearGroup">Select Year Group:</label>
+          <select id="select-new-profile-preset" class="input-select">
+            <option value="year2">Year 2 (×2, ×5, ×10)</option>
+            <option value="year3">Year 3 (×3, ×4, ×8)</option>
+            <option value="year4">Year 4 (×1~×12)</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-confirm-add-profile" class="btn btn-primary" data-i18n="btnSave">Save Profile</button>
+          <button id="btn-close-add-profile" class="btn btn-outline" data-i18n="btnCancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Parent Dashboard Modal -->
+    <div id="modal-report" class="modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal-card report-card card">
+        <div class="report-header">
+          <h2 data-i18n="parentReportTitle">📊 Parent Dashboard & Learning Analytics</h2>
+          <button id="btn-close-report" class="btn-icon" aria-label="Close">✕</button>
+        </div>
+
+        <div class="report-stats-grid">
+          <div class="rep-box"><span data-i18n="todayAnswered">Questions Answered</span><span id="rep-today-answered" class="val">0</span></div>
+          <div class="rep-box"><span data-i18n="todayAccuracy">First-Try Accuracy</span><span id="rep-today-accuracy" class="val">100%</span></div>
+          <div class="rep-box"><span data-i18n="todayAvgSpeed">Avg Response Time</span><span id="rep-today-speed" class="val">3.5s</span></div>
+          <div class="rep-box"><span data-i18n="todayMaxStreak">Highest Streak</span><span id="rep-today-streak" class="val">0</span></div>
+        </div>
+
+        <div class="heatmap-section">
+          <h3 data-i18n="masteryHeatmapTitle">12×12 Multiplication Fact Heatmap Matrix</h3>
+          <div id="mastery-heatmap-container" class="heatmap-wrapper"></div>
+        </div>
+
+        <div class="report-actions">
+          <button id="btn-practice-wrongs-mode" class="btn btn-primary" data-i18n="btnRetryWrongs">📝 Practice Missed Facts</button>
+          <button id="btn-export-json" class="btn btn-outline" data-i18n="btnExportJson">📥 Export JSON</button>
+          <button id="btn-export-csv" class="btn btn-outline" data-i18n="btnExportCsv">📊 Export CSV</button>
+          <button id="btn-clear-data" class="btn btn-danger" data-i18n="btnClearData">🗑️ Reset Data</button>
+        </div>
+        <p class="privacy-note" data-i18n="privacyNotice">🔒 All learning data is stored locally on this device only.</p>
+      </div>
+    </div>
+
+    <!-- Fact Inspector Modal -->
+    <div id="modal-fact-inspector" class="modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <h2 id="fact-title">7 × 8 = 56</h2>
+        <div class="report-stats-grid">
+          <div class="rep-box"><span>Mastery</span><span id="fact-mastery-score" class="val">85%</span></div>
+          <div class="rep-box"><span>Attempts</span><span id="fact-attempts" class="val">10</span></div>
+          <div class="rep-box"><span>First Try Correct</span><span id="fact-first-try" class="val">8</span></div>
+          <div class="rep-box"><span>Wrong Count</span><span id="fact-wrong-count" class="val">2</span></div>
+          <div class="rep-box"><span>Avg Speed</span><span id="fact-avg-speed" class="val">3.2s</span></div>
+        </div>
+        <div class="modal-actions">
+          <button onclick="document.getElementById('modal-fact-inspector').classList.add('hidden')" class="btn btn-primary" data-i18n="btnClose">Close</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
 </body>
 </html>

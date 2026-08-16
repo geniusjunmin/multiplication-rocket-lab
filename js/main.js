@@ -1,75 +1,50 @@
 /**
- * 乘法火箭实验室 - 主应用入口与全局事件调度 (main.js)
+ * Multiplication Rocket Lab - Application Main Entry & Event Dispatcher (js/main.js)
  */
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("Multiplication Rocket Lab: 页面 DOM 加载完毕，开始绑定事件器...");
+  console.log("Multiplication Rocket Lab v2.0.0 Initialized!");
 
-  // 1. 检查 WebGL 支持度
-  checkWebGLSupport();
+  // 1. Initialize i18n DOM translations
+  if (window.i18n) window.i18n.updateDOM();
 
-  // 2. 初始化游戏系统
+  // 2. Initialize Game Engine
   if (window.game) window.game.init();
 
-  // 3. 检查是否存在已存游戏，更新“继续游戏”按钮
-  if (window.storageManager && window.storageManager.hasSaveGame()) {
-    const btnContinue = document.getElementById("btn-continue-game");
-    if (btnContinue) btnContinue.classList.remove("hidden");
+  // 3. Register Service Worker for PWA Offline Play
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").then(reg => {
+      console.log("ServiceWorker registered successfully:", reg.scope);
+    }).catch(err => {
+      console.warn("ServiceWorker registration skipped:", err);
+    });
   }
 
-  // 4. 绑定全局与导航按钮事件
+  // 4. Bind Global Nav & Modal Events
   bindGlobalNavEvents();
-
-  // 5. 绑定设置页面事件
   bindSettingsEvents();
-
-  // 6. 绑定工程蓝图页面事件
   bindBlueprintEvents();
-
-  // 7. 绑定答题与数字键盘事件
   bindQuizInputEvents();
-
-  // 8. 绑定 3D 组装车间事件
   bindAssemblyEvents();
-
-  // 9. 绑定发射序列事件
   bindLaunchEvents();
-
-  // 10. 绑定结算与报告按键事件
   bindResultsAndReportEvents();
-
-  // 11. 绑定音频 Context 首次激活监听
+  bindProfileEvents();
   bindAudioInitListener();
 });
 
-/**
- * 检查 WebGL 兼容性并处理优雅降级
- */
-function checkWebGLSupport() {
-  let webglAvailable = false;
-  try {
-    const canvas = document.createElement("canvas");
-    webglAvailable = !!(window.WebGLRenderingContext && (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")));
-  } catch (e) {
-    webglAvailable = false;
-  }
-
-  if (!webglAvailable) {
-    const fallbackBanner = document.getElementById("webgl-fallback-banner");
-    if (fallbackBanner) fallbackBanner.classList.remove("hidden");
-  }
-}
-
-/**
- * 绑定全局 Header 与主菜单按键事件
- */
 function bindGlobalNavEvents() {
-  // 首页按钮
   document.getElementById("btn-home")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playClick();
     if (window.game) window.game.setGameState(GAME_STATES.HOME);
   });
 
-  // 音频切换
+  document.getElementById("btn-lang-toggle")?.addEventListener("click", () => {
+    if (window.i18n) {
+      const next = window.i18n.currentLanguage === "en" ? "zh" : "en";
+      window.i18n.setLanguage(next);
+      if (window.uiManager) window.uiManager.updateDOM();
+    }
+  });
+
   document.getElementById("btn-sound-toggle")?.addEventListener("click", () => {
     if (window.audioManager) {
       const enabled = window.audioManager.toggleSound();
@@ -78,30 +53,24 @@ function bindGlobalNavEvents() {
     }
   });
 
-  // 全屏切换
   document.getElementById("btn-fullscreen")?.addEventListener("click", () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(err => {
-        console.warn("无法进入全屏:", err);
-      });
+      document.documentElement.requestFullscreen().catch(err => console.warn(err));
     } else {
       if (document.exitFullscreen) document.exitFullscreen();
     }
   });
 
-  // 首页“开始建造火箭”
   document.getElementById("btn-start-game")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playClick();
-    if (window.game) window.game.startNewGameRound();
+    if (window.game) window.game.startNewGameRound(GAME_MODES.NORMAL);
   });
 
-  // 首页“继续已有进度”
   document.getElementById("btn-continue-game")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playClick();
     if (window.game) window.game.setGameState(GAME_STATES.BLUEPRINT);
   });
 
-  // 首页“学习设置”与“家长报告”
   document.getElementById("btn-open-settings")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playClick();
     if (window.game) window.game.setGameState(GAME_STATES.SETTINGS);
@@ -109,7 +78,8 @@ function bindGlobalNavEvents() {
 
   document.getElementById("btn-open-report")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playClick();
-    openParentReportModal();
+    if (window.uiManager) window.uiManager.renderParentReport();
+    document.getElementById("modal-report")?.classList.remove("hidden");
   });
 
   document.getElementById("btn-close-report")?.addEventListener("click", () => {
@@ -117,12 +87,49 @@ function bindGlobalNavEvents() {
   });
 }
 
-/**
- * 绑定学习设置页面交互逻辑
- */
+function bindProfileEvents() {
+  document.getElementById("btn-add-profile")?.addEventListener("click", () => {
+    document.getElementById("modal-add-profile")?.classList.remove("hidden");
+  });
+
+  document.getElementById("btn-close-add-profile")?.addEventListener("click", () => {
+    document.getElementById("modal-add-profile")?.classList.add("hidden");
+  });
+
+  document.getElementById("btn-confirm-add-profile")?.addEventListener("click", () => {
+    const name = document.getElementById("input-new-profile-name")?.value || "Alex";
+    const preset = document.getElementById("select-new-profile-preset")?.value || "year2";
+
+    if (window.profileManager) {
+      window.profileManager.addProfile(name, preset);
+      document.getElementById("modal-add-profile")?.classList.add("hidden");
+      if (window.uiManager) window.uiManager.updateProfileHUD();
+    }
+  });
+}
+
 function bindSettingsEvents() {
-  const chips = document.querySelectorAll(".btn-chip");
-  chips.forEach(chip => {
+  // UK Curriculum Quick Preset Buttons
+  document.querySelectorAll(".btn-preset").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const presetKey = btn.getAttribute("data-preset");
+      const preset = CONFIG.CURRICULUM_PRESETS[presetKey];
+      if (preset && window.storageManager) {
+        window.storageManager.set("yearPreset", presetKey);
+        window.storageManager.set("selectedTables", [...preset.tables]);
+        if (window.mathEngine) window.mathEngine.setTables(preset.tables);
+        
+        // Update UI chips
+        document.querySelectorAll(".btn-chip").forEach(chip => {
+          const tableNum = Number(chip.getAttribute("data-table"));
+          if (preset.tables.includes(tableNum)) chip.classList.add("selected");
+          else chip.classList.remove("selected");
+        });
+      }
+    });
+  });
+
+  document.querySelectorAll(".btn-chip").forEach(chip => {
     chip.addEventListener("click", () => {
       chip.classList.toggle("selected");
       if (window.audioManager) window.audioManager.playClick();
@@ -130,70 +137,58 @@ function bindSettingsEvents() {
   });
 
   document.getElementById("btn-select-all-tables")?.addEventListener("click", () => {
-    chips.forEach(c => c.classList.add("selected"));
+    document.querySelectorAll(".btn-chip").forEach(c => c.classList.add("selected"));
   });
 
   document.getElementById("btn-save-settings")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playClick();
 
     const selectedTables = [];
-    chips.forEach(c => {
+    document.querySelectorAll(".btn-chip").forEach(c => {
       if (c.classList.contains("selected")) {
         selectedTables.push(Number(c.getAttribute("data-table")));
       }
     });
 
-    const playerName = document.getElementById("input-player-name")?.value || "小宇航员";
+    const playerName = document.getElementById("input-player-name")?.value || "Alex";
     const difficulty = document.querySelector('input[name="difficulty"]:checked')?.value || "normal";
+    const timerSeconds = Number(document.getElementById("select-timer-seconds")?.value || 8);
     const reducedMotion = document.getElementById("chk-reduced-motion")?.checked || false;
 
     if (window.storageManager) {
       window.storageManager.update({
         playerName,
-        selectedTables: selectedTables.length > 0 ? selectedTables : [2, 3, 4, 5],
+        selectedTables: selectedTables.length > 0 ? selectedTables : [2, 5, 10],
         difficulty,
+        timerSeconds,
         reducedMotion
       });
     }
 
     if (window.mathEngine) window.mathEngine.setTables(selectedTables);
-    if (window.game) window.game.startNewGameRound();
-  });
-
-  document.getElementById("btn-back-home")?.addEventListener("click", () => {
-    if (window.game) window.game.setGameState(GAME_STATES.HOME);
+    if (window.game) window.game.startNewGameRound(GAME_MODES.NORMAL);
   });
 }
 
-/**
- * 绑定工程蓝图页面事件
- */
 function bindBlueprintEvents() {
   document.getElementById("btn-start-answering")?.addEventListener("click", () => {
-    if (window.audioManager) window.audioManager.playClick();
     if (window.game) window.game.setGameState(GAME_STATES.QUESTION);
   });
 
   document.getElementById("btn-go-assembly")?.addEventListener("click", () => {
-    if (window.audioManager) window.audioManager.playClick();
     if (window.game) window.game.setGameState(GAME_STATES.ASSEMBLY);
   });
 }
 
-/**
- * 绑定答题页面与数字键盘事件
- */
 function bindQuizInputEvents() {
-  const choices = document.querySelectorAll(".choice-btn");
-  choices.forEach(btn => {
+  document.querySelectorAll(".choice-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const val = btn.getAttribute("data-val");
       if (window.game) window.game.submitAnswer(val);
     });
   });
 
-  const keys = document.querySelectorAll(".key-btn");
-  keys.forEach(keyBtn => {
+  document.querySelectorAll(".key-btn").forEach(keyBtn => {
     keyBtn.addEventListener("click", () => {
       const key = keyBtn.getAttribute("data-key");
       if (window.audioManager) window.audioManager.playClick();
@@ -201,8 +196,7 @@ function bindQuizInputEvents() {
     });
   });
 
-  const fuelKeys = document.querySelectorAll(".fuel-key");
-  fuelKeys.forEach(btn => {
+  document.querySelectorAll(".fuel-key").forEach(btn => {
     btn.addEventListener("click", () => {
       const key = btn.getAttribute("data-key");
       if (window.audioManager) window.audioManager.playClick();
@@ -228,7 +222,6 @@ function bindQuizInputEvents() {
   });
 
   window.addEventListener("keydown", (e) => {
-    // 1. 如果有弹窗显示，优先拦截 Enter 和 Escape 键处理弹窗快速关闭/继续
     const modalReward = document.getElementById("modal-part-reward");
     const modalComplete = document.getElementById("modal-rocket-complete");
     const modalReport = document.getElementById("modal-report");
@@ -259,7 +252,6 @@ function bindQuizInputEvents() {
       return;
     }
 
-    // 2. 正常答题与燃料模式按键
     if (window.game && (window.game.currentState === GAME_STATES.QUESTION || window.game.currentState === GAME_STATES.FUEL_CHALLENGE)) {
       if (e.key >= "0" && e.key <= "9") {
         if (window.uiManager) window.uiManager.appendKeyInput(e.key);
@@ -291,9 +283,6 @@ function bindQuizInputEvents() {
   });
 }
 
-/**
- * 绑定 3D 组装车间交互
- */
 function bindAssemblyEvents() {
   document.getElementById("btn-install-all")?.addEventListener("click", () => {
     if (!window.storageManager || !window.rocketBuilder) return;
@@ -303,7 +292,7 @@ function bindAssemblyEvents() {
     window.rocketBuilder.updateInstalledParts(unlocked);
     if (window.audioManager) window.audioManager.playSnap();
 
-    if (unlocked.length >= 10) {
+    if (unlocked.length >= CONFIG.PART_COUNT) {
       document.getElementById("modal-rocket-complete")?.classList.remove("hidden");
     }
   });
@@ -323,7 +312,6 @@ function bindAssemblyEvents() {
     if (window.game) window.game.setGameState(GAME_STATES.ASSEMBLY);
   });
 
-  // 燃料挑战入口按钮
   document.getElementById("btn-go-fuel")?.addEventListener("click", () => {
     document.getElementById("modal-rocket-complete")?.classList.add("hidden");
     if (window.game) {
@@ -334,9 +322,6 @@ function bindAssemblyEvents() {
   });
 }
 
-/**
- * 绑定 3D 发射序列与太空场景
- */
 function bindLaunchEvents() {
   document.getElementById("btn-ready-to-launch")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playClick();
@@ -344,7 +329,7 @@ function bindLaunchEvents() {
 
     if (window.launchSequence) {
       window.launchSequence.startLaunchSequence(() => {
-        console.log("发射完成，火箭已进入轨道太空！");
+        console.log("Launch sequence complete! Rocket in orbit!");
       });
     }
   });
@@ -360,64 +345,53 @@ function bindLaunchEvents() {
   });
 }
 
-/**
- * 绑定结算界面与家长报告按键
- */
 function bindResultsAndReportEvents() {
-  // 重新开始建造新火箭 (再玩一次)
   document.getElementById("btn-restart-game")?.addEventListener("click", () => {
-    if (window.audioManager) window.audioManager.playClick();
-    if (window.game) window.game.startNewGameRound();
+    if (window.game) window.game.startNewGameRound(GAME_MODES.NORMAL);
   });
 
-  // 重练错题
   document.getElementById("btn-retry-wrongs")?.addEventListener("click", () => {
-    if (window.audioManager) window.audioManager.playClick();
-    if (window.game) window.game.startNewGameRound();
+    if (window.game) window.game.startNewGameRound(GAME_MODES.WRONG_REVIEW);
   });
 
-  // 返回主菜单
-  document.getElementById("btn-results-home")?.addEventListener("click", () => {
-    if (window.audioManager) window.audioManager.playClick();
-    if (window.game) window.game.setGameState(GAME_STATES.HOME);
-  });
-
-  // 家长报告 modal: 针对性练习错题
   document.getElementById("btn-practice-wrongs-mode")?.addEventListener("click", () => {
-    if (window.audioManager) window.audioManager.playClick();
     document.getElementById("modal-report")?.classList.add("hidden");
-    if (window.game) window.game.startNewGameRound();
+    if (window.game) window.game.startNewGameRound(GAME_MODES.WRONG_REVIEW);
   });
 
-  // 家长报告 modal: 清空所有数据
+  document.getElementById("btn-export-json")?.addEventListener("click", () => {
+    if (!window.profileManager) return;
+    const jsonStr = window.profileManager.exportDataJson();
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rocket_learning_data_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById("btn-export-csv")?.addEventListener("click", () => {
+    if (!window.profileManager) return;
+    const csvStr = window.profileManager.exportReportCsv();
+    const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `multiplication_report_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
   document.getElementById("btn-clear-data")?.addEventListener("click", () => {
-    if (confirm("确定要清空所有学习记录和已解锁勋章吗？此操作无法撤销。")) {
+    if (confirm("Are you sure you want to reset learning stats for this child player?")) {
       if (window.storageManager) window.storageManager.clearAll();
-      alert("学习记录已成功重置！");
       document.getElementById("modal-report")?.classList.add("hidden");
       if (window.game) window.game.setGameState(GAME_STATES.HOME);
     }
   });
 }
 
-/**
- * 打开家长报告弹窗
- */
-function openParentReportModal() {
-  if (!window.mathEngine || !window.storageManager) return;
-  const report = window.mathEngine.getTableMasteryReport();
-  const wrongQuestions = window.storageManager.get("wrongQuestions") || [];
-  
-  if (window.uiManager) {
-    window.uiManager.renderParentReport(report, wrongQuestions);
-  }
-
-  document.getElementById("modal-report")?.classList.remove("hidden");
-}
-
-/**
- * 展示结算成绩单
- */
 function showResultsScreen() {
   if (!window.game) return;
 
@@ -428,7 +402,7 @@ function showResultsScreen() {
 
   document.getElementById("res-score").innerText = score;
   document.getElementById("res-accuracy").innerText = `${accuracy}%`;
-  document.getElementById("res-max-combo").innerText = `${window.game.maxCombo} 连胜`;
+  document.getElementById("res-max-combo").innerText = `${window.game.maxCombo}`;
 
   const star1 = document.getElementById("star-1");
   const star2 = document.getElementById("star-2");
@@ -441,16 +415,11 @@ function showResultsScreen() {
   if (window.game) window.game.setGameState(GAME_STATES.RESULTS);
 }
 
-/**
- * 用户首次交互时激活 AudioContext
- */
 function bindAudioInitListener() {
   const handler = () => {
     if (window.audioManager) {
       window.audioManager.init();
     }
-    const banner = document.getElementById("modal-audio-init");
-    if (banner) banner.remove();
     window.removeEventListener("click", handler);
   };
   window.addEventListener("click", handler);

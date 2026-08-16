@@ -1,5 +1,5 @@
 /**
- * Node.js 命令行自动测试脚本 (tests/run-node-tests.js)
+ * Node.js Command Line Automated Test Suite Runner (tests/run-node-tests.js)
  */
 const vm = require('vm');
 const fs = require('fs');
@@ -37,12 +37,8 @@ global.cancelAnimationFrame = (id) => clearTimeout(id);
 global.document = {
   querySelectorAll() { return [createMockElement(), createMockElement(), createMockElement()]; },
   querySelector() { return createMockElement(); },
-  getElementById(id) {
-    return createMockElement(id);
-  },
-  createElement() {
-    return createMockElement();
-  },
+  getElementById(id) { return createMockElement(id); },
+  createElement() { return createMockElement(); },
   documentElement: { requestFullscreen() { return Promise.resolve(); } }
 };
 
@@ -55,32 +51,38 @@ global.localStorage = {
 
 // Mock THREE.js
 global.THREE = {
-  Scene: class { add() {} remove() {} },
+  Scene: class { add() {} remove() {} traverse(fn) { fn(this); } },
   PerspectiveCamera: class { constructor() { this.position = { set() {} }; } },
   WebGLRenderer: class { constructor() { this.shadowMap = {}; this.domElement = createMockElement(); } setSize() {} setPixelRatio() {} dispose() {} render() {} },
   AmbientLight: class {},
   DirectionalLight: class { constructor() { this.position = { set() {} }; } },
   PointLight: class { constructor() { this.position = { set() {} }; } },
-  Group: class { constructor() { this.position = { set() {} }; this.rotation = {}; this.children = []; } add() {} clone() { return new global.THREE.Group(); } },
-  MeshStandardMaterial: class {},
-  MeshBasicMaterial: class {},
-  Mesh: class { constructor() { this.position = { set() {} }; this.rotation = {}; this.scale = {}; } add() {} clone() { const m = new global.THREE.Mesh(); m.position = { set() {} }; return m; } },
-  CylinderGeometry: class { rotateX() {} },
-  ConeGeometry: class { rotateX() {} },
-  BoxGeometry: class { rotateX() {} },
-  TorusGeometry: class { rotateX() {} },
-  SphereGeometry: class { rotateX() {} },
-  OctahedronGeometry: class { rotateX() {} },
-  BufferGeometry: class { setAttribute() {} rotateX() {} },
+  Group: class { constructor() { this.position = { set() {} }; this.rotation = {}; this.children = []; } add() {} clone() { return new global.THREE.Group(); } traverse(fn) { fn(this); } },
+  MeshStandardMaterial: class { dispose() {} },
+  MeshBasicMaterial: class { dispose() {} },
+  Mesh: class { constructor() { this.position = { set() {} }; this.rotation = {}; this.scale = {}; } add() {} clone() { const m = new global.THREE.Mesh(); m.position = { set() {} }; return m; } traverse(fn) { fn(this); } },
+  CylinderGeometry: class { rotateX() {} dispose() {} },
+  ConeGeometry: class { rotateX() {} dispose() {} },
+  BoxGeometry: class { rotateX() {} dispose() {} },
+  TorusGeometry: class { rotateX() {} dispose() {} },
+  SphereGeometry: class { rotateX() {} dispose() {} },
+  CircleGeometry: class { rotateX() {} dispose() {} },
+  OctahedronGeometry: class { rotateX() {} dispose() {} },
+  BufferGeometry: class { setAttribute() {} rotateX() {} dispose() {} },
   BufferAttribute: class {},
-  PointsMaterial: class {},
+  PointsMaterial: class { dispose() {} },
   Points: class {},
   FogExp2: class {}
 };
 
-// 1. 加载测试框架与组件文件
+// Load modular scripts
 const appFiles = [
+  'js/config.js',
+  'js/i18n.js',
+  'js/profiles.js',
   'js/storage.js',
+  'js/achievements.js',
+  'js/missions.js',
   'js/audio.js',
   'js/math.js',
   'js/rocket.js',
@@ -93,7 +95,8 @@ const appFiles = [
   'tests/test-rocket.js',
   'tests/test-launch.js',
   'tests/test-game.js',
-  'tests/test-ui.js'
+  'tests/test-ui.js',
+  'tests/test-i18n.js'
 ];
 
 appFiles.forEach(f => {
@@ -101,8 +104,7 @@ appFiles.forEach(f => {
   vm.runInThisContext(code);
 });
 
-// 2. 执行自动化测试集
-console.log("\n🚀 === 乘法火箭实验室 命令行自动化测试开始 ===\n");
+console.log("\n🚀 === Multiplication Rocket Lab Automated CLI Test Suite ===\n");
 
 testRunner.runAll(
   (progress) => {
@@ -115,7 +117,7 @@ testRunner.runAll(
   },
   (summary) => {
     console.log("\n------------------------------------------------");
-    console.log(`📊 测试总结: 总计 ${summary.total} 项断言 | 通过: \x1b[32m${summary.passed}\x1b[0m | 失败: \x1b[31m${summary.failed}\x1b[0m`);
+    console.log(`📊 Summary: Total ${summary.total} assertions | Passed: \x1b[32m${summary.passed}\x1b[0m | Failed: \x1b[31m${summary.failed}\x1b[0m`);
     console.log("------------------------------------------------\n");
     if (summary.failed > 0) {
       process.exit(1);

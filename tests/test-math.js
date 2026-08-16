@@ -1,78 +1,70 @@
 /**
- * 数学计算与题目生成引擎单元测试 (tests/test-math.js)
+ * Adaptive Learning Engine & 1-12 Math Unit Tests (tests/test-math.js)
  */
-describe("1. 数学引擎 (MathEngine)", () => {
+describe("1. Adaptive Learning & 1-12 Math Engine (MathEngine)", () => {
 
-  it("1.1 应该正确在 1x1 ~ 9x9 范围内生成题目", () => {
+  it("1.1 Should generate multiplication facts within 1x1 ~ 12x12 range", () => {
     const math = new MathEngine();
-    math.setTables([2, 3, 4, 5, 6, 7, 8, 9]);
+    math.setTables([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
 
     for (let i = 0; i < 50; i++) {
       const q = math.generateQuestion();
-      Assert.isAtLeast(q.factorA, 1, "factorA 应 >= 1");
-      Assert.isAtLeast(q.factorB, 1, "factorB 应 >= 1");
-      Assert.equal(q.answer, q.factorA * q.factorB, "answer 应等于 factorA * factorB");
+      Assert.isAtLeast(q.factorA, 1, "factorA >= 1");
+      Assert.isAtLeast(q.factorB, 1, "factorB >= 1");
+      Assert.equal(q.answer, q.factorA * q.factorB, "answer == factorA * factorB");
     }
   });
 
-  it("1.2 应该尊重玩家选中的乘法表范围", () => {
+  it("1.2 Should respect UK Curriculum Presets (Year 2: x2, x5, x10)", () => {
     const math = new MathEngine();
-    math.setTables([7, 8]);
+    const presetY2 = CONFIG.CURRICULUM_PRESETS.year2;
+    math.setTables(presetY2.tables);
 
     for (let i = 0; i < 30; i++) {
       const q = math.generateQuestion();
-      const hasSelectedFactor = (q.factorA === 7 || q.factorA === 8 || q.factorB === 7 || q.factorB === 8);
-      Assert.isTrue(hasSelectedFactor, "生成题目因数应至少包含选中的乘法表(7或8)");
+      const hasPresetFactor = presetY2.tables.includes(q.factorA) || presetY2.tables.includes(q.factorB);
+      Assert.isTrue(hasPresetFactor, "Question factor must contain Year 2 preset tables (2, 5, 10)");
     }
   });
 
-  it("1.3 应该生成 3 个无重复的选择题答案，且包含正确答案", () => {
+  it("1.3 Should generate 3 unique distractors within valid range, including correct answer", () => {
     const math = new MathEngine();
 
-    for (let a = 2; a <= 9; a++) {
-      for (let b = 2; b <= 9; b++) {
+    for (let a = 1; a <= 12; a++) {
+      for (let b = 1; b <= 12; b++) {
         const correct = a * b;
         const choices = math.generateDistractors(a, b, correct);
         
-        Assert.equal(choices.length, 3, "选择题应恰好包含 3 个选项");
-        Assert.includes(choices, correct, "选择题选项中应包含正确答案");
+        Assert.equal(choices.length, 3, "Must have exactly 3 choice options");
+        Assert.includes(choices, correct, "Must include the correct answer");
         
         const uniqueChoices = new Set(choices);
-        Assert.equal(uniqueChoices.size, 3, "选择题选项中不能包含重复数值");
+        Assert.equal(uniqueChoices.size, 3, "All choices must be unique");
       }
     }
   });
 
-  it("1.4 应该正确记录错题并加入错题重练队列", () => {
+  it("1.4 Should generate pedagogical smart strategy hints based on factors", () => {
     const math = new MathEngine();
-    const q = math.generateQuestion();
+    const hint2 = math.getSmartHint(2, 8);
+    Assert.equal(hint2.type, "double", "x2 table should yield double hint");
 
-    math.recordResult(q, false, true); // 答错
-    Assert.includes(math.wrongQuestionQueue.map(item => item.id), q.id, "答错题目应加入错题队列");
+    const hint5 = math.getSmartHint(5, 7);
+    Assert.equal(hint5.type, "count5", "x5 table should yield count5 hint");
+
+    const hint9 = math.getSmartHint(9, 6);
+    Assert.equal(hint9.type, "subNine", "x9 table should yield subNine hint");
   });
 
-  it("1.5 应该生成点阵阵列可视化数据与加法分解公式", () => {
+  it("1.5 Should accurately calculate fact mastery scores (0-100) and 12x12 Parent Report", () => {
     const math = new MathEngine();
-    const data = math.getVisualArrayData(3, 4);
+    const fact = { attempts: 10, firstTryCorrect: 9, streak: 4, averageResponseTime: 2500, wrongCount: 1 };
+    const score = math.calculateMastery(fact);
 
-    Assert.equal(data.rows, 3, "行数应等于 factorA (3)");
-    Assert.equal(data.cols, 4, "列数应等于 factorB (4)");
-    Assert.includes(data.additionFormula, "4 + 4 + 4 = 12", "加法分解公式应正确");
-  });
-
-  it("1.6 应该准确计算 2~9 乘法表掌握度报告", () => {
-    const math = new MathEngine();
-    math.setTables([2, 5]);
-
-    const q1 = { id: "2x3", factorA: 2, factorB: 3, answer: 6 };
-    math.recordResult(q1, true, true);
-    math.recordResult(q1, true, true);
-
-    const report = math.getTableMasteryReport();
-    Assert.equal(report.length, 8, "掌握度报告应包含 2 至 9 乘法表共 8 条数据");
+    Assert.isAtLeast(score, 70, "Mastery score for 90% accuracy & 4 streak should be >= 70%");
     
-    const table2Report = report.find(r => r.table === 2);
-    Assert.equal(table2Report.percentage, 100, "2 的乘法表正确率应为 100%");
+    const report = math.getTableMasteryReport();
+    Assert.equal(report.length, 12, "Parent report must contain 12 tables (1 to 12)");
   });
 
 });

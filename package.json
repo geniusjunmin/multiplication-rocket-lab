@@ -1,0 +1,19 @@
+{
+  "name": "multiplication-rocket-lab",
+  "version": "2.0.0",
+  "description": "Learn Times Tables, Build 3D Rockets & Launch to Deep Space!",
+  "main": "js/main.js",
+  "scripts": {
+    "test": "node tests/run-node-tests.js",
+    "start": "python -m http.server 8080"
+  },
+  "keywords": [
+    "multiplication",
+    "threejs",
+    "educational-game",
+    "uk-curriculum",
+    "adaptive-learning"
+  ],
+  "author": "geniusjunmin",
+  "license": "MIT"
+}
