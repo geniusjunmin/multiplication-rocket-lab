@@ -21,6 +21,21 @@
   animation: pulseGlow 2s infinite;
 }
 
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    border-color: rgba(56, 189, 248, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(56, 189, 248, 0.9);
+    border-color: #38bdf8;
+  }
+}
+
+.glow-pulse {
+  animation: glowPulse 1.8s infinite ease-in-out;
+}
+
 /* Shake Animation for Incorrect Answer Feedback */
 @keyframes gentleShake {
   0%, 100% { transform: translateX(0); }
@@ -74,8 +89,32 @@
   animation: countdownZoom 0.9s ease-out infinite;
 }
 
+/* Energy Particle Flying to Fuel Tank */
+@keyframes flyEnergyOrb {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--target-x, -200px), var(--target-y, -100px)) scale(0.2);
+  }
+}
+
+.energy-particle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: radial-gradient(circle, #ffffff 0%, #38bdf8 60%, #0284c7 100%);
+  border-radius: 50%;
+  box-shadow: 0 0 15px #38bdf8, 0 0 30px #0284c7;
+  pointer-events: none;
+  z-index: 100;
+  animation: flyEnergyOrb 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
 /* 2. Micro-Interactions */
-.choice-btn:active, .key-btn:active {
+.choice-btn:active, .key-btn:active, .fuel-key:active {
   transform: scale(0.92);
 }
 
@@ -88,7 +127,7 @@
     scroll-behavior: auto !important;
   }
   
-  .btn-pulse {
+  .btn-pulse, .glow-pulse, .energy-particle {
     animation: none !important;
   }
   

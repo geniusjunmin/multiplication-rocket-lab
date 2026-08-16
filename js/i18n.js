@@ -9,8 +9,7 @@ class I18nManager {
       en: {
         appTitle: "Multiplication Rocket Lab 3.0 🚀",
         tagline: "Master Times Tables & Division • Build 3D Rockets • Explore the Solar System!",
-        
-        // Navigation & General UI
+          // Navigation & General UI
         btnStartGame: "🚀 Start Rocket Mission",
         btnContinueGame: "▶️ Continue Mission",
         btnSettings: "⚙️ Math & Mission Setup",
@@ -25,6 +24,8 @@ class I18nManager {
         btnImportJson: "📤 Import Data (JSON)",
         btnExportCsv: "📊 Export CSV Report",
         btnClearData: "🗑️ Reset Player Data",
+        devSkipQuiz: "⚡ Quick Complete Quiz (Dev)",
+        devFillFuel: "⚡ Instant 100% Fuel (Dev)",
 
         // Profile Selector
         whosPlaying: "Who's playing?",
@@ -67,31 +68,36 @@ class I18nManager {
         hudStreak: "Streak",
         hudTime: "Time",
         hudScore: "Score",
-        submitAnswer: "Submit Answer",
+        submitAnswer: "Submit Answer ↵",
         easyHintLabel: "💡 Visual Helper:",
         stratHintTitle: "🧠 Smart Strategy Hint:",
 
         // Assembly Screen
         assemblyTitle: "🔧 3D Rocket Assembly Workshop",
         assemblySubtitle: "Click unlocked parts to snap them onto your 3D rocket!",
-        btnInstallAll: "⚡ Auto-Assemble All Unlocked Parts",
+        btnInstallAll: "⚡ Auto-Assemble All",
         rocketModelLabel: "3D Rocket Model:",
         rocketThemeLabel: "Theme Color:",
         btnGoFuel: "⛽ Proceed to Fuel Chamber",
         partsInstalled: "Parts Installed:",
         lockedModel: "🔒 Complete launches to unlock",
+        partInstalledToast: "✅ {part} Installed ({current}/{total})",
+        assemblyCompleteCelebration: "🚀 ROCKET ASSEMBLY COMPLETE!",
+        modalCompleteTitle: "All Rocket Parts Unlocked & Assembled!",
 
         // Fuel Screen
         fuelTitle: "⛽ Math Fuel Chamber",
         fuelSubtitle: "Each correct answer adds +10% fuel! Maintain a streak for +5% bonus!",
         fuelStatusEmpty: "Fuel low. Waiting for fuel loading...",
         fuelStatusHalf: "Fuel loading in progress...",
-        fuelStatusFull: "Fuel tanks 100% full! Ready for launch!",
+        fuelStatusFull: "🎉 Fuel 100% Full! Rocket Ignition System Ready!",
+        fuelFullAlert: "🎉 Fuel 100% Full! Rocket propulsion online! Click 【🚀 Ready for Launch!】 below!",
         btnReadyLaunch: "🚀 Ready for Launch!",
         fuelSuccessBoost: "⛽ Fuel Loaded! +{boost}%",
+        comboBonusText: "🔥 COMBO BONUS +{bonus}%",
 
         // Mission Control & Destinations
-        selectDestinationTitle: "🪐 Select Interplanetary Mission Destination",
+        selectDestinationTitle: "🪐 Select Interplanetary Mission Destination:",
         destEarthOrbit: "🌍 Earth Orbit (400 km)",
         destMoon: "🌙 Moon Base Mission",
         destMars: "🔴 Mars Colony Mission",
@@ -103,7 +109,7 @@ class I18nManager {
 
         // Launch & Cinematic Stages
         launchTitle: "🚀 Rocket Launch Control Center",
-        btnSkipCountdown: "⏩ Skip Countdown & Fly",
+        btnSkipCountdown: "⏩ Skip Countdown",
         btnReplayMission: "▶️ Replay Space Mission",
         checklistTitle: "System Pre-flight Checklist",
         sysNav: "⚙️ Guidance & Navigation",
@@ -113,8 +119,12 @@ class I18nManager {
         statusChecking: "Checking...",
         statusReady: "✅ Ready",
         ignitionText: "IGNITION!",
-        spaceVictoryTitle: "MISSION SUCCESS! ARRIVED AT DESTINATION! 🌌",
+        orbitAchievedBanner: "🌍 ORBIT ACHIEVED",
+        transferBurnBanner: "🚀 HYPER-DRIVE TRANSFER BURN",
+        destinationArrivalBanner: "🪐 ARRIVED AT {destination}!",
+        spaceVictoryTitle: "MISSION COMPLETE! ARRIVED AT DESTINATION! 🌌",
         btnViewResults: "📊 View Mission Summary",
+        newPassportStamp: "🎉 New Space Passport Stamp Unlocked!",
 
         // Results Screen
         resultsTitle: "🏆 Interplanetary Mission Summary",
@@ -141,13 +151,13 @@ class I18nManager {
         multMasteryTitle: "Multiplication Mastery (×)",
         divMasteryTitle: "Division Mastery (÷)",
         weakFactsTitle: "🎯 Recommended Practice Facts:",
-        privacyNotice: "🔒 All learning data is stored locally on this device only. No account or internet required.",
+        privacyNotice: "🔒 All learning data is stored locally on this device only.",
 
         // Feedback & Hints
         divThinkHint: "Think: {operandB} × ? = {operandA}",
         divVisualHelper: "Sharing {operandA} objects into {operandB} equal groups:",
         correctFeedback: "✨ Excellent! Correct!",
-        wrongFeedback: "Not quite — let's try again!",
+        wrongFeedback: "Not quite — check the hint and try again!",
         timeoutFeedback: "⏰ Time's up! Let's try the next one."
       },
 
@@ -170,6 +180,8 @@ class I18nManager {
         btnImportJson: "📤 导入学习存档 (JSON)",
         btnExportCsv: "📊 导出 CSV 报告",
         btnClearData: "🗑️ 重置所有学习记录",
+        devSkipQuiz: "⚡ 快速完成答题 (测试)",
+        devFillFuel: "⚡ 快速加满 100% 燃料 (测试)",
 
         // 多儿童 Profiles
         whosPlaying: "谁在探索太空？",
@@ -212,33 +224,38 @@ class I18nManager {
         hudStreak: "连胜",
         hudTime: "时间",
         hudScore: "积分",
-        submitAnswer: "提交答案",
+        submitAnswer: "提交答案 ↵",
         easyHintLabel: "💡 视觉辅助图示：",
         stratHintTitle: "🧠 智能巧算提示：",
 
         // 组装车间
         assemblyTitle: "🔧 3D 火箭组装车间",
-        assemblySubtitle: "点击底座解包零件，看着它们飞入火箭精准卡扣！",
-        btnInstallAll: "⚡ 一键全自动组装已解锁零件",
+        assemblySubtitle: "点击已解锁零件，看着它们飞入火箭精准卡扣！",
+        btnInstallAll: "⚡ 一键全自动组装",
         rocketModelLabel: "3D 火箭型号：",
         rocketThemeLabel: "火箭涂装配色：",
         btnGoFuel: "⛽ 冲向燃料补充舱",
         partsInstalled: "已安装零件：",
         lockedModel: "🔒 完成指定任务解锁",
+        partInstalledToast: "✅ 已安装 {part} ({current}/{total})",
+        assemblyCompleteCelebration: "🚀 火箭全组件组装完成！",
+        modalCompleteTitle: "所有火箭零件已解锁并组装！",
 
         // 燃料补充舱
         fuelTitle: "⛽ 乘法燃料补充舱",
         fuelSubtitle: "每答对 1 道题加注 10% 燃料，连续答对额外奖励 5%！",
         fuelStatusEmpty: "燃料不足，等待加注...",
         fuelStatusHalf: "燃料加注中...",
-        fuelStatusFull: "燃料 100% 加满！可以发射！",
+        fuelStatusFull: "🎉 燃料 100% 加满！火箭发射系统就绪！",
+        fuelFullAlert: "🎉 燃料已 100% 加满！火箭发射系统就绪！点击下方【🚀 准备发射火箭！】点火出航！",
         btnReadyLaunch: "🚀 准备发射火箭！",
         fuelSuccessBoost: "⛽ 燃料加注成功！+{boost}%",
+        comboBonusText: "🔥 连胜加成 +{bonus}%",
 
         // 目的地选择
-        selectDestinationTitle: "🪐 选择本次星际探索目的地",
+        selectDestinationTitle: "🪐 选择本次星际探索目的地：",
         destEarthOrbit: "🌍 近地轨道 (400 km)",
-        destMoon: "🌙 月球基地探险号",
+        destMoon: "🌙 月球基地号",
         destMars: "🔴 火星拓荒号",
         destJupiter: "🪐 木星风暴探险号",
         destSaturn: "🪐 土星光环探索者",
@@ -248,7 +265,7 @@ class I18nManager {
 
         // 发射与动画
         launchTitle: "🚀 火箭发射控制中心",
-        btnSkipCountdown: "⏩ 跳过动画，直接抵达",
+        btnSkipCountdown: "⏩ 跳过倒计时",
         btnReplayMission: "▶️ 再次播放星际飞行",
         checklistTitle: "系统起飞前自检清单",
         sysNav: "⚙️ 姿态与航向导航",
@@ -258,8 +275,12 @@ class I18nManager {
         statusChecking: "自检中...",
         statusReady: "✅ 正常待命",
         ignitionText: "点火升空！",
+        orbitAchievedBanner: "🌍 成功进入地球轨道",
+        transferBurnBanner: "🚀 星际变轨超光速加速",
+        destinationArrivalBanner: "🪐 成功抵达 {destination}！",
         spaceVictoryTitle: "任务成功！火箭已成功抵达目标星球！🌌",
         btnViewResults: "📊 查看本次任务成绩单",
+        newPassportStamp: "🎉 解锁全新航天护照印章！",
 
         // 结算
         resultsTitle: "🏆 星际探索任务总结",
@@ -286,13 +307,13 @@ class I18nManager {
         multMasteryTitle: "乘法掌握度 (×)",
         divMasteryTitle: "除法掌握度 (÷)",
         weakFactsTitle: "🎯 建议重点复习的数学事实：",
-        privacyNotice: "🔒 本应用所有学习数据仅保存在您的设备本地，保护儿童隐私，无需注册登录。",
+        privacyNotice: "🔒 本应用所有学习数据仅保存在您的设备本地，保护儿童隐私。",
 
         // 反馈与提示
         divThinkHint: "逆向思考：{operandB} × ? = {operandA}",
         divVisualHelper: "将 {operandA} 个物体平均分为 {operandB} 组：",
         correctFeedback: "✨ 太棒了！回答正确！",
-        wrongFeedback: "差一点点，再试一次！",
+        wrongFeedback: "差一点点，看下方小提示再试一次！",
         timeoutFeedback: "⏰ 时间到！我们来看下一题。"
       }
     };

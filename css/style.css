@@ -421,6 +421,206 @@ html, body {
 .hm-cell.fact-cell { cursor: pointer; transition: transform 0.1s; }
 .hm-cell.fact-cell:hover { transform: scale(1.15); z-index: 10; }
 
+/* Dev Buttons - only visible when explicitly enabled */
+.dev-btn-shortcut.hidden {
+  display: none !important;
+}
+
+body.dev-mode .dev-btn-shortcut.hidden {
+  display: inline-flex !important;
+}
+
+/* Assembly Dock & Celebration Banner */
+.assembly-canvas-box {
+  position: relative;
+  overflow: hidden;
+}
+
+.assembly-complete-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(15, 23, 42, 0.92);
+  border: 3px solid #38bdf8;
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 2.5rem;
+  box-shadow: 0 0 35px rgba(56, 189, 248, 0.8), 0 0 70px rgba(99, 102, 241, 0.5);
+  text-align: center;
+  z-index: 50;
+  animation: bouncePop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.assembly-complete-banner .celebration-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 0.5rem;
+  animation: floatBobbing 2s infinite ease-in-out;
+}
+
+.assembly-complete-banner h3 {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #38bdf8;
+  letter-spacing: 1px;
+}
+
+/* Fuel Screen 2-Column Layout */
+.fuel-layout-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  height: 100%;
+}
+
+.fuel-left-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.fuel-3d-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fuel-3d-wrapper {
+  flex: 1;
+  min-height: 220px;
+  width: 100%;
+  position: relative;
+}
+
+.fuel-gauge-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-card-border);
+}
+
+.fuel-gauge-bar {
+  width: 32px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--bg-card-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.fuel-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(0deg, #0284c7, #38bdf8, #f59e0b);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+  transition: height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fuel-status {
+  flex: 1;
+}
+
+.fuel-percentage-text {
+  font-size: 2.2rem;
+  font-weight: 900;
+  font-family: var(--font-display);
+  color: #38bdf8;
+}
+
+.fuel-status-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.fuel-right-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+}
+
+/* Floating Fuel Bonus Badge */
+.fuel-floating-bonus {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: white;
+  font-weight: 900;
+  font-size: 1.2rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-full);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.7);
+  pointer-events: none;
+  z-index: 30;
+  animation: floatUpFade 0.9s ease-out forwards;
+}
+
+@keyframes floatUpFade {
+  0% { opacity: 0; transform: translate(-50%, 20px) scale(0.7); }
+  30% { opacity: 1; transform: translate(-50%, -5px) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -35px) scale(1); }
+}
+
+/* Launch Screen & Stage Milestone Banners */
+.stage-milestone-banner {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(15, 23, 42, 0.88);
+  border: 2px solid #38bdf8;
+  border-radius: var(--radius-full);
+  padding: 0.85rem 2.5rem;
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.6);
+  z-index: 40;
+  animation: bouncePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.stage-milestone-banner h2 {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #f8fafc;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+}
+
+.victory-banner {
+  background: rgba(15, 23, 42, 0.95);
+  border: 3px solid #10b981;
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  text-align: center;
+  box-shadow: 0 0 50px rgba(16, 185, 129, 0.6), 0 0 80px rgba(56, 189, 248, 0.4);
+}
+
+.victory-icon-burst {
+  font-size: 2.2rem;
+  margin-bottom: 0.75rem;
+  animation: floatBobbing 2s infinite ease-in-out;
+}
+
+.victory-badge-notice {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #34d399;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  background: rgba(52, 211, 153, 0.15);
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius-full);
+  display: inline-block;
+}
+
 /* Modals */
 .modal-overlay {
   position: fixed;
@@ -441,6 +641,8 @@ html, body {
 @media (max-width: 768px) {
   .hero-layout { grid-template-columns: 1fr; }
   .hero-3d-preview { display: none; }
+  .fuel-layout-container { grid-template-columns: 1fr; }
+  .fuel-3d-wrapper { min-height: 160px; }
   .formula-display { font-size: clamp(2.5rem, 12vw, 4.5rem); }
 }
 

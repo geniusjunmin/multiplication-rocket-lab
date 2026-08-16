@@ -126,6 +126,13 @@ class MultiplicationGame {
         if (window.uiManager) window.uiManager.renderAssemblyDock();
         break;
       case GAME_STATES.FUEL_CHALLENGE:
+        if (window.rocketBuilder) {
+          window.rocketBuilder.initScene("canvas-container-fuel");
+          window.rocketBuilder.setFuelGlowLevel(this.fuelPercentage);
+        }
+        if (window.uiManager) {
+          window.uiManager.updateFuelGauge(this.fuelPercentage);
+        }
         if (window.mathEngine) {
           this.currentQuestion = window.mathEngine.generateQuestion("normal");
           this.questionShownAt = Date.now();
@@ -188,7 +195,11 @@ class MultiplicationGame {
     this.correctAnswersCount = this.totalQuestionsCount;
     this.score += 1500;
 
-    const allParts = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10"];
+    const allParts = window.rocketBuilder ? window.rocketBuilder.partDefinitions.map(p => p.id) : [
+      "body", "noseCone", "leftBooster", "rightBooster", "leftFin",
+      "rightFin", "engine", "window", "fuelTank", "controlModule"
+    ];
+
     if (window.storageManager) {
       window.storageManager.set("unlockedParts", allParts);
       window.storageManager.set("score", this.score);
@@ -403,14 +414,19 @@ class MultiplicationGame {
     if (numAns === this.currentQuestion.answer) {
       if (window.audioManager) window.audioManager.playCorrect();
       this.comboCount++;
-      const boost = 10 + (this.comboCount > 1 ? 5 : 0);
-      this.fuelPercentage += boost;
-      if (this.fuelPercentage > 100) this.fuelPercentage = 100;
+      const isBonus = this.comboCount > 1;
+      const boost = 10 + (isBonus ? 5 : 0);
+      const prevFuel = this.fuelPercentage;
+      this.fuelPercentage = Math.min(100, this.fuelPercentage + boost);
 
       if (window.uiManager) {
-        window.uiManager.updateFuelGauge(this.fuelPercentage);
+        window.uiManager.animateFuelIncrease(prevFuel, this.fuelPercentage, isBonus ? 5 : 0);
         window.uiManager.showFuelFeedback(true, window.i18n ? window.i18n.t("fuelSuccessBoost", { boost }) : `⛽ 燃料加注成功！+${boost}%`);
         window.uiManager.currentAnswerInput = "";
+      }
+
+      if (window.rocketBuilder) {
+        window.rocketBuilder.setFuelGlowLevel(this.fuelPercentage);
       }
 
       setTimeout(() => {
@@ -419,7 +435,7 @@ class MultiplicationGame {
           this.currentQuestion = window.mathEngine.generateQuestion("normal");
           if (window.uiManager) window.uiManager.renderQuestion(this.currentQuestion, "normal");
         }
-      }, 600);
+      }, 700);
 
     } else {
       this.comboCount = 0;

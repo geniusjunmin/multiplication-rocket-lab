@@ -300,14 +300,106 @@ class UIManager {
 
       if (isUnlocked && !isInstalled) {
         btn.addEventListener("click", () => {
+          if (this.isInstallingPart) return;
+          this.isInstallingPart = true;
+          btn.classList.add("installing");
+          btn.disabled = true;
+
           window.storageManager.installPart(part.id);
           window.rocketBuilder.animateInstallPart(part.id, () => {
+            this.isInstallingPart = false;
             this.renderAssemblyDock();
+
+            const newlyInstalled = window.storageManager.get("installedParts") || [];
+            if (newlyInstalled.length >= CONFIG.PART_COUNT) {
+              this.triggerAssemblyCelebration();
+            }
           });
         });
+      } else if (isInstalled || !isUnlocked) {
+        btn.disabled = true;
       }
       container.appendChild(btn);
     });
+  }
+
+  triggerAssemblyCelebration() {
+    const banner = document.getElementById("assembly-celebration-banner");
+    if (banner) banner.classList.remove("hidden");
+    if (window.audioManager) window.audioManager.playVictory();
+
+    if (window.rocketBuilder) {
+      window.rocketBuilder.triggerCelebrationSpin(1800, () => {
+        setTimeout(() => {
+          if (banner) banner.classList.add("hidden");
+          if (window.game) {
+            window.game.fuelPercentage = 0;
+            window.game.setGameState(GAME_STATES.FUEL_CHALLENGE);
+          }
+        }, 300);
+      });
+    }
+  }
+
+  animateFuelIncrease(fromPercent, toPercent, comboBonus = 0) {
+    this.spawnEnergyParticles();
+
+    // Floating Bonus Badge
+    const bonusBox = document.getElementById("fuel-floating-bonus");
+    if (bonusBox) {
+      const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+      if (comboBonus > 0) {
+        bonusBox.innerText = isZh ? `🔥 连胜加成 +${comboBonus}%` : `🔥 COMBO BONUS +${comboBonus}%`;
+      } else {
+        bonusBox.innerText = `⛽ +10%`;
+      }
+      bonusBox.classList.remove("hidden");
+      setTimeout(() => bonusBox.classList.add("hidden"), 900);
+    }
+
+    const duration = 600;
+    const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+
+    const step = () => {
+      const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(fromPercent + (toPercent - fromPercent) * ease);
+
+      this.updateFuelGauge(current);
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        this.updateFuelGauge(toPercent);
+      }
+    };
+    step();
+  }
+
+  spawnEnergyParticles() {
+    const container = document.getElementById("screen-fuel");
+    if (!container) return;
+
+    for (let i = 0; i < 6; i++) {
+      const p = document.createElement("div");
+      p.className = "energy-particle";
+      p.style.top = `${40 + (Math.random() - 0.5) * 10}%`;
+      p.style.right = `${35 + (Math.random() - 0.5) * 10}%`;
+      const tx = `${-200 - Math.random() * 80}px`;
+      const ty = `${-40 + (Math.random() - 0.5) * 60}px`;
+      if (p.style.setProperty) {
+        p.style.setProperty("--target-x", tx);
+        p.style.setProperty("--target-y", ty);
+      } else {
+        p.style["--target-x"] = tx;
+        p.style["--target-y"] = ty;
+      }
+      container.appendChild(p);
+
+      setTimeout(() => p.remove ? p.remove() : null, 650);
+    }
   }
 
   updateFuelGauge(percentage) {
@@ -323,9 +415,13 @@ class UIManager {
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
 
     if (label) {
-      if (percentage >= 100) label.innerText = isZh ? "🎉 燃料 100% 加满！火箭发射准备就绪！" : "🎉 Fuel 100% Full! Rocket System Ready!";
-      else if (percentage >= 50) label.innerText = isZh ? "燃料加注中..." : "Fuel loading in progress...";
-      else label.innerText = isZh ? "燃料不足，等待加注..." : "Fuel low. Waiting for fuel loading...";
+      if (percentage >= 100) {
+        label.innerText = isZh ? "🎉 燃料 100% 加满！火箭发射准备就绪！" : "🎉 Fuel 100% Full! Rocket System Ready!";
+      } else if (percentage >= 50) {
+        label.innerText = isZh ? "燃料加注中..." : "Fuel loading in progress...";
+      } else {
+        label.innerText = isZh ? "燃料不足，等待加注..." : "Fuel low. Waiting for fuel loading...";
+      }
     }
 
     if (percentage >= 100) {

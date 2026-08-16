@@ -1,6 +1,6 @@
 /**
  * Multiplication Rocket Lab - Three.js 3D Rocket Engine & Models (js/rocket.js)
- * Supports 5 Procedural Models, 5 Themes, GPU Memory Disposal & 2D Fallback
+ * Supports 5 Distinct Procedural Models, 5 Themes, Precise Transform Tracking, GPU Memory Disposal & 2D Fallback
  */
 class RocketBuilder {
   constructor() {
@@ -29,6 +29,9 @@ class RocketBuilder {
     ];
 
     this.parts = {};
+    this.targetTransforms = {};
+    this.isSpinningCelebration = false;
+
     this.themeColors = {
       explorer: { body: 0xf8fafc, nose: 0x0284c7, fin: 0x38bdf8, engine: 0xe11d48, accent: 0xf59e0b },
       fire: { body: 0x1e293b, nose: 0xef4444, fin: 0xf97316, engine: 0xd97706, accent: 0xfacc15 },
@@ -58,7 +61,7 @@ class RocketBuilder {
       this.scene = new THREE.Scene();
 
       this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-      this.camera.position.set(0, 2, 9);
+      this.camera.position.set(0, 1.5, 9);
 
       this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       this.renderer.setSize(width, height);
@@ -72,16 +75,22 @@ class RocketBuilder {
         this.controls.maxPolarAngle = Math.PI / 2 + 0.1;
       }
 
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
       this.scene.add(ambientLight);
 
-      const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.95);
       dirLight.position.set(5, 10, 7);
       this.scene.add(dirLight);
 
-      const pointLight = new THREE.PointLight(0x38bdf8, 0.5, 20);
+      const pointLight = new THREE.PointLight(0x38bdf8, 0.6, 20);
       pointLight.position.set(-5, -2, -5);
       this.scene.add(pointLight);
+
+      // Sync active model & theme from storage if available
+      if (window.storageManager) {
+        this.currentModel = window.storageManager.get("currentRocketModel") || this.currentModel;
+        this.currentTheme = window.storageManager.get("currentRocketTheme") || this.currentTheme;
+      }
 
       this.buildCurrentRocket();
 
@@ -113,14 +122,31 @@ class RocketBuilder {
 
   setModel(modelId) {
     this.currentModel = modelId;
+    if (window.storageManager) window.storageManager.set("currentRocketModel", modelId);
     this.buildCurrentRocket();
   }
 
   setTheme(themeId) {
     if (this.themeColors[themeId]) {
       this.currentTheme = themeId;
+      if (window.storageManager) window.storageManager.set("currentRocketTheme", themeId);
       this.buildCurrentRocket();
     }
+  }
+
+  saveTargetTransforms() {
+    this.targetTransforms = {};
+    Object.keys(this.parts).forEach(id => {
+      const part = this.parts[id];
+      if (part) {
+        this.targetTransforms[id] = {
+          position: part.position && part.position.clone ? part.position.clone() : { x: part.position?.x || 0, y: part.position?.y || 0, z: part.position?.z || 0 },
+          rotation: part.rotation && part.rotation.clone ? part.rotation.clone() : { x: part.rotation?.x || 0, y: part.rotation?.y || 0, z: part.rotation?.z || 0 },
+          quaternion: part.quaternion && part.quaternion.clone ? part.quaternion.clone() : null,
+          scale: part.scale && part.scale.clone ? part.scale.clone() : { x: 1, y: 1, z: 1 }
+        };
+      }
+    });
   }
 
   buildCurrentRocket() {
@@ -151,6 +177,9 @@ class RocketBuilder {
         break;
     }
 
+    // Save accurate reference transforms for each part
+    this.saveTargetTransforms();
+
     if (this.scene) {
       this.scene.add(this.rocketGroup);
     }
@@ -159,6 +188,7 @@ class RocketBuilder {
     this.updateInstalledParts(installed);
   }
 
+  // 1. Classic Explorer Retro Rocket
   createClassicRocket() {
     const palette = this.themeColors[this.currentTheme] || this.themeColors.explorer;
     const matBody = new THREE.MeshStandardMaterial({ color: palette.body, roughness: 0.3 });
@@ -168,13 +198,12 @@ class RocketBuilder {
     const matAccent = new THREE.MeshStandardMaterial({ color: palette.accent });
 
     // 1. Body
-    const bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 3.8, 32), matBody);
-    this.parts.body = bodyMesh;
+    this.parts.body = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 3.8, 32), matBody);
 
     // 2. Nose Cone
-    const noseMesh = new THREE.Mesh(new THREE.ConeGeometry(1.22, 2.2, 32), matNose);
-    noseMesh.position.y = 3.0;
-    this.parts.noseCone = noseMesh;
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(1.22, 2.2, 32), matNose);
+    nose.position.y = 3.0;
+    this.parts.noseCone = nose;
 
     // 3. Left Booster
     const boostL = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 3.0, 32), matBody);
@@ -228,54 +257,268 @@ class RocketBuilder {
     Object.keys(this.parts).forEach(key => this.rocketGroup.add(this.parts[key]));
   }
 
+  // 2. SpaceX Starship Model
   createStarshipRocket() {
-    const matSteel = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.2 });
-    const matSilver = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.3 });
+    const palette = this.themeColors[this.currentTheme] || this.themeColors.explorer;
+    const matSteel = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.2 });
+    const matAccent = new THREE.MeshStandardMaterial({ color: palette.nose, metalness: 0.7, roughness: 0.3 });
+    const matDark = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
 
-    this.parts.body = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 4.2, 32), matSteel);
-    
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.76, 1.8, 32), matSilver);
-    nose.position.y = 3.0;
+    // 1. Body
+    this.parts.body = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 4.4, 32), matSteel);
+
+    // 2. Nose Cone
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.86, 2.0, 32), matSteel);
+    nose.position.y = 3.2;
     this.parts.noseCone = nose;
 
-    const bL = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 3.5, 32), matSteel); bL.position.set(-1.2, -0.4, 0);
-    this.parts.leftBooster = bL;
-    const bR = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 3.5, 32), matSteel); bR.position.set(1.2, -0.4, 0);
-    this.parts.rightBooster = bR;
+    // 3. Left Booster Pod
+    const podL = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 3.2, 24), matDark);
+    podL.position.set(-1.15, -0.6, 0);
+    this.parts.leftBooster = podL;
 
-    const finL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, 0.6), matSilver); finL.position.set(-0.85, -1.5, 0);
-    this.parts.leftFin = finL;
-    const finR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, 0.6), matSilver); finR.position.set(0.85, -1.5, 0);
-    this.parts.rightFin = finR;
+    // 4. Right Booster Pod
+    const podR = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 3.2, 24), matDark);
+    podR.position.set(1.15, -0.6, 0);
+    this.parts.rightBooster = podR;
 
-    const eng = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 0.8, 32), matSilver); eng.position.y = -2.4;
-    this.parts.engine = eng;
+    // 5. Left Aft Flap
+    const flapL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.4, 0.7), matAccent);
+    flapL.position.set(-1.0, -1.4, 0);
+    this.parts.leftFin = flapL;
 
-    const win = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.1), matSilver); win.position.set(0, 1.5, 0.75);
+    // 6. Right Aft Flap
+    const flapR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.4, 0.7), matAccent);
+    flapR.position.set(1.0, -1.4, 0);
+    this.parts.rightFin = flapR;
+
+    // 7. Engine Cluster (3 Raptor engines)
+    const engGroup = new THREE.Group();
+    const baseBell = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.88, 0.7, 32), matDark);
+    engGroup.add(baseBell);
+    engGroup.position.y = -2.5;
+    this.parts.engine = engGroup;
+
+    // 8. Observation Window
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.35, 0.12), new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.1 }));
+    win.position.set(0, 1.8, 0.82);
     this.parts.window = win;
 
-    const fuel = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.05, 16, 32), matSilver); fuel.rotation.x = Math.PI / 2; fuel.position.y = -0.5;
+    // 9. Fuel Tank Weld Ring
+    const fuel = new THREE.Mesh(new THREE.TorusGeometry(0.87, 0.06, 16, 32), matAccent);
+    fuel.rotation.x = Math.PI / 2; fuel.position.y = -0.6;
     this.parts.fuelTank = fuel;
 
-    const ctrlGroup = new THREE.Group();
-    const topFlapL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.3), matSilver); topFlapL.position.set(-0.78, 2.8, 0);
-    const topFlapR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.3), matSilver); topFlapR.position.set(0.78, 2.8, 0);
-    ctrlGroup.add(topFlapL); ctrlGroup.add(topFlapR);
-    this.parts.controlModule = ctrlGroup;
+    // 10. Forward Canard Flaps
+    const canardGroup = new THREE.Group();
+    const canL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.65, 0.35), matAccent);
+    canL.position.set(-0.88, 2.9, 0);
+    const canR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.65, 0.35), matAccent);
+    canR.position.set(0.88, 2.9, 0);
+    canardGroup.add(canL); canardGroup.add(canR);
+    this.parts.controlModule = canardGroup;
 
     Object.keys(this.parts).forEach(k => this.rocketGroup.add(this.parts[k]));
   }
 
+  // 3. Falcon Heavy Triple-Core Rocket
   createFalconHeavyRocket() {
-    this.createClassicRocket();
+    const palette = this.themeColors[this.currentTheme] || this.themeColors.explorer;
+    const matCore = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 });
+    const matInter = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4 });
+    const matAccent = new THREE.MeshStandardMaterial({ color: palette.nose, roughness: 0.3 });
+
+    // 1. Body (Center Core)
+    this.parts.body = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 4.4, 32), matCore);
+
+    // 2. Nose Cone (Center Fairing)
+    const fairing = new THREE.Mesh(new THREE.ConeGeometry(0.68, 1.8, 32), matAccent);
+    fairing.position.y = 3.1;
+    this.parts.noseCone = fairing;
+
+    // 3. Left Strap-on Core
+    const coreL = new THREE.Group();
+    const cylL = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 4.0, 32), matCore);
+    const noseL = new THREE.Mesh(new THREE.ConeGeometry(0.63, 1.2, 32), matAccent);
+    noseL.position.y = 2.6;
+    coreL.add(cylL); coreL.add(noseL);
+    coreL.position.set(-1.45, -0.2, 0);
+    this.parts.leftBooster = coreL;
+
+    // 4. Right Strap-on Core
+    const coreR = new THREE.Group();
+    const cylR = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 4.0, 32), matCore);
+    const noseR = new THREE.Mesh(new THREE.ConeGeometry(0.63, 1.2, 32), matAccent);
+    noseR.position.y = 2.6;
+    coreR.add(cylR); coreR.add(noseR);
+    coreR.position.set(1.45, -0.2, 0);
+    this.parts.rightBooster = coreR;
+
+    // 5. Left Titanium Grid Fin
+    const finL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.5, 0.5), matInter);
+    finL.position.set(-0.72, 1.8, 0);
+    this.parts.leftFin = finL;
+
+    // 6. Right Titanium Grid Fin
+    const finR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.5, 0.5), matInter);
+    finR.position.set(0.72, 1.8, 0);
+    this.parts.rightFin = finR;
+
+    // 7. Engine Cluster
+    const eng = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.75, 0.7, 32), matInter);
+    eng.position.y = -2.55;
+    this.parts.engine = eng;
+
+    // 8. Flight Window / Optical Tracking
+    const win = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), new THREE.MeshStandardMaterial({ color: 0x38bdf8 }));
+    win.position.set(0, 1.2, 0.65);
+    this.parts.window = win;
+
+    // 9. Interstage Fuel Collar
+    const fuel = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.66, 0.4, 32), matInter);
+    fuel.position.y = 1.0;
+    this.parts.fuelTank = fuel;
+
+    // 10. Guidance Avionics Ring
+    const ctrl = new THREE.Mesh(new THREE.TorusGeometry(0.67, 0.05, 16, 32), matAccent);
+    ctrl.rotation.x = Math.PI / 2; ctrl.position.y = 2.1;
+    this.parts.controlModule = ctrl;
+
+    Object.keys(this.parts).forEach(k => this.rocketGroup.add(this.parts[k]));
   }
 
+  // 4. Long March 5 Heavy-Lift Rocket
   createLongMarchRocket() {
-    this.createClassicRocket();
+    const palette = this.themeColors[this.currentTheme] || this.themeColors.explorer;
+    const matCore = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.3 });
+    const matRed = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 });
+    const matGold = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.5 });
+    const matDark = new THREE.MeshStandardMaterial({ color: 0x334155 });
+
+    // 1. Wide 5m Core Stage
+    this.parts.body = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 4.0, 32), matCore);
+
+    // 2. Beveled Payload Fairing
+    const fairing = new THREE.Group();
+    const fCone = new THREE.Mesh(new THREE.ConeGeometry(1.42, 2.0, 32), matCore);
+    const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.8, 16), matRed);
+    tip.position.y = 1.4;
+    fairing.add(fCone); fairing.add(tip);
+    fairing.position.y = 3.0;
+    this.parts.noseCone = fairing;
+
+    // 3. Left Dual Strap-on Boosters with canted nose cone
+    const boostL = new THREE.Group();
+    const bCylL = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 3.4, 24), matCore);
+    const bConeL = new THREE.Mesh(new THREE.ConeGeometry(0.56, 1.1, 24), matRed);
+    bConeL.position.y = 2.25;
+    bConeL.rotation.z = -0.1;
+    boostL.add(bCylL); boostL.add(bConeL);
+    boostL.position.set(-1.8, -0.4, 0);
+    this.parts.leftBooster = boostL;
+
+    // 4. Right Dual Strap-on Boosters
+    const boostR = new THREE.Group();
+    const bCylR = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 3.4, 24), matCore);
+    const bConeR = new THREE.Mesh(new THREE.ConeGeometry(0.56, 1.1, 24), matRed);
+    bConeR.position.y = 2.25;
+    bConeR.rotation.z = 0.1;
+    boostR.add(bCylR); boostR.add(bConeR);
+    boostR.position.set(1.8, -0.4, 0);
+    this.parts.rightBooster = boostR;
+
+    // 5. Left Stabilizing Fin
+    const finL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, 0.7), matRed);
+    finL.position.set(-1.5, -1.6, 0);
+    this.parts.leftFin = finL;
+
+    // 6. Right Stabilizing Fin
+    const finR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, 0.7), matRed);
+    finR.position.set(1.5, -1.6, 0);
+    this.parts.rightFin = finR;
+
+    // 7. Dual YF-77 Engines
+    const eng = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.25, 0.8, 32), matDark);
+    eng.position.y = -2.4;
+    this.parts.engine = eng;
+
+    // 8. Porthole / National Insignia Emblem
+    const win = new THREE.Mesh(new THREE.CircleGeometry(0.4, 32), matGold);
+    win.position.set(0, 0.8, 1.42);
+    this.parts.window = win;
+
+    // 9. Cryogenic Tank Interstage Ribbon
+    const fuel = new THREE.Mesh(new THREE.TorusGeometry(1.43, 0.07, 16, 32), matRed);
+    fuel.rotation.x = Math.PI / 2; fuel.position.y = -0.7;
+    this.parts.fuelTank = fuel;
+
+    // 10. Guidance Avionics Ring
+    const ctrl = new THREE.Mesh(new THREE.TorusGeometry(1.43, 0.07, 16, 32), matGold);
+    ctrl.rotation.x = Math.PI / 2; ctrl.position.y = 1.3;
+    this.parts.controlModule = ctrl;
+
+    Object.keys(this.parts).forEach(k => this.rocketGroup.add(this.parts[k]));
   }
 
+  // 5. Futuristic Cyber Star Cruiser
   createCyberRocket() {
-    this.createClassicRocket();
+    const palette = this.themeColors[this.currentTheme] || this.themeColors.galaxy;
+    const matCarbon = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3, metalness: 0.8 });
+    const matNeon = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
+    const matPurple = new THREE.MeshStandardMaterial({ color: 0xa855f7 });
+    const matAccent = new THREE.MeshStandardMaterial({ color: palette.accent });
+
+    // 1. Faceted Hexagonal Body
+    this.parts.body = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.1, 4.0, 6), matCarbon);
+
+    // 2. Stealth Wedge Nose
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(1.02, 2.2, 6), matNeon);
+    nose.position.y = 3.1;
+    this.parts.noseCone = nose;
+
+    // 3. Left Warp Plasma Nacelle
+    const nacelleL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.2, 0.8), matCarbon);
+    nacelleL.position.set(-1.6, -0.2, 0);
+    this.parts.leftBooster = nacelleL;
+
+    // 4. Right Warp Plasma Nacelle
+    const nacelleR = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.2, 0.8), matCarbon);
+    nacelleR.position.set(1.6, -0.2, 0);
+    this.parts.rightBooster = nacelleR;
+
+    // 5. Left Energy Blade Wing
+    const finL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.8, 1.2), matPurple);
+    finL.position.set(-1.4, -1.2, 0);
+    finL.rotation.z = -0.2;
+    this.parts.leftFin = finL;
+
+    // 6. Right Energy Blade Wing
+    const finR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.8, 1.2), matPurple);
+    finR.position.set(1.4, -1.2, 0);
+    finR.rotation.z = 0.2;
+    this.parts.rightFin = finR;
+
+    // 7. Ion Vortex Drive
+    const eng = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.05, 0.8, 6), matNeon);
+    eng.position.y = -2.4;
+    this.parts.engine = eng;
+
+    // 8. Holographic Canopy Window
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.2), new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1 }));
+    win.position.set(0, 1.5, 0.95);
+    this.parts.window = win;
+
+    // 9. Antimatter Toroidal Conduit
+    const fuel = new THREE.Mesh(new THREE.TorusGeometry(1.08, 0.08, 16, 6), matNeon);
+    fuel.rotation.x = Math.PI / 2; fuel.position.y = -0.6;
+    this.parts.fuelTank = fuel;
+
+    // 10. Quantum Antenna Array
+    const ctrl = new THREE.Mesh(new THREE.OctahedronGeometry(0.4, 0), matAccent);
+    ctrl.position.set(0, 2.0, 1.0);
+    this.parts.controlModule = ctrl;
+
+    Object.keys(this.parts).forEach(k => this.rocketGroup.add(this.parts[k]));
   }
 
   updateInstalledParts(installedPartIds) {
@@ -288,6 +531,9 @@ class RocketBuilder {
     });
   }
 
+  /**
+   * Time-interpolated Part Installation Animation (700-900ms) with accurate transform restoration
+   */
   animateInstallPart(partId, callback) {
     const part = this.parts[partId];
     if (!part) {
@@ -295,36 +541,80 @@ class RocketBuilder {
       return;
     }
 
-    part.visible = true;
-    const targetY = part.position.y;
-    const origScaleX = part.scale ? part.scale.x : 1;
+    const orig = this.targetTransforms[partId] || {
+      position: { x: 0, y: part.position?.y || 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 }
+    };
 
-    part.position.set(3.5, targetY + 1.5, 2.0);
-    part.rotation.y = Math.PI;
-    part.scale.set(0.3, 0.3, 0.3);
-    
-    let progress = 0;
-    const duration = 30;
+    part.visible = true;
+
+    const startX = orig.position.x + 3.2;
+    const startY = orig.position.y + 1.2;
+    const startZ = orig.position.z + 2.5;
+    const startRotY = (orig.rotation ? orig.rotation.y : 0) + Math.PI;
+    const baseScaleX = orig.scale ? orig.scale.x : 1;
+
+    if (part.position && part.position.set) {
+      part.position.set(startX, startY, startZ);
+    }
+    if (part.rotation) part.rotation.y = startRotY;
+    if (part.scale && part.scale.set) {
+      part.scale.set(baseScaleX * 0.65, baseScaleX * 0.65, baseScaleX * 0.65);
+    }
+
+    const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+    const duration = 750;
 
     const step = () => {
-      progress++;
-      const ratio = progress / duration;
-      const ease = 1 - Math.pow(1 - ratio, 3);
+      const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
 
-      part.position.x = 3.5 * (1 - ease);
-      part.position.y = (targetY + 1.5) - 1.5 * ease;
-      part.position.z = 2.0 * (1 - ease);
-      part.rotation.y = Math.PI * (1 - ease);
+      // Ease out cubic
+      const ease = 1 - Math.pow(1 - progress, 3);
 
-      const currentScale = 0.3 + (origScaleX - 0.3) * ease;
-      part.scale.set(currentScale, currentScale, currentScale);
+      // Overshoot scale curve (0.65 -> 1.08 -> 1.0)
+      let scaleMult = 1.0;
+      if (progress < 0.7) {
+        scaleMult = 0.65 + (1.08 - 0.65) * (progress / 0.7);
+      } else {
+        scaleMult = 1.08 - (1.08 - 1.0) * ((progress - 0.7) / 0.3);
+      }
 
-      if (progress < duration) {
+      if (part.position) {
+        part.position.x = startX + (orig.position.x - startX) * ease;
+        part.position.y = startY + (orig.position.y - startY) * ease;
+        part.position.z = startZ + (orig.position.z - startZ) * ease;
+      }
+      if (part.rotation) {
+        part.rotation.y = startRotY + ((orig.rotation ? orig.rotation.y : 0) - startRotY) * ease;
+      }
+      if (part.scale && part.scale.set) {
+        part.scale.set(baseScaleX * scaleMult, baseScaleX * scaleMult, baseScaleX * scaleMult);
+      }
+
+      if (progress < 1) {
         requestAnimationFrame(step);
       } else {
-        part.position.set(0, targetY, 0);
-        part.rotation.set(0, 0, 0);
-        part.scale.set(origScaleX, origScaleX, origScaleX);
+        // Accurately restore original XYZ, Rotation / Quaternion, and Scale
+        if (part.position && part.position.copy && orig.position.clone) {
+          part.position.copy(orig.position);
+        } else if (part.position && part.position.set) {
+          part.position.set(orig.position.x, orig.position.y, orig.position.z);
+        }
+
+        if (orig.quaternion && part.quaternion && part.quaternion.copy) {
+          part.quaternion.copy(orig.quaternion);
+        } else if (part.rotation && part.rotation.set && orig.rotation) {
+          part.rotation.set(orig.rotation.x, orig.rotation.y, orig.rotation.z);
+        }
+
+        if (part.scale && part.scale.copy && orig.scale.clone) {
+          part.scale.copy(orig.scale);
+        } else if (part.scale && part.scale.set && orig.scale) {
+          part.scale.set(orig.scale.x, orig.scale.y, orig.scale.z);
+        }
 
         if (window.audioManager) window.audioManager.playSnap();
         if (callback) callback();
@@ -333,11 +623,62 @@ class RocketBuilder {
     step();
   }
 
+  /**
+   * Set glow & pulsing intensity for fuel tank & engine according to fuel %
+   */
+  setFuelGlowLevel(percentage) {
+    const ratio = Math.min(1, Math.max(0, percentage / 100));
+    if (this.parts.fuelTank) {
+      this.parts.fuelTank.traverse(child => {
+        if (child.material && child.material.emissive && child.material.emissive.setHex) {
+          child.material.emissive.setHex(ratio > 0.75 ? 0x10b981 : (ratio > 0.4 ? 0x38bdf8 : 0x0284c7));
+          child.material.emissiveIntensity = ratio * 1.5;
+        }
+      });
+    }
+    if (this.parts.engine) {
+      this.parts.engine.traverse(child => {
+        if (child.material && child.material.emissive && child.material.emissive.setHex) {
+          child.material.emissive.setHex(0xf59e0b);
+          child.material.emissiveIntensity = ratio * 1.2;
+        }
+      });
+    }
+  }
+
+  /**
+   * 1.5s 360-Degree Celebration Spin when rocket assembly is complete
+   */
+  triggerCelebrationSpin(duration = 1500, callback) {
+    this.isSpinningCelebration = true;
+    const startRotY = this.rocketGroup ? (this.rocketGroup.rotation.y || 0) : 0;
+    const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+
+    const spinStep = () => {
+      const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const ease = 1 - Math.pow(1 - progress, 2);
+
+      if (this.rocketGroup) {
+        this.rocketGroup.rotation.y = startRotY + Math.PI * 2 * ease;
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(spinStep);
+      } else {
+        this.isSpinningCelebration = false;
+        if (callback) callback();
+      }
+    };
+    spinStep();
+  }
+
   animate() {
     this.animationId = requestAnimationFrame(() => this.animate());
 
-    if (this.rocketGroup) {
-      this.rocketGroup.rotation.y += 0.008;
+    if (this.rocketGroup && !this.isSpinningCelebration) {
+      this.rocketGroup.rotation.y = (this.rocketGroup.rotation.y || 0) + 0.008;
     }
     if (this.controls) {
       this.controls.update();
@@ -377,8 +718,8 @@ class RocketBuilder {
       this.rocketGroup = null;
     }
     if (this.renderer) {
-      if (this.renderer.domElement) this.renderer.domElement.remove();
-      this.renderer.dispose();
+      if (this.renderer.domElement && this.renderer.domElement.remove) this.renderer.domElement.remove();
+      if (this.renderer.dispose) this.renderer.dispose();
       this.renderer = null;
     }
     this.controls = null;

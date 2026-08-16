@@ -50,4 +50,43 @@ describe("3. 3D 火箭构建器 (RocketBuilder)", () => {
     Assert.equal(builder.renderer, null, "销毁后 renderer 应重置为 null");
   });
 
+  it("3.6 10 个 partDefinitions ID 应与标准 ID 列表严格一致", () => {
+    const builder = new RocketBuilder();
+    const expectedIds = ["body", "noseCone", "leftBooster", "rightBooster", "leftFin", "rightFin", "engine", "window", "fuelTank", "controlModule"];
+    const actualIds = builder.partDefinitions.map(p => p.id);
+    Assert.equal(JSON.stringify(actualIds), JSON.stringify(expectedIds), "零件ID应与系统标准定义完全一致");
+  });
+
+  it("3.7 animateInstallPart 完成后 XYZ 和 Scale 应精确恢复为目标值", (done) => {
+    const builder = new RocketBuilder();
+    builder.buildCurrentRocket();
+
+    const targetPos = { x: builder.parts.leftBooster.position.x, y: builder.parts.leftBooster.position.y, z: builder.parts.leftBooster.position.z };
+    const targetScale = { x: builder.parts.leftBooster.scale.x, y: builder.parts.leftBooster.scale.y, z: builder.parts.leftBooster.scale.z };
+
+    builder.animateInstallPart("leftBooster", () => {
+      Assert.equal(builder.parts.leftBooster.position.x, targetPos.x, "leftBooster X坐标安装后应精确恢复");
+      Assert.equal(builder.parts.leftBooster.position.y, targetPos.y, "leftBooster Y坐标安装后应精确恢复");
+      Assert.equal(builder.parts.leftBooster.position.z, targetPos.z, "leftBooster Z坐标安装后应精确恢复");
+      Assert.equal(builder.parts.leftBooster.scale.x, targetScale.x, "leftBooster Scale应恢复");
+      if (done) done();
+    });
+  });
+
+  it("3.8 5 种型号应具有独立几何体与模型配置", () => {
+    const builder = new RocketBuilder();
+    const models = ["classic", "starship", "falconHeavy", "longMarch", "cyber"];
+    const bodies = [];
+
+    models.forEach(m => {
+      builder.currentModel = m;
+      builder.buildCurrentRocket();
+      bodies.push(builder.parts.body);
+    });
+
+    Assert.equal(bodies.length, 5, "应有 5 个不同型号箭体");
+    Assert.isTrue(bodies[0] !== bodies[1], "Starship 与 Classic 不应为同一对象");
+    Assert.isTrue(bodies[2] !== bodies[3], "Falcon Heavy 与 Long March 不应为同一对象");
+  });
+
 });

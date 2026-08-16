@@ -10,7 +10,9 @@ function createMockElement(id = "") {
   return {
     id,
     classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
-    style: {},
+    style: {
+      setProperty(k, v) { this[k] = v; }
+    },
     innerText: "",
     innerHTML: "",
     value: "",
@@ -40,7 +42,9 @@ global.document = {
   querySelector() { return createMockElement(); },
   getElementById(id) { return createMockElement(id); },
   createElement() { return createMockElement(); },
-  documentElement: { requestFullscreen() { return Promise.resolve(); } }
+  documentElement: { requestFullscreen() { return Promise.resolve(); } },
+  addEventListener: () => {},
+  removeEventListener: () => {}
 };
 
 global.localStorage = {
@@ -52,17 +56,62 @@ global.localStorage = {
 
 // Mock THREE.js
 global.THREE = {
-  Scene: class { add() {} remove() {} traverse(fn) { fn(this); } },
+  Scene: class { constructor() { this.children = []; } add(o) { if (o) this.children.push(o); } remove(o) { this.children = this.children.filter(c => c !== o); } traverse(fn) { fn(this); } },
   Color: class { lerp() { return this; } },
-  PerspectiveCamera: class { constructor() { this.position = { set() {} }; } lookAt() {} },
+  PerspectiveCamera: class { constructor() { this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }; this.fov = 50; } lookAt() {} updateProjectionMatrix() {} },
   WebGLRenderer: class { constructor() { this.shadowMap = {}; this.domElement = createMockElement(); } setSize() {} setPixelRatio() {} dispose() {} render() {} },
   AmbientLight: class {},
-  DirectionalLight: class { constructor() { this.position = { set() {} }; } },
-  PointLight: class { constructor() { this.position = { set() {} }; } },
-  Group: class { constructor() { this.position = { set() {} }; this.rotation = {}; this.children = []; } add() {} clone() { return new global.THREE.Group(); } traverse(fn) { fn(this); } },
-  MeshStandardMaterial: class { dispose() {} },
-  MeshBasicMaterial: class { dispose() {} },
-  Mesh: class { constructor() { this.position = { set() {} }; this.rotation = {}; this.scale = {}; } add() {} clone() { const m = new global.THREE.Mesh(); m.position = { set() {} }; return m; } traverse(fn) { fn(this); } },
+  DirectionalLight: class { constructor() { this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }; } },
+  PointLight: class { constructor() { this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }; this.intensity = 1; } },
+  Group: class {
+    constructor() {
+      this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; }, copy(p) { Object.assign(this, p); }, clone() { return { ...this }; } };
+      this.rotation = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; }, copy(r) { Object.assign(this, r); }, clone() { return { ...this }; } };
+      this.scale = { x: 1, y: 1, z: 1, set(x, y, z) { this.x = x; this.y = y; this.z = z; }, copy(s) { Object.assign(this, s); }, clone() { return { ...this }; } };
+      this.quaternion = { x: 0, y: 0, z: 0, w: 1, copy(q) { Object.assign(this, q); }, clone() { return { ...this }; } };
+      this.children = [];
+      this.visible = true;
+    }
+    add(o) { if (o) this.children.push(o); }
+    remove(o) { this.children = this.children.filter(c => c !== o); }
+    clone() {
+      const g = new global.THREE.Group();
+      g.children = this.children.map(c => c.clone ? c.clone() : c);
+      return g;
+    }
+    traverse(fn) {
+      fn(this);
+      this.children.forEach(c => { if (c && c.traverse) c.traverse(fn); else fn(c); });
+    }
+  },
+  MeshStandardMaterial: class { constructor(opts = {}) { Object.assign(this, opts); this.emissive = { setHex() {} }; } dispose() {} },
+  MeshBasicMaterial: class { constructor(opts = {}) { Object.assign(this, opts); } dispose() {} },
+  Mesh: class {
+    constructor(geo, mat) {
+      this.geometry = geo;
+      this.material = mat;
+      this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; }, copy(p) { Object.assign(this, p); }, clone() { return { ...this }; } };
+      this.rotation = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; }, copy(r) { Object.assign(this, r); }, clone() { return { ...this }; } };
+      this.scale = { x: 1, y: 1, z: 1, set(x, y, z) { this.x = x; this.y = y; this.z = z; }, copy(s) { Object.assign(this, s); }, clone() { return { ...this }; } };
+      this.quaternion = { x: 0, y: 0, z: 0, w: 1, copy(q) { Object.assign(this, q); }, clone() { return { ...this }; } };
+      this.children = [];
+      this.visible = true;
+    }
+    add(o) { if (o) this.children.push(o); }
+    remove(o) { this.children = this.children.filter(c => c !== o); }
+    clone() {
+      const m = new global.THREE.Mesh(this.geometry, this.material);
+      m.position.copy(this.position);
+      m.rotation.copy(this.rotation);
+      m.scale.copy(this.scale);
+      m.visible = this.visible;
+      return m;
+    }
+    traverse(fn) {
+      fn(this);
+      this.children.forEach(c => { if (c && c.traverse) c.traverse(fn); else fn(c); });
+    }
+  },
   CylinderGeometry: class { rotateX() {} dispose() {} },
   ConeGeometry: class { rotateX() {} dispose() {} },
   BoxGeometry: class { rotateX() {} dispose() {} },
@@ -74,8 +123,10 @@ global.THREE = {
   BufferGeometry: class { setAttribute() {} rotateX() {} dispose() {} },
   BufferAttribute: class {},
   PointsMaterial: class { dispose() {} },
-  Points: class {},
-  FogExp2: class {}
+  Points: class { constructor() { this.visible = true; } },
+  FogExp2: class {},
+  BackSide: 2,
+  DoubleSide: 2
 };
 
 // Load modular scripts

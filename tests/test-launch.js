@@ -42,4 +42,34 @@ describe("4. Interplanetary Launch Engine & Planet Arrival Scenes (LaunchSequenc
     Assert.equal(launch.renderer, null, "Renderer must be null after destroy()");
   });
 
+  it("4.5 Should cleanly cancel timers and RAF when destroyed", () => {
+    const launch = new LaunchSequence();
+    launch.initScene("canvas-container-launch", "jupiter");
+    launch.startLaunchSequence();
+    Assert.isTrue(launch.timeouts.length > 0, "Timeouts should be scheduled");
+
+    launch.destroy();
+    Assert.equal(launch.timeouts.length, 0, "All timeouts should be cleared on destroy");
+    Assert.equal(launch.animationId, null, "animationId should be null after destroy");
+  });
+
+  it("4.6 Should record destination visited exactly once per flight", () => {
+    const launch = new LaunchSequence();
+    launch.initScene("canvas-container-launch", "mars");
+    launch.currentStage = "arrival";
+    launch.timelineElapsed = 3.0; // trigger completion
+
+    let completeCount = 0;
+    launch.onCompleteCallback = () => { completeCount++; };
+    launch.updateTimeline(0.1);
+
+    Assert.equal(launch.hasRecordedVisit, true, "Visit should be recorded");
+    Assert.equal(completeCount, 1, "Completion callback should be called once");
+
+    // Second update should NOT duplicate callback
+    launch.updateTimeline(0.1);
+    Assert.equal(completeCount, 1, "Completion callback should not repeat");
+    launch.destroy();
+  });
+
 });

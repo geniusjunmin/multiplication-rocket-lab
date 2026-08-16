@@ -5,6 +5,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   console.log("Multiplication Rocket Lab v3.0.0 Product-Grade Initialized!");
 
+  initDevMode();
   if (window.i18n) window.i18n.updateDOM();
   if (window.game) window.game.init();
 
@@ -25,6 +26,21 @@ document.addEventListener("DOMContentLoaded", () => {
   bindProfileEvents();
   bindAudioInitListener();
 });
+
+function initDevMode() {
+  const isDev = (typeof window !== "undefined" && (
+    (window.location && window.location.search && (window.location.search.includes("dev=1") || window.location.search.includes("dev=true"))) ||
+    window.DEV_MODE === true
+  ));
+
+  if (isDev) {
+    document.body.classList.add("dev-mode");
+    document.querySelectorAll(".dev-btn-shortcut").forEach(btn => btn.classList.remove("hidden"));
+  } else {
+    document.body.classList.remove("dev-mode");
+    document.querySelectorAll(".dev-btn-shortcut").forEach(btn => btn.classList.add("hidden"));
+  }
+}
 
 function bindGlobalNavEvents() {
   document.getElementById("btn-home")?.addEventListener("click", () => {
@@ -230,8 +246,14 @@ function bindQuizInputEvents() {
   document.getElementById("btn-dev-fill-fuel")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playUnlock();
     if (window.game) {
+      const prev = window.game.fuelPercentage;
       window.game.fuelPercentage = 100;
-      if (window.uiManager) window.uiManager.updateFuelGauge(100);
+      if (window.uiManager) {
+        window.uiManager.animateFuelIncrease(prev, 100, 5);
+      }
+      if (window.rocketBuilder) {
+        window.rocketBuilder.setFuelGlowLevel(100);
+      }
     }
   });
 
@@ -329,10 +351,13 @@ function bindAssemblyEvents() {
     unlocked.forEach(partId => window.storageManager.installPart(partId));
     
     window.rocketBuilder.updateInstalledParts(unlocked);
+    if (window.uiManager) window.uiManager.renderAssemblyDock();
     if (window.audioManager) window.audioManager.playSnap();
 
     if (unlocked.length >= CONFIG.PART_COUNT) {
-      document.getElementById("modal-rocket-complete")?.classList.remove("hidden");
+      if (window.uiManager) {
+        window.uiManager.triggerAssemblyCelebration();
+      }
     }
   });
 

@@ -62,7 +62,7 @@
       </div>
 
       <div class="header-controls">
-        <button id="btn-dev-skip-quiz" class="btn-chip-sm dev-btn-shortcut" style="background: #f59e0b; color: #000; font-weight: 900; border: none;">⚡ 快速完成答题</button>
+        <button id="btn-dev-skip-quiz" class="btn-chip-sm dev-btn-shortcut hidden" style="background: #f59e0b; color: #000; font-weight: 900; border: none;" data-i18n="devSkipQuiz">⚡ 快速完成答题 (测试)</button>
         <button id="btn-lang-toggle" class="btn-chip-sm" aria-label="Language Toggle">🇬🇧 EN</button>
         <button id="btn-sound-toggle" class="btn-icon" aria-label="Sound Toggle"><span id="sound-icon">🔊</span></button>
         <button id="btn-fullscreen" class="btn-icon" aria-label="Fullscreen Toggle">⛶</button>
@@ -389,6 +389,13 @@
 
           <div class="assembly-canvas-box card">
             <div id="canvas-container-assembly" class="canvas-wrapper"></div>
+            <!-- Assembly Celebration Banner Overlay -->
+            <div id="assembly-celebration-banner" class="assembly-complete-banner hidden">
+              <div class="celebration-content">
+                <span class="celebration-icon">🚀</span>
+                <h3 data-i18n="assemblyCompleteCelebration">🚀 ROCKET ASSEMBLY COMPLETE!</h3>
+              </div>
+            </div>
           </div>
 
           <div class="assembly-dock-hud card">
@@ -405,62 +412,75 @@
 
       <!-- 6. FUEL SCREEN -->
       <section id="screen-fuel" class="screen screen-fuel hidden">
-        <div class="fuel-layout card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 data-i18n="fuelTitle">⛽ Math Fuel Chamber</h2>
-            <button id="btn-dev-fill-fuel" class="btn-chip-sm" style="background: #f59e0b; color: #000; font-weight: 900; border: none;">⚡ 快速加满 100% 燃料</button>
-          </div>
-          <p class="fuel-subtitle" data-i18n="fuelSubtitle">Each correct answer adds +10% fuel! Maintain a streak for +5% bonus!</p>
-
-          <div class="fuel-gauge-container">
-            <div class="fuel-gauge-bar">
-              <div id="fuel-fill-level" class="fuel-fill" style="height: 0%;"></div>
+        <div class="fuel-layout-container">
+          
+          <!-- Left: 3D Rocket Fuel Vessel -->
+          <div class="fuel-left-panel card">
+            <div class="fuel-3d-header">
+              <h2 data-i18n="fuelTitle">⛽ Math Fuel Chamber</h2>
+              <button id="btn-dev-fill-fuel" class="btn-chip-sm dev-btn-shortcut hidden" style="background: #f59e0b; color: #000; font-weight: 900; border: none;" data-i18n="devFillFuel">⚡ 快速加满 100% 燃料 (测试)</button>
             </div>
-            <div class="fuel-status">
-              <div id="fuel-percentage" class="fuel-percentage-text">0%</div>
-              <div id="fuel-status-label" class="fuel-status-label" data-i18n="fuelStatusEmpty">Fuel low. Waiting for fuel loading...</div>
-            </div>
-          </div>
-
-          <!-- Full Fuel Alert Banner -->
-          <div id="fuel-full-alert-banner" class="fuel-full-alert hidden">
-            🎉 燃料已 100% 加满！火箭发射系统就绪！点击下方【🚀 准备发射火箭！】点火出航！
-          </div>
-
-          <div class="fuel-quiz-box">
-            <div class="formula-display">
-              <span id="fuel-factor-a" class="factor">6</span>
-              <span class="operator">×</span>
-              <span id="fuel-factor-b" class="factor">7</span>
-              <span class="operator">=</span>
-              <span id="fuel-answer-box" class="answer-box-placeholder">?</span>
+            <div id="canvas-container-fuel" class="canvas-wrapper fuel-3d-wrapper"></div>
+            
+            <div class="fuel-gauge-container">
+              <div class="fuel-gauge-bar">
+                <div id="fuel-fill-level" class="fuel-fill" style="height: 0%;"></div>
+              </div>
+              <div class="fuel-status">
+                <div id="fuel-percentage" class="fuel-percentage-text">0%</div>
+                <div id="fuel-status-label" class="fuel-status-label" data-i18n="fuelStatusEmpty">Fuel low. Waiting for fuel loading...</div>
+              </div>
             </div>
           </div>
 
-          <div id="fuel-feedback" class="quiz-feedback hidden"></div>
+          <!-- Right: Fuel Quiz & Keypad -->
+          <div class="fuel-right-panel card">
+            <p class="fuel-subtitle" data-i18n="fuelSubtitle">Each correct answer adds +10% fuel! Maintain a streak for +5% bonus!</p>
 
-          <div id="fuel-keypad" class="quiz-keypad-wrapper">
-            <div class="keypad-grid sm">
-              <button class="fuel-key" data-key="1">1</button>
-              <button class="fuel-key" data-key="2">2</button>
-              <button class="fuel-key" data-key="3">3</button>
-              <button class="fuel-key" data-key="4">4</button>
-              <button class="fuel-key" data-key="5">5</button>
-              <button class="fuel-key" data-key="6">6</button>
-              <button class="fuel-key" data-key="7">7</button>
-              <button class="fuel-key" data-key="8">8</button>
-              <button class="fuel-key" data-key="9">9</button>
-              <button class="fuel-key key-action" data-key="clear">C</button>
-              <button class="fuel-key" data-key="0">0</button>
-              <button class="fuel-key key-action" data-key="submit">↵</button>
+            <!-- Full Fuel Alert Banner -->
+            <div id="fuel-full-alert-banner" class="fuel-full-alert hidden" data-i18n="fuelFullAlert">
+              🎉 燃料已 100% 加满！火箭发射系统就绪！点击下方【🚀 准备发射火箭！】点火出航！
+            </div>
+
+            <!-- Floating Energy Badge Indicator -->
+            <div id="fuel-floating-bonus" class="fuel-floating-bonus hidden"></div>
+
+            <div class="fuel-quiz-box">
+              <div class="formula-display">
+                <span id="fuel-factor-a" class="factor">6</span>
+                <span class="operator">×</span>
+                <span id="fuel-factor-b" class="factor">7</span>
+                <span class="operator">=</span>
+                <span id="fuel-answer-box" class="answer-box-placeholder">?</span>
+              </div>
+            </div>
+
+            <div id="fuel-feedback" class="quiz-feedback hidden"></div>
+
+            <div id="fuel-keypad" class="quiz-keypad-wrapper">
+              <div class="keypad-grid sm">
+                <button class="fuel-key" data-key="1">1</button>
+                <button class="fuel-key" data-key="2">2</button>
+                <button class="fuel-key" data-key="3">3</button>
+                <button class="fuel-key" data-key="4">4</button>
+                <button class="fuel-key" data-key="5">5</button>
+                <button class="fuel-key" data-key="6">6</button>
+                <button class="fuel-key" data-key="7">7</button>
+                <button class="fuel-key" data-key="8">8</button>
+                <button class="fuel-key" data-key="9">9</button>
+                <button class="fuel-key key-action" data-key="clear">C</button>
+                <button class="fuel-key" data-key="0">0</button>
+                <button class="fuel-key key-action" data-key="submit">↵</button>
+              </div>
+            </div>
+
+            <div class="fuel-launch-trigger">
+              <button id="btn-ready-to-launch" class="btn btn-launch btn-large disabled" disabled data-i18n="btnReadyLaunch">
+                🚀 准备发射火箭！
+              </button>
             </div>
           </div>
 
-          <div class="fuel-launch-trigger">
-            <button id="btn-ready-to-launch" class="btn btn-launch btn-large disabled" disabled data-i18n="btnReadyLaunch">
-              🚀 准备发射火箭！
-            </button>
-          </div>
         </div>
       </section>
 
@@ -484,8 +504,15 @@
             <button id="btn-skip-countdown" class="btn btn-chip-sm" data-i18n="btnSkipCountdown">⏩ Skip Countdown</button>
           </div>
 
+          <!-- Cinematic Flight Stage Milestone Banners -->
+          <div id="launch-stage-banner" class="stage-milestone-banner hidden">
+            <h2 id="stage-banner-text">🌍 ORBIT ACHIEVED</h2>
+          </div>
+
           <div id="space-victory-banner" class="victory-banner hidden">
-            <h2 data-i18n="spaceVictoryTitle">MISSION SUCCESS! ARRIVED AT DESTINATION! 🌌</h2>
+            <div class="victory-icon-burst">✨ ⭐ 🪐 ⭐ ✨</div>
+            <h2 id="victory-title-text" data-i18n="spaceVictoryTitle">MISSION SUCCESS! ARRIVED AT DESTINATION! 🌌</h2>
+            <div id="victory-badge-notice" class="victory-badge-notice hidden" data-i18n="newPassportStamp">🎉 New Space Passport Stamp Unlocked!</div>
             <button id="btn-view-results" class="btn btn-primary btn-large btn-pulse" data-i18n="btnViewResults">
               📊 View Mission Summary
             </button>
