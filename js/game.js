@@ -89,11 +89,22 @@ class MultiplicationGame {
     if (window.mathEngine) window.mathEngine.setChallengeConfig(preset);
   }
 
+  isLaunchFamilyState(state) {
+    return [
+      GAME_STATES.LAUNCH_READY,
+      GAME_STATES.COUNTDOWN,
+      GAME_STATES.LAUNCHING,
+      GAME_STATES.SPACE,
+      GAME_STATES.MISSION_COMPLETE
+    ].includes(state);
+  }
+
   setGameState(nextState) {
     if (this.currentState === nextState) return;
 
-    this.onExitState(this.currentState);
-    this.previousState = this.currentState;
+    const prevState = this.currentState;
+    this.onExitState(prevState, nextState);
+    this.previousState = prevState;
     this.currentState = nextState;
     this.onEnterState(nextState);
 
@@ -102,26 +113,20 @@ class MultiplicationGame {
     }
   }
 
-  onExitState(state) {
+  onExitState(oldState, newState) {
     this.stopHardModeTimer();
     this.isAnswerLocked = false;
 
     // Strict resource disposal and leak-free teardown across state transitions
-    if (state === GAME_STATES.ASSEMBLY) {
+    if (oldState === GAME_STATES.ASSEMBLY && newState !== GAME_STATES.ASSEMBLY) {
       if (window.rocketBuilder) {
         window.rocketBuilder.destroy();
       }
-    } else if (state === GAME_STATES.FUEL_CHALLENGE) {
+    } else if (oldState === GAME_STATES.FUEL_CHALLENGE && newState !== GAME_STATES.FUEL_CHALLENGE) {
       if (window.rocketBuilder) {
         window.rocketBuilder.destroy();
       }
-    } else if ([
-      GAME_STATES.LAUNCH_READY,
-      GAME_STATES.COUNTDOWN,
-      GAME_STATES.LAUNCHING,
-      GAME_STATES.SPACE,
-      GAME_STATES.MISSION_COMPLETE
-    ].includes(state)) {
+    } else if (this.isLaunchFamilyState(oldState) && !this.isLaunchFamilyState(newState)) {
       if (window.launchSequence) {
         window.launchSequence.destroy();
       }

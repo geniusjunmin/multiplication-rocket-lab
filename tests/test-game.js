@@ -92,4 +92,26 @@ testRunner.describe("5. Game Flow & State Machine Tests", () => {
     Assert.equal(game.currentState, GAME_STATES.HOME, "State transition with teardown should complete cleanly");
   });
 
+  testRunner.it("5.8 isLaunchFamilyState should prevent destroying launchSequence when transitioning between launch family states", () => {
+    const game = new MultiplicationGame();
+    Assert.isTrue(game.isLaunchFamilyState(GAME_STATES.LAUNCH_READY), "LAUNCH_READY is in launch family");
+    Assert.isTrue(game.isLaunchFamilyState(GAME_STATES.COUNTDOWN), "COUNTDOWN is in launch family");
+    Assert.isTrue(game.isLaunchFamilyState(GAME_STATES.LAUNCHING), "LAUNCHING is in launch family");
+    Assert.isTrue(game.isLaunchFamilyState(GAME_STATES.SPACE), "SPACE is in launch family");
+    Assert.isTrue(game.isLaunchFamilyState(GAME_STATES.MISSION_COMPLETE), "MISSION_COMPLETE is in launch family");
+    Assert.isFalse(game.isLaunchFamilyState(GAME_STATES.RESULTS), "RESULTS is NOT in launch family");
+
+    // Set up dummy launchSequence
+    let destroyed = false;
+    window.launchSequence = { destroy() { destroyed = true; } };
+
+    // Transition within family: SPACE -> MISSION_COMPLETE
+    game.onExitState(GAME_STATES.SPACE, GAME_STATES.MISSION_COMPLETE);
+    Assert.equal(destroyed, false, "launchSequence must NOT be destroyed when transitioning to MISSION_COMPLETE");
+
+    // Transition outside family: MISSION_COMPLETE -> RESULTS
+    game.onExitState(GAME_STATES.MISSION_COMPLETE, GAME_STATES.RESULTS);
+    Assert.equal(destroyed, true, "launchSequence must be destroyed when transitioning out of launch family");
+  });
+
 });

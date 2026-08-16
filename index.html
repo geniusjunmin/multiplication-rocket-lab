@@ -63,6 +63,10 @@
 
       <div class="header-controls">
         <button id="btn-dev-skip-quiz" class="btn-chip-sm dev-btn-shortcut hidden" style="background: #f59e0b; color: #000; font-weight: 900; border: none;" data-i18n="devSkipQuiz">⚡ 快速完成答题 (测试)</button>
+        <button id="btn-dev-moon-landing" class="btn-chip-sm dev-btn-shortcut hidden" style="background: #38bdf8; color: #000; font-weight: 900; border: none;">🌙 Dev: Moon</button>
+        <button id="btn-dev-mars-landing" class="btn-chip-sm dev-btn-shortcut hidden" style="background: #ef4444; color: #fff; font-weight: 900; border: none;">🔴 Dev: Mars</button>
+        <button id="btn-dev-jupiter-flyby" class="btn-chip-sm dev-btn-shortcut hidden" style="background: #f59e0b; color: #000; font-weight: 900; border: none;">🪐 Dev: Jupiter</button>
+        <button id="btn-dev-saturn-orbit" class="btn-chip-sm dev-btn-shortcut hidden" style="background: #eab308; color: #000; font-weight: 900; border: none;">🪐 Dev: Saturn</button>
         <button id="btn-lang-toggle" class="btn-chip-sm" aria-label="Language Toggle">🇬🇧 EN</button>
         <button id="btn-sound-toggle" class="btn-icon" aria-label="Sound Toggle"><span id="sound-icon">🔊</span></button>
         <button id="btn-fullscreen" class="btn-icon" aria-label="Fullscreen Toggle">⛶</button>
@@ -598,6 +602,8 @@
       <!-- 7. LAUNCH SCREEN -->
       <section id="screen-launch" class="screen screen-launch hidden">
         <div id="canvas-container-launch" class="launch-canvas-wrapper"></div>
+        <div id="landing-transition-flash" class="landing-flash-overlay hidden"></div>
+        <div id="landing-debug-hud" class="landing-debug-overlay hidden"></div>
 
         <div class="launch-hud-overlay">
           <div id="launch-checklist" class="launch-card card">
@@ -629,9 +635,14 @@
             <div class="victory-icon-burst">✨ ⭐ 🪐 ⭐ ✨</div>
             <h2 id="victory-title-text" data-i18n="spaceVictoryTitle">MISSION SUCCESS! ARRIVED AT DESTINATION! 🌌</h2>
             <div id="victory-badge-notice" class="victory-badge-notice hidden" data-i18n="newPassportStamp">🎉 New Space Passport Stamp Unlocked!</div>
-            <button id="btn-view-results" class="btn btn-primary btn-large btn-pulse" data-i18n="btnViewResults">
-              📊 View Mission Summary
-            </button>
+            <div class="victory-actions-grid">
+              <button id="btn-view-results" class="btn btn-primary btn-large btn-pulse" data-i18n="btnViewResults">
+                📊 查看任务总结 / View Summary
+              </button>
+              <button id="btn-replay-landing" class="btn btn-secondary btn-large" data-i18n="btnReplayLanding">
+                🔄 再看一次降落 / Replay Landing
+              </button>
+            </div>
           </div>
         </div>
       </section>

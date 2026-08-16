@@ -56,6 +56,39 @@ function bindGlobalNavEvents() {
     }
   });
 
+  // Developer Landing & Mission Stage Jump Shortcuts
+  document.getElementById("btn-dev-moon-landing")?.addEventListener("click", () => {
+    if (window.game && window.launchSequence) {
+      window.storageManager?.set("selectedDestination", "moon");
+      window.game.setGameState(GAME_STATES.LAUNCH_READY);
+      window.launchSequence.jumpToStage("approach", "moon");
+    }
+  });
+
+  document.getElementById("btn-dev-mars-landing")?.addEventListener("click", () => {
+    if (window.game && window.launchSequence) {
+      window.storageManager?.set("selectedDestination", "mars");
+      window.game.setGameState(GAME_STATES.LAUNCH_READY);
+      window.launchSequence.jumpToStage("approach", "mars");
+    }
+  });
+
+  document.getElementById("btn-dev-jupiter-flyby")?.addEventListener("click", () => {
+    if (window.game && window.launchSequence) {
+      window.storageManager?.set("selectedDestination", "jupiter");
+      window.game.setGameState(GAME_STATES.LAUNCH_READY);
+      window.launchSequence.jumpToStage("approach", "jupiter");
+    }
+  });
+
+  document.getElementById("btn-dev-saturn-orbit")?.addEventListener("click", () => {
+    if (window.game && window.launchSequence) {
+      window.storageManager?.set("selectedDestination", "saturn");
+      window.game.setGameState(GAME_STATES.LAUNCH_READY);
+      window.launchSequence.jumpToStage("approach", "saturn");
+    }
+  });
+
   document.getElementById("btn-lang-toggle")?.addEventListener("click", () => {
     if (window.i18n) {
       const next = window.i18n.currentLanguage === "en" ? "zh" : "en";
@@ -452,6 +485,13 @@ function bindLaunchEvents() {
 
   document.getElementById("btn-view-results")?.addEventListener("click", () => {
     showResultsScreen();
+  });
+
+  document.getElementById("btn-replay-landing")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playClick();
+    if (window.launchSequence) {
+      window.launchSequence.replayLanding();
+    }
   });
 }
 
