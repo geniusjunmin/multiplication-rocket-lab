@@ -1,6 +1,7 @@
 /**
  * Multiplication Rocket Lab - State Machine & Flow Manager (js/game.js)
- * Supports Version 3.0.0 Free Challenge Presets, Mixed Operations, Prominent Wrong Hints, Mandatory Assembly Locks & Dev Shortcuts
+ * Supports Version 3.0.0 Free Challenge Presets, Mixed Operations, Prominent Wrong Hints,
+ * Mandatory Assembly Locks, Dynamic Lifecycle Cleanup & Mission Completion Alignment
  */
 const GAME_STATES = {
   HOME: "home",
@@ -15,6 +16,7 @@ const GAME_STATES = {
   COUNTDOWN: "countdown",
   LAUNCHING: "launching",
   SPACE: "space",
+  MISSION_COMPLETE: "missionComplete",
   RESULTS: "results",
   REPORT: "report",
   PAUSED: "paused"
@@ -61,10 +63,11 @@ class MultiplicationGame {
       [GAME_STATES.ASSEMBLY]: [GAME_STATES.HOME, GAME_STATES.QUESTION, GAME_STATES.FUEL_CHALLENGE, GAME_STATES.ROCKET_COMPLETE, GAME_STATES.PAUSED],
       [GAME_STATES.ROCKET_COMPLETE]: [GAME_STATES.ASSEMBLY, GAME_STATES.FUEL_CHALLENGE],
       [GAME_STATES.FUEL_CHALLENGE]: [GAME_STATES.HOME, GAME_STATES.ASSEMBLY, GAME_STATES.LAUNCH_READY, GAME_STATES.PAUSED],
-      [GAME_STATES.LAUNCH_READY]: [GAME_STATES.HOME, GAME_STATES.COUNTDOWN, GAME_STATES.LAUNCHING, GAME_STATES.PAUSED],
-      [GAME_STATES.COUNTDOWN]: [GAME_STATES.LAUNCHING, GAME_STATES.PAUSED],
-      [GAME_STATES.LAUNCHING]: [GAME_STATES.SPACE, GAME_STATES.PAUSED],
-      [GAME_STATES.SPACE]: [GAME_STATES.RESULTS, GAME_STATES.HOME],
+      [GAME_STATES.LAUNCH_READY]: [GAME_STATES.HOME, GAME_STATES.COUNTDOWN, GAME_STATES.LAUNCHING, GAME_STATES.SPACE, GAME_STATES.MISSION_COMPLETE, GAME_STATES.PAUSED],
+      [GAME_STATES.COUNTDOWN]: [GAME_STATES.LAUNCHING, GAME_STATES.SPACE, GAME_STATES.MISSION_COMPLETE, GAME_STATES.PAUSED],
+      [GAME_STATES.LAUNCHING]: [GAME_STATES.SPACE, GAME_STATES.MISSION_COMPLETE, GAME_STATES.PAUSED],
+      [GAME_STATES.SPACE]: [GAME_STATES.MISSION_COMPLETE, GAME_STATES.RESULTS, GAME_STATES.HOME],
+      [GAME_STATES.MISSION_COMPLETE]: [GAME_STATES.RESULTS, GAME_STATES.HOME, GAME_STATES.QUESTION, GAME_STATES.BLUEPRINT],
       [GAME_STATES.RESULTS]: [GAME_STATES.HOME, GAME_STATES.QUESTION, GAME_STATES.BLUEPRINT, GAME_STATES.REPORT],
       [GAME_STATES.REPORT]: [GAME_STATES.HOME, GAME_STATES.SETTINGS, GAME_STATES.QUESTION],
       [GAME_STATES.PAUSED]: Object.values(GAME_STATES)
@@ -102,6 +105,27 @@ class MultiplicationGame {
   onExitState(state) {
     this.stopHardModeTimer();
     this.isAnswerLocked = false;
+
+    // Strict resource disposal and leak-free teardown across state transitions
+    if (state === GAME_STATES.ASSEMBLY) {
+      if (window.rocketBuilder) {
+        window.rocketBuilder.destroy();
+      }
+    } else if (state === GAME_STATES.FUEL_CHALLENGE) {
+      if (window.rocketBuilder) {
+        window.rocketBuilder.destroy();
+      }
+    } else if ([
+      GAME_STATES.LAUNCH_READY,
+      GAME_STATES.COUNTDOWN,
+      GAME_STATES.LAUNCHING,
+      GAME_STATES.SPACE,
+      GAME_STATES.MISSION_COMPLETE
+    ].includes(state)) {
+      if (window.launchSequence) {
+        window.launchSequence.destroy();
+      }
+    }
   }
 
   onEnterState(state) {
@@ -164,11 +188,9 @@ class MultiplicationGame {
         }
         break;
       case GAME_STATES.COUNTDOWN:
-        break;
       case GAME_STATES.LAUNCHING:
-        break;
       case GAME_STATES.SPACE:
-        break;
+      case GAME_STATES.MISSION_COMPLETE:
       case GAME_STATES.PAUSED:
         break;
     }

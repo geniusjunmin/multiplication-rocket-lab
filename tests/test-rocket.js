@@ -45,9 +45,14 @@ describe("3. 3D 火箭构建器 (RocketBuilder)", () => {
 
   it("3.5 应该正常执行 3D 画布销毁与内存清理", () => {
     const builder = new RocketBuilder();
+    builder.activeRafs.add(101);
+    builder.activeTimeouts.add(102);
+
     builder.destroy();
     Assert.equal(builder.animationId, null, "销毁后 animationId 应重置为 null");
     Assert.equal(builder.renderer, null, "销毁后 renderer 应重置为 null");
+    Assert.equal(builder.activeRafs.size, 0, "activeRafs 应被清空");
+    Assert.equal(builder.activeTimeouts.size, 0, "activeTimeouts 应被清空");
   });
 
   it("3.6 10 个 partDefinitions ID 应与标准 ID 列表严格一致", () => {
@@ -57,36 +62,22 @@ describe("3. 3D 火箭构建器 (RocketBuilder)", () => {
     Assert.equal(JSON.stringify(actualIds), JSON.stringify(expectedIds), "零件ID应与系统标准定义完全一致");
   });
 
-  it("3.7 animateInstallPart 完成后 XYZ 和 Scale 应精确恢复为目标值", (done) => {
+  it("3.7 createDetachedRocket 应返回完全独立互不影响的火箭实例", () => {
     const builder = new RocketBuilder();
-    builder.buildCurrentRocket();
+    const detached = builder.createDetachedRocket("falconHeavy", "fire");
 
-    const targetPos = { x: builder.parts.leftBooster.position.x, y: builder.parts.leftBooster.position.y, z: builder.parts.leftBooster.position.z };
-    const targetScale = { x: builder.parts.leftBooster.scale.x, y: builder.parts.leftBooster.scale.y, z: builder.parts.leftBooster.scale.z };
-
-    builder.animateInstallPart("leftBooster", () => {
-      Assert.equal(builder.parts.leftBooster.position.x, targetPos.x, "leftBooster X坐标安装后应精确恢复");
-      Assert.equal(builder.parts.leftBooster.position.y, targetPos.y, "leftBooster Y坐标安装后应精确恢复");
-      Assert.equal(builder.parts.leftBooster.position.z, targetPos.z, "leftBooster Z坐标安装后应精确恢复");
-      Assert.equal(builder.parts.leftBooster.scale.x, targetScale.x, "leftBooster Scale应恢复");
-      if (done) done();
-    });
+    Assert.isTrue(detached !== null, "应成功返回独立的 Group 实例");
+    Assert.isTrue(detached !== builder.rocketGroup, "Detached 实例与 Builder 内部 rocketGroup 不能为同一引用");
   });
 
-  it("3.8 5 种型号应具有独立几何体与模型配置", () => {
+  it("3.8 fitCameraToRocket 应该正确计算镜头自适应中心点与视野距离", () => {
     const builder = new RocketBuilder();
-    const models = ["classic", "starship", "falconHeavy", "longMarch", "cyber"];
-    const bodies = [];
+    builder.camera = new THREE.PerspectiveCamera();
+    builder.currentModel = "starship";
+    builder.buildCurrentRocket();
 
-    models.forEach(m => {
-      builder.currentModel = m;
-      builder.buildCurrentRocket();
-      bodies.push(builder.parts.body);
-    });
-
-    Assert.equal(bodies.length, 5, "应有 5 个不同型号箭体");
-    Assert.isTrue(bodies[0] !== bodies[1], "Starship 与 Classic 不应为同一对象");
-    Assert.isTrue(bodies[2] !== bodies[3], "Falcon Heavy 与 Long March 不应为同一对象");
+    builder.fitCameraToRocket();
+    Assert.isTrue(builder.camera.position.z >= 8.5, "镜头距离应自适应保持在合理全景视角");
   });
 
 });

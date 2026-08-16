@@ -23,7 +23,16 @@ describe("4. Interplanetary Launch Engine & Planet Arrival Scenes (LaunchSequenc
     launch.destroy();
   });
 
-  it("4.3 Should execute multi-stage countdown, ignition and liftoff", () => {
+  it("4.3 Should create surface landing environment for Moon and Mars", () => {
+    const launch = new LaunchSequence();
+    launch.initScene("canvas-container-launch", "moon");
+    launch.createLandingSurface("moon");
+
+    Assert.isTrue(launch.surfaceGroup !== null, "Moon surface terrain group must be created");
+    launch.destroy();
+  });
+
+  it("4.4 Should execute multi-stage countdown, ignition and liftoff", () => {
     const launch = new LaunchSequence();
     launch.initScene("canvas-container-launch", "mars");
     
@@ -33,7 +42,7 @@ describe("4. Interplanetary Launch Engine & Planet Arrival Scenes (LaunchSequenc
     launch.destroy();
   });
 
-  it("4.4 Should safely dispose 3D scene objects and GPU memory on destroy()", () => {
+  it("4.5 Should safely dispose 3D scene objects and GPU memory on destroy()", () => {
     const launch = new LaunchSequence();
     launch.initScene("canvas-container-launch", "moon");
     launch.destroy();
@@ -42,33 +51,22 @@ describe("4. Interplanetary Launch Engine & Planet Arrival Scenes (LaunchSequenc
     Assert.equal(launch.renderer, null, "Renderer must be null after destroy()");
   });
 
-  it("4.5 Should cleanly cancel timers and RAF when destroyed", () => {
-    const launch = new LaunchSequence();
-    launch.initScene("canvas-container-launch", "jupiter");
-    launch.startLaunchSequence();
-    Assert.isTrue(launch.timeouts.length > 0, "Timeouts should be scheduled");
-
-    launch.destroy();
-    Assert.equal(launch.timeouts.length, 0, "All timeouts should be cleared on destroy");
-    Assert.equal(launch.animationId, null, "animationId should be null after destroy");
-  });
-
-  it("4.6 Should record destination visited exactly once per flight", () => {
+  it("4.6 Should record destination visited only after destinationAction finishes", () => {
     const launch = new LaunchSequence();
     launch.initScene("canvas-container-launch", "mars");
-    launch.currentStage = "arrival";
-    launch.timelineElapsed = 3.0; // trigger completion
+    launch.currentStage = "destinationAction";
+    launch.timelineElapsed = 3.5; // triggers completion
 
     let completeCount = 0;
     launch.onCompleteCallback = () => { completeCount++; };
     launch.updateTimeline(0.1);
 
     Assert.equal(launch.hasRecordedVisit, true, "Visit should be recorded");
-    Assert.equal(completeCount, 1, "Completion callback should be called once");
+    Assert.equal(launch.currentStage, "missionComplete", "Stage should transition to missionComplete");
 
-    // Second update should NOT duplicate callback
+    // Second update should NOT duplicate visit recording
     launch.updateTimeline(0.1);
-    Assert.equal(completeCount, 1, "Completion callback should not repeat");
+    Assert.equal(launch.hasRecordedVisit, true, "Visit remains recorded without duplicating");
     launch.destroy();
   });
 

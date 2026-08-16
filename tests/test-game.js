@@ -82,4 +82,14 @@ testRunner.describe("5. Game Flow & State Machine Tests", () => {
     Assert.equal(game.currentState, GAME_STATES.FUEL_CHALLENGE, "State should transition to FUEL_CHALLENGE once all 10 parts are installed");
   });
 
+  testRunner.it("5.7 Should support MISSION_COMPLETE state and clean lifecycle exit", () => {
+    const game = new MultiplicationGame();
+    game.init();
+    Assert.isTrue(GAME_STATES.MISSION_COMPLETE !== undefined, "GAME_STATES.MISSION_COMPLETE must exist");
+
+    game.setGameState(GAME_STATES.ASSEMBLY);
+    game.setGameState(GAME_STATES.HOME);
+    Assert.equal(game.currentState, GAME_STATES.HOME, "State transition with teardown should complete cleanly");
+  });
+
 });

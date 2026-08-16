@@ -296,7 +296,7 @@ function bindQuizInputEvents() {
       }
       if (modalComplete && !modalComplete.classList.contains("hidden")) {
         e.preventDefault();
-        document.getElementById("btn-go-fuel")?.click();
+        document.getElementById("btn-complete-go-fuel")?.click();
         return;
       }
       if (modalReport && !modalReport.classList.contains("hidden")) {
@@ -345,20 +345,40 @@ function bindQuizInputEvents() {
 }
 
 function bindAssemblyEvents() {
+  // Sequential Auto-Assembly with Skip Support
   document.getElementById("btn-install-all")?.addEventListener("click", () => {
     if (!window.storageManager || !window.rocketBuilder) return;
     const unlocked = window.storageManager.get("unlockedParts") || [];
-    unlocked.forEach(partId => window.storageManager.installPart(partId));
-    
-    window.rocketBuilder.updateInstalledParts(unlocked);
-    if (window.uiManager) window.uiManager.renderAssemblyDock();
-    if (window.audioManager) window.audioManager.playSnap();
+    const installed = window.storageManager.get("installedParts") || [];
+    const partsToInstall = unlocked.filter(p => !installed.includes(p));
 
-    if (unlocked.length >= CONFIG.PART_COUNT) {
-      if (window.uiManager) {
-        window.uiManager.triggerAssemblyCelebration();
-      }
+    if (partsToInstall.length === 0) return;
+
+    if (window.rocketBuilder.isSequentialAssembling) {
+      // Skip: instantly fit all remaining parts
+      partsToInstall.forEach(partId => window.storageManager.installPart(partId));
+      window.rocketBuilder.isSequentialAssembling = false;
+      window.rocketBuilder.updateInstalledParts(unlocked);
+      if (window.uiManager) window.uiManager.renderAssemblyDock();
+      return;
     }
+
+    window.rocketBuilder.assembleSequentially(
+      partsToInstall,
+      (partId) => {
+        window.storageManager.installPart(partId);
+        if (window.uiManager) window.uiManager.renderAssemblyDock();
+      },
+      () => {
+        if (window.uiManager) {
+          window.uiManager.renderAssemblyDock();
+          const finalInstalled = window.storageManager.get("installedParts") || [];
+          if (finalInstalled.length >= CONFIG.PART_COUNT) {
+            window.uiManager.triggerAssemblyCelebration();
+          }
+        }
+      }
+    );
   });
 
   document.getElementById("select-rocket-model")?.addEventListener("change", (e) => {
@@ -372,9 +392,8 @@ function bindAssemblyEvents() {
   });
 
   document.getElementById("btn-reset-assembly-cam")?.addEventListener("click", () => {
-    if (window.rocketBuilder && window.rocketBuilder.camera) {
-      window.rocketBuilder.camera.position.set(0, 1.5, 9);
-      if (window.rocketBuilder.controls) window.rocketBuilder.controls.reset();
+    if (window.rocketBuilder) {
+      window.rocketBuilder.fitCameraToRocket();
     }
   });
 
@@ -386,6 +405,13 @@ function bindAssemblyEvents() {
   document.getElementById("btn-complete-assembly")?.addEventListener("click", () => {
     document.getElementById("modal-rocket-complete")?.classList.add("hidden");
     if (window.game) window.game.setGameState(GAME_STATES.ASSEMBLY);
+  });
+
+  document.getElementById("btn-complete-go-fuel")?.addEventListener("click", () => {
+    document.getElementById("modal-rocket-complete")?.classList.add("hidden");
+    if (window.game) {
+      window.game.setGameState(GAME_STATES.ASSEMBLY);
+    }
   });
 
   document.getElementById("btn-go-fuel")?.addEventListener("click", () => {
@@ -413,7 +439,7 @@ function bindLaunchEvents() {
     if (window.launchSequence) {
       const destId = window.storageManager ? (window.storageManager.get("selectedDestination") || "moon") : "moon";
       window.launchSequence.startLaunchSequence(() => {
-        console.log(`Mission to ${destId} complete! Rocket in orbit!`);
+        console.log(`Mission to ${destId} complete!`);
       });
     }
   });

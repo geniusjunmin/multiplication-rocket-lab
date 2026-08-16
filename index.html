@@ -373,7 +373,7 @@
                 <select id="select-rocket-model" class="input-select-sm">
                   <option value="classic">🚀 Classic Explorer</option>
                   <option value="starship">🛰️ SpaceX Starship</option>
-                  <option value="falconHeavy" selected>⚡ Falcon Heavy</option>
+                  <option value="falconHeavy">⚡ Falcon Heavy</option>
                   <option value="longMarch">🇨🇳 Long March 5</option>
                   <option value="cyber">🌌 Cyber Starship</option>
                 </select>
@@ -382,7 +382,7 @@
               <label><span data-i18n="rocketThemeLabel">火箭涂装配色:</span>
                 <select id="select-rocket-theme" class="input-select-sm">
                   <option value="explorer">🔵 Classic Explorer</option>
-                  <option value="fire" selected>🔥 Crimson Flame</option>
+                  <option value="fire">🔥 Crimson Flame</option>
                   <option value="forest">🌲 Emerald Forest</option>
                   <option value="lightning">⚡ Lightning Yellow</option>
                   <option value="galaxy">🌌 Deep Galaxy</option>
@@ -559,7 +559,7 @@
             <div class="fuel-quiz-box">
               <div class="formula-display">
                 <span id="fuel-factor-a" class="factor">6</span>
-                <span class="operator">×</span>
+                <span id="fuel-operator" class="operator">×</span>
                 <span id="fuel-factor-b" class="factor">7</span>
                 <span class="operator">=</span>
                 <span id="fuel-answer-box" class="answer-box-placeholder">?</span>
@@ -618,6 +618,11 @@
           <!-- Cinematic Flight Stage Milestone Banners -->
           <div id="launch-stage-banner" class="stage-milestone-banner hidden">
             <h2 id="stage-banner-text">🌍 ORBIT ACHIEVED</h2>
+          </div>
+
+          <!-- Planetary Touchdown Banner -->
+          <div id="touchdown-banner" class="touchdown-banner hidden">
+            <h2 id="touchdown-title-text">🌙 TOUCHDOWN! LUNAR MISSION COMPLETE</h2>
           </div>
 
           <div id="space-victory-banner" class="victory-banner hidden">
@@ -685,7 +690,7 @@
         <h2 data-i18n="modalCompleteTitle">All Rocket Parts Unlocked!</h2>
         <div class="modal-actions">
           <button id="btn-complete-assembly" class="btn btn-secondary btn-large" data-i18n="btnRewardInstall">🔧 3D Assembly Workshop</button>
-          <button id="btn-go-fuel" class="btn btn-primary btn-large btn-pulse" data-i18n="btnGoFuel">⛽ Proceed to Fuel Chamber</button>
+          <button id="btn-complete-go-fuel" class="btn btn-primary btn-large btn-pulse" data-i18n="btnGoFuel">⛽ Proceed to Fuel Chamber</button>
         </div>
       </div>
     </div>

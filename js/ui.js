@@ -1,12 +1,12 @@
 /**
  * Multiplication Rocket Lab - UI & DOM Rendering Manager (js/ui.js)
- * Supports Version 3.0.0 Universal Math Formulas, Prominent Wrong-Answer Hints, Pre-Launch 3D Assembly Dashboard & Extended Cinematic Journey
+ * Version 3.0.0 Universal Math Formulas, Prominent Wrong-Answer Hints, Pre-Launch 3D Assembly Dashboard & Extended Cinematic Journey
  */
 class UIManager {
   constructor() {
     this.currentAnswerInput = "";
     this.selectedHeatmapOperation = "multiply";
-    this.isInstallingPart = false;
+    this.installingParts = new Set();
   }
 
   showScreen(screenId) {
@@ -15,7 +15,8 @@ class UIManager {
       launchReady: "launch",
       countdown: "launch",
       launching: "launch",
-      space: "launch"
+      space: "launch",
+      missionComplete: "launch"
     };
 
     const targetId = aliasMap[screenId] || screenId;
@@ -50,9 +51,10 @@ class UIManager {
 
     // Formula Display
     const formulaContainer = document.getElementById("formula-display-box");
+    const isDiv = question.operation === "divide";
+    const symbol = isDiv ? "÷" : "×";
+
     if (formulaContainer) {
-      const isDiv = question.operation === "divide";
-      const symbol = isDiv ? "÷" : "×";
       formulaContainer.innerHTML = `
         <span id="factor-a" class="factor">${question.operandA}</span>
         <span class="operator">${symbol}</span>
@@ -64,8 +66,11 @@ class UIManager {
 
     const fuelFactorA = document.getElementById("fuel-factor-a");
     const fuelFactorB = document.getElementById("fuel-factor-b");
+    const fuelOperator = document.getElementById("fuel-operator");
+
     if (fuelFactorA) fuelFactorA.innerText = question.operandA;
     if (fuelFactorB) fuelFactorB.innerText = question.operandB;
+    if (fuelOperator) fuelOperator.innerText = symbol;
 
     const feedback = document.getElementById("quiz-feedback");
     if (feedback) { feedback.className = "quiz-feedback hidden"; feedback.innerText = ""; }
@@ -251,7 +256,7 @@ class UIManager {
       const name = isZh ? part.nameZh : part.nameEn;
 
       const item = document.createElement("div");
-      item.className = `blueprint-card ${isUnlocked ? "unlocked" : "locked"}`;
+      item.className = `blueprint-card-item ${isUnlocked ? "unlocked" : "locked"}`;
       item.innerHTML = `
         <div class="part-icon">${part.icon}</div>
         <div class="part-name">${name}</div>
@@ -283,32 +288,68 @@ class UIManager {
     const installed = window.storageManager.get("installedParts") || [];
     container.innerHTML = "";
 
-    const totalCount = CONFIG.PART_COUNT; // 10 parts
+    const totalCount = CONFIG.PART_COUNT;
     const installedCount = installed.length;
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
 
-    // 1. Update Left Dashboard Stats Dynamically
+    // 1. Sync Model & Theme Selects with Active Profile and Unlock State
+    const currentModel = window.storageManager.get("currentRocketModel") || "classic";
+    const currentTheme = window.storageManager.get("currentRocketTheme") || "explorer";
+    const activeProfile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+
+    const modelSelect = document.getElementById("select-rocket-model");
+    if (modelSelect) {
+      const unlockedModels = activeProfile ? (activeProfile.unlockedRocketModels || ["classic"]) : ["classic"];
+      Array.from(modelSelect.options).forEach(opt => {
+        const isOptUnlocked = unlockedModels.includes(opt.value);
+        opt.disabled = !isOptUnlocked;
+        opt.text = (isOptUnlocked ? "" : "🔒 ") + opt.text.replace(/^🔒\s*/, '');
+      });
+      modelSelect.value = currentModel;
+    }
+
+    const themeSelect = document.getElementById("select-rocket-theme");
+    if (themeSelect) {
+      const unlockedThemes = activeProfile ? (activeProfile.unlockedRocketThemes || ["explorer"]) : ["explorer"];
+      Array.from(themeSelect.options).forEach(opt => {
+        const isOptUnlocked = unlockedThemes.includes(opt.value);
+        opt.disabled = !isOptUnlocked;
+        opt.text = (isOptUnlocked ? "" : "🔒 ") + opt.text.replace(/^🔒\s*/, '');
+      });
+      themeSelect.value = currentTheme;
+    }
+
+    // 2. Update Left Dashboard Stats Dynamically
     const ratio = installedCount / totalCount;
     const thrust = Math.round(ratio * 95);
     const stability = Math.round(ratio * 92);
     const payload = Math.round(ratio * 90);
     const efficiency = Math.round(ratio * 88);
 
-    document.getElementById("stat-thrust-val").innerText = `${thrust}%`;
-    document.getElementById("stat-bar-thrust").style.width = `${thrust}%`;
+    const thrustVal = document.getElementById("stat-thrust-val");
+    if (thrustVal) thrustVal.innerText = `${thrust}%`;
+    const barThrust = document.getElementById("stat-bar-thrust");
+    if (barThrust) barThrust.style.width = `${thrust}%`;
 
-    document.getElementById("stat-stability-val").innerText = `${stability}%`;
-    document.getElementById("stat-bar-stability").style.width = `${stability}%`;
+    const stabVal = document.getElementById("stat-stability-val");
+    if (stabVal) stabVal.innerText = `${stability}%`;
+    const barStab = document.getElementById("stat-bar-stability");
+    if (barStab) barStab.style.width = `${stability}%`;
 
-    document.getElementById("stat-payload-val").innerText = `${payload}%`;
-    document.getElementById("stat-bar-payload").style.width = `${payload}%`;
+    const payVal = document.getElementById("stat-payload-val");
+    if (payVal) payVal.innerText = `${payload}%`;
+    const barPay = document.getElementById("stat-bar-payload");
+    if (barPay) barPay.style.width = `${payload}%`;
 
-    document.getElementById("stat-efficiency-val").innerText = `${efficiency}%`;
-    document.getElementById("stat-bar-efficiency").style.width = `${efficiency}%`;
+    const effVal = document.getElementById("stat-efficiency-val");
+    if (effVal) effVal.innerText = `${efficiency}%`;
+    const barEff = document.getElementById("stat-bar-efficiency");
+    if (barEff) barEff.style.width = `${efficiency}%`;
 
-    // 2. Update Progress Circular Ring
+    // 3. Update Progress Circular Ring
     const percent = Math.round(ratio * 100);
-    document.getElementById("assembly-percent-text").innerText = `${percent}%`;
+    const pctText = document.getElementById("assembly-percent-text");
+    if (pctText) pctText.innerText = `${percent}%`;
     const ringCircle = document.getElementById("assembly-ring-circle");
     if (ringCircle) {
       const circumference = 251.2;
@@ -327,29 +368,36 @@ class UIManager {
       }
     }
 
-    // 3. Render 10 Part Cards Grid
+    // 4. Render 10 Part Cards Grid
     window.rocketBuilder.partDefinitions.forEach(part => {
       const isUnlocked = unlocked.includes(part.id);
       const isInstalled = installed.includes(part.id);
+      const isCurrentlyInstalling = this.installingParts.has(part.id);
+
+      let statusText = "LOCKED";
+      if (isInstalled) statusText = "✓ FITTED";
+      else if (isCurrentlyInstalling) statusText = "INSTALLING...";
+      else if (isUnlocked) statusText = "READY";
 
       const btn = document.createElement("button");
-      btn.className = `assembly-dock-item ${isInstalled ? "installed" : (isUnlocked ? "unlocked glow-pulse" : "locked")}`;
+      btn.className = `assembly-dock-item ${isInstalled ? "installed" : (isCurrentlyInstalling ? "installing" : (isUnlocked ? "unlocked glow-pulse" : "locked"))}`;
       btn.innerHTML = `
         ${isInstalled ? '<span class="part-badge-fitted">✓</span>' : ''}
         <span class="dock-icon">${part.icon}</span>
         <span class="dock-title">${isZh ? part.nameZh : part.nameEn}</span>
+        <span class="dock-status-label">${statusText}</span>
       `;
 
-      if (isUnlocked && !isInstalled) {
+      if (isUnlocked && !isInstalled && !isCurrentlyInstalling) {
         btn.addEventListener("click", () => {
-          if (this.isInstallingPart) return;
-          this.isInstallingPart = true;
-          btn.classList.add("installing");
-          btn.disabled = true;
+          if (this.installingParts.has(part.id)) return;
+          this.installingParts.add(part.id);
+          this.renderAssemblyDock();
 
-          window.storageManager.installPart(part.id);
+          // Animate first, write to storage ONLY after animation successfully completes!
           window.rocketBuilder.animateInstallPart(part.id, () => {
-            this.isInstallingPart = false;
+            window.storageManager.installPart(part.id);
+            this.installingParts.delete(part.id);
             this.renderAssemblyDock();
 
             const newlyInstalled = window.storageManager.get("installedParts") || [];
@@ -364,7 +412,7 @@ class UIManager {
       container.appendChild(btn);
     });
 
-    // 4. STRICT MANDATE: "必须组装后才可以发射"
+    // 5. Update Launch Gateway Button
     const goFuelBtn = document.getElementById("btn-go-fuel");
     const lockTipEl = document.getElementById("assembly-lock-tip");
 
@@ -393,20 +441,20 @@ class UIManager {
     }
   }
 
+  /**
+   * Hero 360-degree celebration when assembly is complete.
+   * NOTE: Does NOT auto-navigate to Fuel screen! Let child admire rocket and click.
+   */
   triggerAssemblyCelebration() {
     const banner = document.getElementById("assembly-celebration-banner");
     if (banner) banner.classList.remove("hidden");
     if (window.audioManager) window.audioManager.playVictory();
 
     if (window.rocketBuilder) {
-      window.rocketBuilder.triggerCelebrationSpin(1800, () => {
+      window.rocketBuilder.triggerCelebrationSpin(2000, () => {
         setTimeout(() => {
           if (banner) banner.classList.add("hidden");
-          if (window.game) {
-            window.game.fuelPercentage = 0;
-            window.game.setGameState(GAME_STATES.FUEL_CHALLENGE);
-          }
-        }, 300);
+        }, 800);
       });
     }
   }
@@ -518,15 +566,11 @@ class UIManager {
     if (!profile) return;
 
     // Today Stats
-    document.getElementById("rep-today-answered").innerText = profile.totalQuestionsAnswered || 0;
+    const repAns = document.getElementById("rep-today-answered");
+    if (repAns) repAns.innerText = profile.totalQuestionsAnswered || 0;
     const acc = profile.totalQuestionsAnswered > 0 ? Math.round((profile.totalCorrectAnswers / profile.totalQuestionsAnswered) * 100) : 100;
-    document.getElementById("rep-today-accuracy").innerText = `${acc}%`;
-    document.getElementById("rep-today-speed").innerText = `${profile.averageResponseTime ? (profile.averageResponseTime / 1000).toFixed(1) : 3.5}s`;
-    document.getElementById("rep-today-streak").innerText = `🔥 ${profile.maxComboAllTime || 0}`;
-
-    // Lifetime Stats
-    document.getElementById("rep-total-answered").innerText = profile.totalQuestionsAnswered || 0;
-    document.getElementById("rep-total-launches").innerText = profile.gamesCompleted || 0;
+    const repAcc = document.getElementById("rep-today-accuracy");
+    if (repAcc) repAcc.innerText = `${acc}%`;
 
     // Operation Mastery Summary (Multiplication vs Division)
     if (window.mathEngine) {
