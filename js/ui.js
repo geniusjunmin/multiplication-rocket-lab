@@ -1,11 +1,12 @@
 /**
  * Multiplication Rocket Lab - UI & DOM Rendering Manager (js/ui.js)
- * Supports Version 3.0.0 Universal Math Formulas, Prominent Wrong-Answer Hints, Pre-Launch 3D Assembly & Extended Cinematic Journey
+ * Supports Version 3.0.0 Universal Math Formulas, Prominent Wrong-Answer Hints, Pre-Launch 3D Assembly Dashboard & Extended Cinematic Journey
  */
 class UIManager {
   constructor() {
     this.currentAnswerInput = "";
     this.selectedHeatmapOperation = "multiply";
+    this.isInstallingPart = false;
   }
 
   showScreen(screenId) {
@@ -106,9 +107,6 @@ class UIManager {
     }
   }
 
-  /**
-   * Prominently display clear pedagogical hint ONLY when child answers incorrectly!
-   */
   showWrongAnswerHint(question) {
     const hintBox = document.getElementById("strat-hint-box");
     if (!hintBox || !question || !question.hint) return;
@@ -285,17 +283,61 @@ class UIManager {
     const installed = window.storageManager.get("installedParts") || [];
     container.innerHTML = "";
 
+    const totalCount = CONFIG.PART_COUNT; // 10 parts
+    const installedCount = installed.length;
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+
+    // 1. Update Left Dashboard Stats Dynamically
+    const ratio = installedCount / totalCount;
+    const thrust = Math.round(ratio * 95);
+    const stability = Math.round(ratio * 92);
+    const payload = Math.round(ratio * 90);
+    const efficiency = Math.round(ratio * 88);
+
+    document.getElementById("stat-thrust-val").innerText = `${thrust}%`;
+    document.getElementById("stat-bar-thrust").style.width = `${thrust}%`;
+
+    document.getElementById("stat-stability-val").innerText = `${stability}%`;
+    document.getElementById("stat-bar-stability").style.width = `${stability}%`;
+
+    document.getElementById("stat-payload-val").innerText = `${payload}%`;
+    document.getElementById("stat-bar-payload").style.width = `${payload}%`;
+
+    document.getElementById("stat-efficiency-val").innerText = `${efficiency}%`;
+    document.getElementById("stat-bar-efficiency").style.width = `${efficiency}%`;
+
+    // 2. Update Progress Circular Ring
+    const percent = Math.round(ratio * 100);
+    document.getElementById("assembly-percent-text").innerText = `${percent}%`;
+    const ringCircle = document.getElementById("assembly-ring-circle");
+    if (ringCircle) {
+      const circumference = 251.2;
+      const offset = circumference * (1 - ratio);
+      ringCircle.style.strokeDashoffset = `${offset}`;
+    }
+
+    const subtextEl = document.getElementById("assembly-status-subtext");
+    if (subtextEl) {
+      if (installedCount >= totalCount) {
+        subtextEl.innerText = isZh ? "已解锁零件全部安装完成！" : "All unlocked parts assembled!";
+        subtextEl.style.color = "#34d399";
+      } else {
+        subtextEl.innerText = isZh ? `零件卡扣组装中 (${installedCount}/${totalCount})` : `Assembling Parts (${installedCount}/${totalCount})`;
+        subtextEl.style.color = "#f59e0b";
+      }
+    }
+
+    // 3. Render 10 Part Cards Grid
     window.rocketBuilder.partDefinitions.forEach(part => {
       const isUnlocked = unlocked.includes(part.id);
       const isInstalled = installed.includes(part.id);
-      const isZh = window.i18n && window.i18n.currentLanguage === "zh";
 
       const btn = document.createElement("button");
       btn.className = `assembly-dock-item ${isInstalled ? "installed" : (isUnlocked ? "unlocked glow-pulse" : "locked")}`;
       btn.innerHTML = `
+        ${isInstalled ? '<span class="part-badge-fitted">✓</span>' : ''}
         <span class="dock-icon">${part.icon}</span>
         <span class="dock-title">${isZh ? part.nameZh : part.nameEn}</span>
-        <span class="dock-tag">${isInstalled ? "✅ Fitted" : (isUnlocked ? "🛠️ Snap Part" : "🔒 Locked")}</span>
       `;
 
       if (isUnlocked && !isInstalled) {
@@ -311,16 +353,44 @@ class UIManager {
             this.renderAssemblyDock();
 
             const newlyInstalled = window.storageManager.get("installedParts") || [];
-            if (newlyInstalled.length >= CONFIG.PART_COUNT) {
+            if (newlyInstalled.length >= totalCount) {
               this.triggerAssemblyCelebration();
             }
           });
         });
-      } else if (isInstalled || !isUnlocked) {
+      } else {
         btn.disabled = true;
       }
       container.appendChild(btn);
     });
+
+    // 4. STRICT MANDATE: "必须组装后才可以发射"
+    const goFuelBtn = document.getElementById("btn-go-fuel");
+    const lockTipEl = document.getElementById("assembly-lock-tip");
+
+    if (goFuelBtn) {
+      if (installedCount >= totalCount) {
+        goFuelBtn.disabled = false;
+        goFuelBtn.removeAttribute("disabled");
+        goFuelBtn.classList.remove("disabled");
+        goFuelBtn.classList.add("unlocked", "btn-pulse");
+
+        if (lockTipEl) {
+          lockTipEl.className = "assembly-lock-tip unlocked-tip";
+          lockTipEl.innerText = isZh ? "🎉 所有火箭零件组装完成！即可前往燃料舱点火升空！" : "🎉 Assembly Complete! Ready to proceed to Fuel Chamber!";
+        }
+      } else {
+        goFuelBtn.disabled = true;
+        goFuelBtn.setAttribute("disabled", "true");
+        goFuelBtn.classList.add("disabled");
+        goFuelBtn.classList.remove("unlocked", "btn-pulse");
+
+        if (lockTipEl) {
+          lockTipEl.className = "assembly-lock-tip";
+          lockTipEl.innerText = isZh ? `🔒 需卡扣安装完成所有 10 个零件后才能发射 (已安装 ${installedCount}/${totalCount})` : `🔒 Assemble all 10 parts before launching (${installedCount}/${totalCount})`;
+        }
+      }
+    }
   }
 
   triggerAssemblyCelebration() {

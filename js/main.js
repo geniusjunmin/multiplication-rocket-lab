@@ -371,12 +371,31 @@ function bindAssemblyEvents() {
     if (window.rocketBuilder) window.rocketBuilder.setTheme(theme);
   });
 
+  document.getElementById("btn-reset-assembly-cam")?.addEventListener("click", () => {
+    if (window.rocketBuilder && window.rocketBuilder.camera) {
+      window.rocketBuilder.camera.position.set(0, 1.5, 9);
+      if (window.rocketBuilder.controls) window.rocketBuilder.controls.reset();
+    }
+  });
+
+  document.getElementById("btn-assembly-help")?.addEventListener("click", () => {
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+    alert(isZh ? "💡 3D 组装指南：\n1. 点击下方已解包零件，看着它们精准卡扣飞入 3D 火箭！\n2. 必须卡扣完成所有 10 个零件后，才能解锁【冲向燃料补充舱】按钮！" : "💡 3D Assembly Guide:\n1. Click unlocked parts to snap them onto your rocket.\n2. All 10 parts must be fitted to proceed!");
+  });
+
   document.getElementById("btn-complete-assembly")?.addEventListener("click", () => {
     document.getElementById("modal-rocket-complete")?.classList.add("hidden");
     if (window.game) window.game.setGameState(GAME_STATES.ASSEMBLY);
   });
 
   document.getElementById("btn-go-fuel")?.addEventListener("click", () => {
+    const installed = window.storageManager ? (window.storageManager.get("installedParts") || []) : [];
+    if (installed.length < CONFIG.PART_COUNT) {
+      const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+      alert(isZh ? `🔒 必须先在 3D 车间中安装完成所有 10 个火箭零件，才能进入燃料舱升空！(已安装 ${installed.length}/10)` : `🔒 Please fit all 10 parts before proceeding to Fuel Chamber! (${installed.length}/10)`);
+      return;
+    }
+
     document.getElementById("modal-rocket-complete")?.classList.add("hidden");
     if (window.game) {
       window.game.fuelPercentage = 0;

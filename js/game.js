@@ -1,6 +1,6 @@
 /**
  * Multiplication Rocket Lab - State Machine & Flow Manager (js/game.js)
- * Supports Version 3.0.0 Free Challenge Presets, Mixed Operations, Prominent Wrong Hints & Dev Shortcuts
+ * Supports Version 3.0.0 Free Challenge Presets, Mixed Operations, Prominent Wrong Hints, Mandatory Assembly Locks & Dev Shortcuts
  */
 const GAME_STATES = {
   HOME: "home",
@@ -60,7 +60,7 @@ class MultiplicationGame {
       [GAME_STATES.PART_REWARD]: [GAME_STATES.QUESTION, GAME_STATES.ASSEMBLY],
       [GAME_STATES.ASSEMBLY]: [GAME_STATES.HOME, GAME_STATES.QUESTION, GAME_STATES.FUEL_CHALLENGE, GAME_STATES.ROCKET_COMPLETE, GAME_STATES.PAUSED],
       [GAME_STATES.ROCKET_COMPLETE]: [GAME_STATES.ASSEMBLY, GAME_STATES.FUEL_CHALLENGE],
-      [GAME_STATES.FUEL_CHALLENGE]: [GAME_STATES.HOME, GAME_STATES.LAUNCH_READY, GAME_STATES.PAUSED],
+      [GAME_STATES.FUEL_CHALLENGE]: [GAME_STATES.HOME, GAME_STATES.ASSEMBLY, GAME_STATES.LAUNCH_READY, GAME_STATES.PAUSED],
       [GAME_STATES.LAUNCH_READY]: [GAME_STATES.HOME, GAME_STATES.COUNTDOWN, GAME_STATES.LAUNCHING, GAME_STATES.PAUSED],
       [GAME_STATES.COUNTDOWN]: [GAME_STATES.LAUNCHING, GAME_STATES.PAUSED],
       [GAME_STATES.LAUNCHING]: [GAME_STATES.SPACE, GAME_STATES.PAUSED],
@@ -95,7 +95,7 @@ class MultiplicationGame {
     this.onEnterState(nextState);
 
     if (window.uiManager) {
-      window.uiManager.showScreen(nextState);
+      window.uiManager.showScreen(this.currentState);
     }
   }
 
@@ -126,6 +126,16 @@ class MultiplicationGame {
         if (window.uiManager) window.uiManager.renderAssemblyDock();
         break;
       case GAME_STATES.FUEL_CHALLENGE:
+        // STRICT MANDATE: Must assemble all 10 parts before entering Fuel Chamber!
+        const installedFuel = window.storageManager ? (window.storageManager.get("installedParts") || []) : [];
+        if (installedFuel.length < CONFIG.PART_COUNT) {
+          console.warn("Assembly incomplete! Redirecting to Assembly Workshop.");
+          this.currentState = GAME_STATES.ASSEMBLY;
+          if (window.rocketBuilder) window.rocketBuilder.initScene("canvas-container-assembly");
+          if (window.uiManager) window.uiManager.renderAssemblyDock();
+          return;
+        }
+
         if (window.rocketBuilder) {
           window.rocketBuilder.initScene("canvas-container-fuel");
           window.rocketBuilder.setFuelGlowLevel(this.fuelPercentage);
@@ -140,6 +150,14 @@ class MultiplicationGame {
         }
         break;
       case GAME_STATES.LAUNCH_READY:
+        const installedLaunch = window.storageManager ? (window.storageManager.get("installedParts") || []) : [];
+        if (installedLaunch.length < CONFIG.PART_COUNT) {
+          this.currentState = GAME_STATES.ASSEMBLY;
+          if (window.rocketBuilder) window.rocketBuilder.initScene("canvas-container-assembly");
+          if (window.uiManager) window.uiManager.renderAssemblyDock();
+          return;
+        }
+
         if (window.launchSequence) {
           const destId = window.storageManager ? (window.storageManager.get("selectedDestination") || "moon") : "moon";
           window.launchSequence.initScene("canvas-container-launch", destId);

@@ -357,56 +357,167 @@
         </div>
       </section>
 
-      <!-- 5. ASSEMBLY SCREEN -->
+      <!-- 5. ASSEMBLY SCREEN (High-Fidelity NASA Control Center Dashboard Layout) -->
       <section id="screen-assembly" class="screen screen-assembly hidden">
-        <div class="assembly-layout">
+        <div class="assembly-layout-container">
+          
+          <!-- Top Header Toolbar -->
           <div class="assembly-header-hud card">
-            <h2 data-i18n="assemblyTitle">🔧 3D Rocket Assembly Workshop</h2>
+            <div class="assembly-title-box">
+              <span class="tool-icon">🛠️</span>
+              <h2 data-i18n="assemblyTitle">3D 火箭组装车间</h2>
+            </div>
+
             <div class="assembly-selectors">
-              <label><span data-i18n="rocketModelLabel">Model:</span>
+              <label><span data-i18n="rocketModelLabel">3D 火箭型号:</span>
                 <select id="select-rocket-model" class="input-select-sm">
                   <option value="classic">🚀 Classic Explorer</option>
                   <option value="starship">🛰️ SpaceX Starship</option>
-                  <option value="falconHeavy">⚡ Falcon Heavy</option>
+                  <option value="falconHeavy" selected>⚡ Falcon Heavy</option>
                   <option value="longMarch">🇨🇳 Long March 5</option>
                   <option value="cyber">🌌 Cyber Starship</option>
                 </select>
               </label>
-              <label><span data-i18n="rocketThemeLabel">Theme:</span>
+
+              <label><span data-i18n="rocketThemeLabel">火箭涂装配色:</span>
                 <select id="select-rocket-theme" class="input-select-sm">
                   <option value="explorer">🔵 Classic Explorer</option>
-                  <option value="fire">🔥 Crimson Flame</option>
+                  <option value="fire" selected>🔥 Crimson Flame</option>
                   <option value="forest">🌲 Emerald Forest</option>
                   <option value="lightning">⚡ Lightning Yellow</option>
                   <option value="galaxy">🌌 Deep Galaxy</option>
                 </select>
               </label>
-              <button id="btn-install-all" class="btn btn-secondary btn-sm" data-i18n="btnInstallAll">
-                ⚡ Auto-Assemble All
+
+              <button id="btn-install-all" class="btn btn-secondary btn-sm glowing-blue-btn" data-i18n="btnInstallAll">
+                ⚡ 一键全自动组装已解锁零件
               </button>
+              <button id="btn-assembly-help" class="btn-icon btn-sm" aria-label="Help">❓</button>
             </div>
           </div>
 
-          <div class="assembly-canvas-box card">
-            <div id="canvas-container-assembly" class="canvas-wrapper"></div>
-            <!-- Assembly Celebration Banner Overlay -->
-            <div id="assembly-celebration-banner" class="assembly-complete-banner hidden">
-              <div class="celebration-content">
-                <span class="celebration-icon">🚀</span>
-                <h3 data-i18n="assemblyCompleteCelebration">🚀 ROCKET ASSEMBLY COMPLETE!</h3>
+          <!-- Main 3-Column Center Workspace -->
+          <div class="assembly-center-grid">
+            
+            <!-- Left Panel: Rocket Stats & Assembly Progress -->
+            <div class="assembly-left-panel card">
+              <h3 class="panel-section-title"><span class="icon">🚀</span> <span data-i18n="rocketInfoTitle">火箭信息</span></h3>
+              
+              <div class="rocket-stats-list">
+                <div class="stat-item">
+                  <div class="stat-header">
+                    <span class="stat-label">⚡ 推力</span>
+                    <span id="stat-thrust-val" class="stat-val">95%</span>
+                  </div>
+                  <div class="stat-bar-track"><div id="stat-bar-thrust" class="stat-bar-fill thrust" style="width: 95%;"></div></div>
+                </div>
+
+                <div class="stat-item">
+                  <div class="stat-header">
+                    <span class="stat-label">⛰️ 稳定性</span>
+                    <span id="stat-stability-val" class="stat-val">92%</span>
+                  </div>
+                  <div class="stat-bar-track"><div id="stat-bar-stability" class="stat-bar-fill stability" style="width: 92%;"></div></div>
+                </div>
+
+                <div class="stat-item">
+                  <div class="stat-header">
+                    <span class="stat-label">📦 载荷能力</span>
+                    <span id="stat-payload-val" class="stat-val">90%</span>
+                  </div>
+                  <div class="stat-bar-track"><div id="stat-bar-payload" class="stat-bar-fill payload" style="width: 90%;"></div></div>
+                </div>
+
+                <div class="stat-item">
+                  <div class="stat-header">
+                    <span class="stat-label">🔒 燃料效率</span>
+                    <span id="stat-efficiency-val" class="stat-val">88%</span>
+                  </div>
+                  <div class="stat-bar-track"><div id="stat-bar-efficiency" class="stat-bar-fill efficiency" style="width: 88%;"></div></div>
+                </div>
+              </div>
+
+              <!-- Progress Circular Ring -->
+              <div class="assembly-progress-box">
+                <h4 class="progress-title"><span class="icon">📋</span> <span data-i18n="assemblyProgressTitle">组装进度</span></h4>
+                <div class="ring-wrapper">
+                  <svg class="ring-svg" viewBox="0 0 100 100">
+                    <circle class="ring-bg" cx="50" cy="50" r="40"></circle>
+                    <circle id="assembly-ring-circle" class="ring-fill" cx="50" cy="50" r="40" stroke-dasharray="251.2" stroke-dashoffset="0"></circle>
+                  </svg>
+                  <span id="assembly-percent-text" class="ring-text">100%</span>
+                </div>
+                <div id="assembly-status-subtext" class="assembly-status-subtext">已解锁零件全部安装完成！</div>
               </div>
             </div>
-          </div>
 
-          <div class="assembly-dock-hud card">
-            <p class="dock-subtitle" data-i18n="assemblySubtitle">Click unlocked parts to snap them onto your 3D rocket!</p>
-            <div id="assembly-parts-list" class="assembly-parts-grid"></div>
-            <div class="dock-actions">
-              <button id="btn-go-fuel" class="btn btn-primary btn-large btn-pulse" data-i18n="btnGoFuel">
-                ⛽ Proceed to Fuel Chamber
+            <!-- Center Panel: 3D Rocket Viewport & Pedestal Platform -->
+            <div class="assembly-center-viewport card">
+              <div id="canvas-container-assembly" class="canvas-wrapper"></div>
+              
+              <!-- Glowing Round Pedestal Base Graphic -->
+              <div class="pedestal-glow-ring"></div>
+
+              <!-- Celebration Banner Overlay -->
+              <div id="assembly-celebration-banner" class="assembly-complete-banner hidden">
+                <div class="celebration-content">
+                  <span class="celebration-icon">🚀</span>
+                  <h3 data-i18n="assemblyCompleteCelebration">🚀 火箭全组件组装完成！</h3>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Panel: Design Blueprint Wireframe Box -->
+            <div class="assembly-right-panel card">
+              <h3 class="panel-section-title"><span class="icon">⭐</span> <span data-i18n="designBlueprintTitle">设计蓝图</span></h3>
+              
+              <div class="blueprint-wireframe-box">
+                <svg class="blueprint-wireframe-svg" viewBox="0 0 200 320" xmlns="http://www.w3.org/2000/svg">
+                  <!-- Outer Grid Lines -->
+                  <line x1="100" y1="10" x2="100" y2="310" stroke="#38bdf8" stroke-dasharray="4,4" stroke-width="1"/>
+                  <line x1="20" y1="160" x2="180" y2="160" stroke="#38bdf8" stroke-dasharray="4,4" stroke-width="1"/>
+                  
+                  <!-- Main Rocket Body Outline -->
+                  <rect x="65" y="90" width="70" height="150" rx="4" fill="none" stroke="#38bdf8" stroke-width="2"/>
+                  <!-- Nose Cone -->
+                  <path d="M 65 90 Q 100 20 135 90 Z" fill="none" stroke="#38bdf8" stroke-width="2"/>
+                  <!-- Left Booster -->
+                  <rect x="30" y="120" width="30" height="110" rx="3" fill="none" stroke="#38bdf8" stroke-width="2"/>
+                  <path d="M 30 120 Q 45 70 60 120 Z" fill="none" stroke="#38bdf8" stroke-width="2"/>
+                  <!-- Right Booster -->
+                  <rect x="140" y="120" width="30" height="110" rx="3" fill="none" stroke="#38bdf8" stroke-width="2"/>
+                  <path d="M 140 120 Q 155 70 170 120 Z" fill="none" stroke="#38bdf8" stroke-width="2"/>
+                  <!-- Center Window -->
+                  <circle cx="100" cy="140" r="18" fill="none" stroke="#38bdf8" stroke-width="2"/>
+                  <circle cx="100" cy="140" r="10" fill="none" stroke="#38bdf8" stroke-dasharray="2,2" stroke-width="1"/>
+                  <!-- Star Emblem -->
+                  <polygon points="100,60 103,68 112,68 105,73 107,81 100,76 93,81 95,73 88,68 97,68" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
+                  <!-- Engine Nozzle -->
+                  <polygon points="75,240 125,240 135,265 65,265" fill="none" stroke="#38bdf8" stroke-width="2"/>
+                </svg>
+              </div>
+
+              <button id="btn-reset-assembly-cam" class="btn btn-outline btn-sm reset-cam-btn">
+                🔄 3D 视角复位
               </button>
             </div>
+
           </div>
+
+          <!-- Bottom Parts Selector Dock -->
+          <div class="assembly-bottom-dock card">
+            <p class="dock-subtitle" data-i18n="assemblySubtitle">👇 点击解包零件，看着它们飞入火箭精准卡扣！</p>
+            <div id="assembly-parts-list" class="assembly-parts-grid"></div>
+          </div>
+
+          <!-- Bottom Primary Action Launch Gateway -->
+          <div class="assembly-action-gateway">
+            <button id="btn-go-fuel" class="btn btn-go-fuel-lg disabled" disabled data-i18n="btnGoFuel">
+              ⛽ 冲向燃料补充舱
+            </button>
+            <div id="assembly-lock-tip" class="assembly-lock-tip" data-i18n="assemblyLockTip">🔒 需安装完成所有 10 个零件后才能发射 (已安装 0/10)</div>
+          </div>
+
         </div>
       </section>
 
