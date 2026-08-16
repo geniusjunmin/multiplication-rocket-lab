@@ -1,5 +1,6 @@
 /**
- * 乘法火箭实验室 - Three.js 3D 发射与升空动画序列引擎 (launch.js)
+ * Multiplication Rocket Lab - Cinematic Interplanetary Launch Engine (js/launch.js)
+ * Supports 6 Planet Arrival Scenes, Saturn 3D Rings, Multi-Layer Flames, Warp Transfer & GPU Disposal
  */
 class LaunchSequence {
   constructor() {
@@ -8,21 +9,26 @@ class LaunchSequence {
     this.renderer = null;
     this.rocket = null;
     this.flameMesh = null;
+    this.smokePool = [];
     this.starsGroup = null;
     this.earthMesh = null;
+    this.destinationMesh = null;
+    this.saturnRingMesh = null;
+    
     this.animationId = null;
     this.currentStage = "idle";
     this.countdownValue = 5;
     this.countdownTimer = null;
     this.timeouts = [];
     this.cameraShakeIntensity = 0;
+
+    this.destinationId = "moon";
+    this.graphicsQuality = "auto";
   }
 
-  /**
-   * 初始化 3D 发射与太空场景并销毁旧场景资源
-   */
-  initScene(containerId) {
+  initScene(containerId, destId = "moon") {
     this.destroy();
+    this.destinationId = destId;
 
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -31,71 +37,67 @@ class LaunchSequence {
     const width = container.clientWidth || window.innerWidth;
     const height = container.clientHeight || window.innerHeight;
 
-    // 1. Scene
-    this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x0b0e1b, 0.015);
+    if (!window.WebGLRenderingContext) return;
 
-    // 2. Camera (仰视起飞角度)
-    this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 2000);
-    this.camera.position.set(0, 1.5, 9);
+    try {
+      this.scene = new THREE.Scene();
+      this.scene.fog = new THREE.FogExp2(0x0b0e1b, 0.015);
 
-    // 3. Renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    container.appendChild(this.renderer.domElement);
+      this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 2000);
+      this.camera.position.set(0, 1.5, 9);
 
-    // 4. Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    this.scene.add(ambientLight);
+      this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      this.renderer.setSize(width, height);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(this.renderer.domElement);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(10, 20, 15);
-    this.scene.add(dirLight);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      this.scene.add(ambientLight);
 
-    this.engineLight = new THREE.PointLight(0xff4500, 0, 20);
-    this.engineLight.position.set(0, -2, 0);
-    this.scene.add(this.engineLight);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+      dirLight.position.set(10, 20, 15);
+      this.scene.add(dirLight);
 
-    // 5. Environment Elements & Rocket
-    this.createLaunchPad();
-    this.createSpaceEnvironment();
-    this.createRocketCopy();
+      this.engineLight = new THREE.PointLight(0xff4500, 0, 25);
+      this.engineLight.position.set(0, -2, 0);
+      this.scene.add(this.engineLight);
 
-    // 6. Reset HUD UI state
-    this.resetHUDUI();
+      this.createLaunchPad();
+      this.createSpaceEnvironment();
+      this.createDestinationPlanet(destId);
+      this.createRocketCopy();
 
-    // 7. Start Loop
-    this.animate();
+      this.resetHUDUI();
+      this.animate();
+    } catch (e) {
+      console.warn("LaunchSequence WebGL Init Error:", e);
+    }
   }
 
-  /**
-   * 重置发射 HUD UI 视图状态
-   */
   resetHUDUI() {
     document.getElementById("launch-checklist")?.classList.remove("hidden");
     document.getElementById("launch-countdown-box")?.classList.add("hidden");
     document.getElementById("space-victory-banner")?.classList.add("hidden");
 
     const checkItems = [
-      { id: 1, text: "⚙️ 控制系统", status: "检查中..." },
-      { id: 2, text: "🔥 发动机点火器", status: "待命" },
-      { id: 3, text: "⛽ 乘法高能燃料", status: "待命" },
-      { id: 4, text: "🛰️ 太空导航罗盘", status: "待命" }
+      { id: 1, text: "⚙️ Guidance & Navigation", status: "Checking..." },
+      { id: 2, text: "🔥 Engine Ignition System", status: "Standby" },
+      { id: 3, text: "⛽ Math High-Energy Fuel", status: "Standby" },
+      { id: 4, text: "🛰️ Math Core Processor", status: "Standby" }
     ];
 
     checkItems.forEach(item => {
       const el = document.getElementById(`check-item-${item.id}`);
       if (el) {
-        el.querySelector(".status").innerText = item.status;
-        el.querySelector(".status").style.color = "";
+        const stEl = el.querySelector(".status");
+        if (stEl) {
+          stEl.innerText = item.status;
+          stEl.style.color = "";
+        }
       }
     });
   }
 
-  /**
-   * 创建地面发射平台与发射塔
-   */
   createLaunchPad() {
     this.launchPadGroup = new THREE.Group();
 
@@ -114,9 +116,6 @@ class LaunchSequence {
     this.scene.add(this.launchPadGroup);
   }
 
-  /**
-   * 创建深空星云与地球弧面
-   */
   createSpaceEnvironment() {
     const starsGeo = new THREE.BufferGeometry();
     const starCount = 1500;
@@ -141,9 +140,66 @@ class LaunchSequence {
     this.scene.add(this.earthMesh);
   }
 
-  /**
-   * 从 RocketBuilder 复制或重建当前玩家选中的 3D 火箭模型
-   */
+  createDestinationPlanet(destId) {
+    if (this.destinationMesh && this.scene) {
+      this.scene.remove(this.destinationMesh);
+    }
+
+    const planetGroup = new THREE.Group();
+
+    switch (destId) {
+      case "moon": {
+        const geo = new THREE.SphereGeometry(25, 64, 64);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 });
+        const mesh = new THREE.Mesh(geo, mat);
+        planetGroup.add(mesh);
+        break;
+      }
+      case "mars": {
+        const geo = new THREE.SphereGeometry(30, 64, 64);
+        const mat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.6 });
+        const mesh = new THREE.Mesh(geo, mat);
+        planetGroup.add(mesh);
+        break;
+      }
+      case "jupiter": {
+        const geo = new THREE.SphereGeometry(45, 64, 64);
+        const mat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.5 });
+        const mesh = new THREE.Mesh(geo, mat);
+        planetGroup.add(mesh);
+        break;
+      }
+      case "saturn": {
+        const planetGeo = new THREE.SphereGeometry(35, 64, 64);
+        const planetMat = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.5 });
+        const planetMesh = new THREE.Mesh(planetGeo, planetMat);
+        planetGroup.add(planetMesh);
+
+        // 3D Saturn RingGeometry
+        const ringGeo = new THREE.RingGeometry(45, 75, 64);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xfde047, side: THREE.DoubleSide, transparent: true, opacity: 0.75 });
+        this.saturnRingMesh = new THREE.Mesh(ringGeo, ringMat);
+        this.saturnRingMesh.rotation.x = Math.PI / 2.3;
+        planetGroup.add(this.saturnRingMesh);
+        break;
+      }
+      case "deepSpace": {
+        const geo = new THREE.OctahedronGeometry(30, 4);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x818cf8, wireframe: true });
+        const mesh = new THREE.Mesh(geo, mat);
+        planetGroup.add(mesh);
+        break;
+      }
+      default:
+        break;
+    }
+
+    this.destinationMesh = planetGroup;
+    this.destinationMesh.position.set(0, 120, -80);
+    this.destinationMesh.visible = false;
+    this.scene.add(this.destinationMesh);
+  }
+
   createRocketCopy() {
     if (window.rocketBuilder) {
       window.rocketBuilder.buildCurrentRocket();
@@ -153,53 +209,55 @@ class LaunchSequence {
         this.scene.add(this.rocket);
       }
 
-      this.rocket.children.forEach(child => {
-        child.visible = true;
-      });
+      this.rocket.children.forEach(child => child.visible = true);
 
-      const flameGeo = new THREE.ConeGeometry(0.8, 3.0, 32);
-      flameGeo.rotateX(Math.PI);
-      const flameMat = new THREE.MeshBasicMaterial({
-        color: 0xff4500,
-        transparent: true,
-        opacity: 0.85
-      });
-      this.flameMesh = new THREE.Mesh(flameGeo, flameMat);
-      this.flameMesh.position.set(0, -3.0, 0);
-      this.flameMesh.visible = false;
+      // Multi-layer engine flame
+      const flameGroup = new THREE.Group();
+
+      const innerFlameGeo = new THREE.ConeGeometry(0.5, 2.5, 32);
+      innerFlameGeo.rotateX(Math.PI);
+      const innerMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const innerMesh = new THREE.Mesh(innerFlameGeo, innerMat);
+      flameGroup.add(innerMesh);
+
+      const outerFlameGeo = new THREE.ConeGeometry(0.85, 3.5, 32);
+      outerFlameGeo.rotateX(Math.PI);
+      const outerMat = new THREE.MeshBasicMaterial({ color: 0xff4500, transparent: true, opacity: 0.85 });
+      const outerMesh = new THREE.Mesh(outerFlameGeo, outerMat);
+      flameGroup.add(outerMesh);
+
+      flameGroup.position.set(0, -2.8, 0);
+      flameGroup.visible = false;
+      this.flameMesh = flameGroup;
       this.rocket.add(this.flameMesh);
     }
   }
 
-  /**
-   * 启动流畅快速的发射序列
-   */
   startLaunchSequence(onComplete) {
     this.currentStage = "checking";
     this.resetHUDUI();
     
-    // 阶段 1: 检查表亮绿灯 (快速 0.3s 每项)
     const checkItems = [1, 2, 3, 4];
     checkItems.forEach((item, idx) => {
       const t = setTimeout(() => {
         const el = document.getElementById(`check-item-${item}`);
         if (el) {
-          el.querySelector(".status").innerHTML = "✅ 正常";
-          el.querySelector(".status").style.color = "#34d399";
+          const st = el.querySelector(".status");
+          if (st) {
+            st.innerHTML = "✅ Ready";
+            st.style.color = "#34d399";
+          }
         }
         if (window.audioManager) window.audioManager.playBeep(false);
       }, (idx + 1) * 300);
       this.timeouts.push(t);
     });
 
-    // 阶段 2: 切换到倒计时
     const t2 = setTimeout(() => {
       document.getElementById("launch-checklist")?.classList.add("hidden");
       document.getElementById("launch-countdown-box")?.classList.remove("hidden");
       this.startCountdown(() => {
-        // 阶段 3: 点火
         this.triggerIgnition(() => {
-          // 阶段 4: 升空
           this.triggerLiftoff(onComplete);
         });
       });
@@ -207,9 +265,6 @@ class LaunchSequence {
     this.timeouts.push(t2);
   }
 
-  /**
-   * 5s 倒计时
-   */
   startCountdown(onFinished) {
     this.countdownValue = 5;
     const numEl = document.getElementById("countdown-num");
@@ -218,7 +273,7 @@ class LaunchSequence {
     if (this.countdownTimer) clearInterval(this.countdownTimer);
 
     this.countdownTimer = setInterval(() => {
-      if (numEl) numEl.innerText = this.countdownValue > 0 ? this.countdownValue : "点火！";
+      if (numEl) numEl.innerText = this.countdownValue > 0 ? this.countdownValue : "IGNITION!";
       if (window.audioManager) {
         window.audioManager.playBeep(this.countdownValue <= 2);
       }
@@ -233,13 +288,10 @@ class LaunchSequence {
     }, 800);
   }
 
-  /**
-   * 点火引擎与短暂震动
-   */
   triggerIgnition(onFinished) {
     this.currentStage = "ignition";
     if (this.flameMesh) this.flameMesh.visible = true;
-    if (this.engineLight) this.engineLight.intensity = 4.0;
+    if (this.engineLight) this.engineLight.intensity = 5.0;
     this.cameraShakeIntensity = 0.15;
 
     if (window.audioManager) window.audioManager.playIgnition();
@@ -250,9 +302,6 @@ class LaunchSequence {
     this.timeouts.push(t);
   }
 
-  /**
-   * 火箭高速离地升空与镜头跟随
-   */
   triggerLiftoff(onComplete) {
     this.currentStage = "liftoff";
     let speed = 0.08;
@@ -261,7 +310,7 @@ class LaunchSequence {
       if (this.currentStage !== "liftoff" && this.currentStage !== "space") return;
       if (this.rocket) {
         this.rocket.position.y += speed;
-        speed += 0.015; // 持续加速冲向天际
+        speed += 0.015;
 
         if (this.camera) this.camera.position.y = this.rocket.position.y + 1.5;
 
@@ -269,10 +318,13 @@ class LaunchSequence {
           this.currentStage = "space";
           if (this.scene) this.scene.fog = new THREE.FogExp2(0x000000, 0.001);
           if (this.earthMesh) this.earthMesh.visible = true;
+          if (this.destinationMesh) this.destinationMesh.visible = true;
           this.cameraShakeIntensity = 0;
 
           document.getElementById("space-victory-banner")?.classList.remove("hidden");
           if (window.audioManager) window.audioManager.playVictory();
+          if (window.profileManager) window.profileManager.recordDestinationVisited(this.destinationId);
+
           if (onComplete) onComplete();
         }
 
@@ -293,12 +345,27 @@ class LaunchSequence {
     }
 
     if (this.flameMesh && this.flameMesh.visible) {
-      this.flameMesh.scale.y = 1 + Math.sin(Date.now() * 0.02) * 0.2;
+      this.flameMesh.scale.y = 1 + Math.sin(Date.now() * 0.02) * 0.25;
+    }
+
+    if (this.destinationMesh && this.destinationMesh.visible) {
+      this.destinationMesh.rotation.y += 0.005;
     }
 
     if (this.renderer && this.scene && this.camera) {
       this.renderer.render(this.scene, this.camera);
     }
+  }
+
+  disposeObject3D(obj) {
+    if (!obj) return;
+    obj.traverse(child => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+        else child.material.dispose();
+      }
+    });
   }
 
   destroy() {
@@ -312,6 +379,11 @@ class LaunchSequence {
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
+    }
+    if (this.rocket && this.scene) {
+      this.scene.remove(this.rocket);
+      this.disposeObject3D(this.rocket);
+      this.rocket = null;
     }
     if (this.renderer) {
       if (this.renderer.domElement) this.renderer.domElement.remove();

@@ -1,6 +1,6 @@
 /**
  * Multiplication Rocket Lab - State Machine & Flow Manager (js/game.js)
- * Supports Game Modes, Concurrency Locks, Hard Mode Timer, Pause/Resume & Session Restore
+ * Supports Version 3.0.0 Free Challenge Presets, Mixed Operations, Hard Mode Timers & Session Restoration
  */
 const GAME_STATES = {
   HOME: "home",
@@ -52,7 +52,6 @@ class MultiplicationGame {
     this.timerRemainingMs = 8000;
     this.timerInterval = null;
 
-    // Valid state transitions graph
     this.validTransitions = {
       [GAME_STATES.HOME]: [GAME_STATES.SETTINGS, GAME_STATES.BLUEPRINT, GAME_STATES.QUESTION, GAME_STATES.REPORT],
       [GAME_STATES.SETTINGS]: [GAME_STATES.HOME, GAME_STATES.BLUEPRINT, GAME_STATES.QUESTION],
@@ -81,18 +80,14 @@ class MultiplicationGame {
     if (!window.storageManager) return;
     this.score = window.storageManager.get("score") || 0;
     this.timerSeconds = window.storageManager.get("timerSeconds") || 8;
-    const tables = window.storageManager.get("selectedTables") || [2, 3, 4, 5];
-    if (window.mathEngine) window.mathEngine.setTables(tables);
+    
+    const challengeKey = window.storageManager.get("selectedMathChallenge") || "times12";
+    const preset = CONFIG.MATH_CHALLENGE_PRESETS[challengeKey];
+    if (window.mathEngine) window.mathEngine.setChallengeConfig(preset);
   }
 
   setGameState(nextState) {
     if (this.currentState === nextState) return;
-
-    // Check validity unless forcing or coming from PAUSED
-    const allowed = this.validTransitions[this.currentState] || Object.values(GAME_STATES);
-    if (!allowed.includes(nextState) && this.currentState !== GAME_STATES.PAUSED) {
-      console.warn(`MultiplicationGame: Invalid transition from ${this.currentState} to ${nextState}`);
-    }
 
     this.onExitState(this.currentState);
     this.previousState = this.currentState;
@@ -139,7 +134,8 @@ class MultiplicationGame {
         break;
       case GAME_STATES.LAUNCH_READY:
         if (window.launchSequence) {
-          window.launchSequence.initScene("canvas-container-launch");
+          const destId = window.storageManager ? (window.storageManager.get("selectedDestination") || "moon") : "moon";
+          window.launchSequence.initScene("canvas-container-launch", destId);
         }
         break;
       case GAME_STATES.PAUSED:
@@ -311,7 +307,6 @@ class MultiplicationGame {
         window.uiManager.updateQuizHUD(this.currentQuestionIdx, this.totalQuestionsCount, this.comboCount, this.score);
       }
 
-      // Check badges & rocket unlocks
       if (window.achievementManager) {
         const difficulty = window.storageManager ? window.storageManager.get("difficulty") : "normal";
         window.achievementManager.checkAndAward({

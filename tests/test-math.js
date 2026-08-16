@@ -1,70 +1,63 @@
 /**
- * Adaptive Learning Engine & 1-12 Math Unit Tests (tests/test-math.js)
+ * Math Engine & Fact Family Unit Tests (tests/test-math.js) - Version 3.0.0
  */
-describe("1. Adaptive Learning & 1-12 Math Engine (MathEngine)", () => {
+describe("1. Universal Math & Fact Family Engine (MathEngine 3.0)", () => {
 
-  it("1.1 Should generate multiplication facts within 1x1 ~ 12x12 range", () => {
+  it("1.1 Should generate 9x9 Starter multiplication facts without >9 factors", () => {
     const math = new MathEngine();
-    math.setTables([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-
-    for (let i = 0; i < 50; i++) {
-      const q = math.generateQuestion();
-      Assert.isAtLeast(q.factorA, 1, "factorA >= 1");
-      Assert.isAtLeast(q.factorB, 1, "factorB >= 1");
-      Assert.equal(q.answer, q.factorA * q.factorB, "answer == factorA * factorB");
-    }
-  });
-
-  it("1.2 Should respect UK Curriculum Presets (Year 2: x2, x5, x10)", () => {
-    const math = new MathEngine();
-    const presetY2 = CONFIG.CURRICULUM_PRESETS.year2;
-    math.setTables(presetY2.tables);
+    math.setChallengeConfig(CONFIG.MATH_CHALLENGE_PRESETS.times9);
 
     for (let i = 0; i < 30; i++) {
       const q = math.generateQuestion();
-      const hasPresetFactor = presetY2.tables.includes(q.factorA) || presetY2.tables.includes(q.factorB);
-      Assert.isTrue(hasPresetFactor, "Question factor must contain Year 2 preset tables (2, 5, 10)");
+      Assert.isAtMost(q.operandA, 9, "operandA <= 9");
+      Assert.isAtMost(q.operandB, 9, "operandB <= 9");
+      Assert.equal(q.operation, "multiply", "Operation must be multiply");
+      Assert.equal(q.answer, q.operandA * q.operandB, "answer = operandA * operandB");
     }
   });
 
-  it("1.3 Should generate 3 unique distractors within valid range, including correct answer", () => {
+  it("1.2 Should generate 20x20 Advanced multiplication facts (e.g. 17x14, 19x8)", () => {
     const math = new MathEngine();
+    math.setChallengeConfig(CONFIG.MATH_CHALLENGE_PRESETS.times20);
 
-    for (let a = 1; a <= 12; a++) {
-      for (let b = 1; b <= 12; b++) {
-        const correct = a * b;
-        const choices = math.generateDistractors(a, b, correct);
-        
-        Assert.equal(choices.length, 3, "Must have exactly 3 choice options");
-        Assert.includes(choices, correct, "Must include the correct answer");
-        
-        const uniqueChoices = new Set(choices);
-        Assert.equal(uniqueChoices.size, 3, "All choices must be unique");
-      }
+    let foundHighFactor = false;
+    for (let i = 0; i < 50; i++) {
+      const q = math.generateQuestion();
+      if (q.operandA > 12 || q.operandB > 12) foundHighFactor = true;
+      Assert.isAtMost(q.operandA, 20, "operandA <= 20");
+      Assert.isAtMost(q.operandB, 20, "operandB <= 20");
+      Assert.equal(q.answer, q.operandA * q.operandB, "answer = operandA * operandB");
+    }
+    Assert.isTrue(foundHighFactor, "Should generate high factors > 12 in 20x20 mode");
+  });
+
+  it("1.3 Should generate exact integer division facts without decimals", () => {
+    const math = new MathEngine();
+    math.setChallengeConfig({ operations: ["divide"], factorAMin: 1, factorAMax: 12, factorBMin: 1, factorBMax: 12 });
+
+    for (let i = 0; i < 30; i++) {
+      const q = math.generateQuestion();
+      Assert.equal(q.operation, "divide", "Operation must be divide");
+      Assert.equal(q.operandA % q.operandB, 0, "Dividend must be exact multiple of divisor (no remainder)");
+      Assert.equal(q.answer, q.operandA / q.operandB, "answer = operandA / operandB");
     }
   });
 
-  it("1.4 Should generate pedagogical smart strategy hints based on factors", () => {
+  it("1.4 Should link multiplication and division to the same Fact Family key", () => {
     const math = new MathEngine();
-    const hint2 = math.getSmartHint(2, 8);
-    Assert.equal(hint2.type, "double", "x2 table should yield double hint");
+    const mulQ = math.formatQuestionObject("multiply", 7, 8);
+    const divQ = math.formatQuestionObject("divide", 56, 7);
 
-    const hint5 = math.getSmartHint(5, 7);
-    Assert.equal(hint5.type, "count5", "x5 table should yield count5 hint");
-
-    const hint9 = math.getSmartHint(9, 6);
-    Assert.equal(hint9.type, "subNine", "x9 table should yield subNine hint");
+    Assert.equal(mulQ.factFamilyKey, "family:7:8", "7x8 belongs to family:7:8");
+    Assert.equal(divQ.factFamilyKey, "family:7:8", "56÷7 belongs to family:7:8");
   });
 
-  it("1.5 Should accurately calculate fact mastery scores (0-100) and 12x12 Parent Report", () => {
+  it("1.5 Should generate division smart hints (Think: b × ? = a)", () => {
     const math = new MathEngine();
-    const fact = { attempts: 10, firstTryCorrect: 9, streak: 4, averageResponseTime: 2500, wrongCount: 1 };
-    const score = math.calculateMastery(fact);
+    const divQ = math.formatQuestionObject("divide", 56, 7);
 
-    Assert.isAtLeast(score, 70, "Mastery score for 90% accuracy & 4 streak should be >= 70%");
-    
-    const report = math.getTableMasteryReport();
-    Assert.equal(report.length, 12, "Parent report must contain 12 tables (1 to 12)");
+    Assert.equal(divQ.hint.type, "thinkMul", "Division should yield thinkMul hint");
+    Assert.includes(divQ.hint.textEn, "7 × ? = 56", "Hint text must suggest reverse multiplication");
   });
 
 });

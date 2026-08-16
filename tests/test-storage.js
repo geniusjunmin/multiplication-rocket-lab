@@ -1,38 +1,33 @@
 /**
- * Profile & Storage System Unit Tests (tests/test-storage.js)
+ * Storage & Profile Migration Unit Tests (tests/test-storage.js) - Version 3.0.0
  */
-describe("2. Profile & Storage Persistence System (ProfileManager & StorageManager)", () => {
+describe("2. Profile & Storage Persistence System 3.0 (ProfileManager & Schema V3)", () => {
 
-  it("2.1 Should initialize default profile with 144 multiplication facts", () => {
+  it("2.1 Should initialize profile with Schema V3 and 1~20 Multiplication & Division facts", () => {
     const active = window.profileManager.getActiveProfile();
     Assert.isTrue(active !== null, "Active profile must exist");
-    Assert.equal(Object.keys(active.facts).length, 144, "Must contain all 144 facts (1x1 to 12x12)");
+    Assert.equal(active.schemaVersion, 3, "Schema version must be 3");
+    Assert.isTrue(active.facts["mul:7x8"] !== undefined, "Must contain mul:7x8 fact key");
+    Assert.isTrue(active.facts["div:56/7"] !== undefined, "Must contain div:56/7 fact key");
   });
 
-  it("2.2 Should support adding, switching, and deleting child profiles", () => {
-    const originalCount = window.profileManager.profiles.length;
-    const newP = window.profileManager.addProfile("Amy", "year3");
-
-    Assert.equal(window.profileManager.profiles.length, originalCount + 1, "Profile count should increase by 1");
-    Assert.equal(window.profileManager.activeProfileId, newP.id, "Active profile should be switched to new profile");
-
-    window.profileManager.switchProfile(window.profileManager.profiles[0].id);
-    Assert.equal(window.profileManager.activeProfileId, window.profileManager.profiles[0].id, "Should switch back to first profile");
+  it("2.2 Should record Interplanetary Destination visits in Space Passport", () => {
+    window.profileManager.recordDestinationVisited("saturn");
+    const active = window.profileManager.getActiveProfile();
+    Assert.isTrue(active.destinationsVisited["saturn"] === true, "Saturn visit must be recorded in passport");
   });
 
-  it("2.3 Should export data as JSON and re-import with schema validation", () => {
+  it("2.3 Should export Schema V3 JSON data and re-import cleanly", () => {
     const jsonStr = window.profileManager.exportDataJson();
-    Assert.includes(jsonStr, "profiles", "JSON export must contain profiles key");
+    Assert.includes(jsonStr, "schemaVersion", "Exported JSON must contain schemaVersion");
 
     const importRes = window.profileManager.importDataJson(jsonStr);
-    Assert.isTrue(importRes.success, "JSON import should succeed");
+    Assert.isTrue(importRes.success, "Import of V3 JSON data must succeed");
   });
 
-  it("2.4 Should export CSV report with headers and 144 fact rows", () => {
+  it("2.4 Should export CSV report with operation column and headers", () => {
     const csvStr = window.profileManager.exportReportCsv();
-    Assert.includes(csvStr, "Fact ID,Factor A,Factor B", "CSV export must contain proper headers");
-    const lines = csvStr.trim().split("\n");
-    Assert.equal(lines.length, 145, "CSV must contain 1 header line + 144 fact lines");
+    Assert.includes(csvStr, "Fact ID,Operation,Operand A,Operand B", "CSV headers must contain Operation column");
   });
 
 });

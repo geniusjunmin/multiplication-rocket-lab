@@ -1,27 +1,22 @@
 /**
  * Multiplication Rocket Lab - Application Main Entry & Event Dispatcher (js/main.js)
+ * Version 3.0.0 Product-Grade Architecture
  */
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("Multiplication Rocket Lab v2.0.0 Initialized!");
+  console.log("Multiplication Rocket Lab v3.0.0 Product-Grade Initialized!");
 
-  // 1. Initialize i18n DOM translations
   if (window.i18n) window.i18n.updateDOM();
-
-  // 2. Initialize Game Engine
   if (window.game) window.game.init();
 
-  // 3. Register Service Worker for PWA Offline Play
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").then(reg => {
-      console.log("ServiceWorker registered successfully:", reg.scope);
-    }).catch(err => {
-      console.warn("ServiceWorker registration skipped:", err);
-    });
+      console.log("ServiceWorker registered:", reg.scope);
+    }).catch(err => console.warn("ServiceWorker registration skipped:", err));
   }
 
-  // 4. Bind Global Nav & Modal Events
   bindGlobalNavEvents();
   bindSettingsEvents();
+  bindDestinationEvents();
   bindBlueprintEvents();
   bindQuizInputEvents();
   bindAssemblyEvents();
@@ -109,6 +104,21 @@ function bindProfileEvents() {
 }
 
 function bindSettingsEvents() {
+  // Free Challenge Preset Selector Buttons
+  document.querySelectorAll(".btn-challenge-preset").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const challengeKey = btn.getAttribute("data-challenge");
+      const preset = CONFIG.MATH_CHALLENGE_PRESETS[challengeKey];
+      if (preset && window.storageManager) {
+        window.storageManager.set("selectedMathChallenge", challengeKey);
+        if (window.mathEngine) window.mathEngine.setChallengeConfig(preset);
+        
+        document.querySelectorAll(".btn-challenge-preset").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+      }
+    });
+  });
+
   // UK Curriculum Quick Preset Buttons
   document.querySelectorAll(".btn-preset").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -117,9 +127,7 @@ function bindSettingsEvents() {
       if (preset && window.storageManager) {
         window.storageManager.set("yearPreset", presetKey);
         window.storageManager.set("selectedTables", [...preset.tables]);
-        if (window.mathEngine) window.mathEngine.setTables(preset.tables);
         
-        // Update UI chips
         document.querySelectorAll(".btn-chip").forEach(chip => {
           const tableNum = Number(chip.getAttribute("data-table"));
           if (preset.tables.includes(tableNum)) chip.classList.add("selected");
@@ -165,8 +173,22 @@ function bindSettingsEvents() {
       });
     }
 
-    if (window.mathEngine) window.mathEngine.setTables(selectedTables);
     if (window.game) window.game.startNewGameRound(GAME_MODES.NORMAL);
+  });
+}
+
+function bindDestinationEvents() {
+  document.querySelectorAll(".dest-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const destId = card.getAttribute("data-dest");
+      if (destId && window.destinationManager) {
+        window.destinationManager.setDestination(destId);
+        document.querySelectorAll(".dest-card").forEach(c => c.classList.remove("selected"));
+        card.classList.add("selected");
+
+        window.destinationManager.initPlanetPreview("planet-preview-canvas", destId);
+      }
+    });
   });
 }
 
@@ -328,8 +350,9 @@ function bindLaunchEvents() {
     if (window.game) window.game.setGameState(GAME_STATES.LAUNCH_READY);
 
     if (window.launchSequence) {
+      const destId = window.storageManager ? (window.storageManager.get("selectedDestination") || "moon") : "moon";
       window.launchSequence.startLaunchSequence(() => {
-        console.log("Launch sequence complete! Rocket in orbit!");
+        console.log(`Mission to ${destId} complete! Rocket in orbit!`);
       });
     }
   });

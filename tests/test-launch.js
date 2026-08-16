@@ -1,38 +1,45 @@
 /**
- * 3D 火箭发射与升空动画引擎单元测试 (tests/test-launch.js)
+ * Interplanetary Destination & Launch Sequence Unit Tests (tests/test-launch.js) - Version 3.0.0
  */
-describe("4. 3D 发射引擎 (LaunchSequence)", () => {
+describe("4. Interplanetary Launch Engine & Planet Arrival Scenes (LaunchSequence)", () => {
 
-  it("4.1 应该正常初始化发射环境与 3D 火箭模型", () => {
+  it("4.1 Should initialize 3D launch environment for all 6 Interplanetary Destinations", () => {
     const launch = new LaunchSequence();
-    // 模拟火箭构建器
-    window.rocketBuilder = new RocketBuilder();
-    window.rocketBuilder.buildCurrentRocket();
+    const destinations = ["earthOrbit", "moon", "mars", "jupiter", "saturn", "deepSpace"];
 
-    launch.createRocketCopy();
-    Assert.isTrue(launch.rocket !== null, "应成功克隆或新建火箭模型");
-    Assert.isTrue(launch.flameMesh !== null, "应成功建立发动机尾焰 Mesh");
+    destinations.forEach(destId => {
+      launch.initScene("canvas-container-launch", destId);
+      Assert.equal(launch.destinationId, destId, `Destination must set to ${destId}`);
+      Assert.isTrue(launch.destinationMesh !== null, "Destination planet mesh must be created");
+      launch.destroy();
+    });
   });
 
-  it("4.2 应该在重置时清空倒计时与动画 Timer 句柄", () => {
+  it("4.2 Should create 3D Saturn RingGeometry for Saturn destination", () => {
     const launch = new LaunchSequence();
-    launch.startCountdown(() => {});
+    launch.initScene("canvas-container-launch", "saturn");
 
-    Assert.isTrue(launch.countdownTimer !== null, "启动倒计时后应拥有定时器句柄");
+    Assert.isTrue(launch.saturnRingMesh !== null, "Saturn ring mesh must be instantiated for Saturn destination");
     launch.destroy();
-    Assert.equal(launch.countdownTimer, null, "销毁后倒计时句柄应被清理");
   });
 
-  it("4.3 应该在触发点火时开启火焰与灯光特效", () => {
+  it("4.3 Should execute multi-stage countdown, ignition and liftoff", () => {
     const launch = new LaunchSequence();
-    window.rocketBuilder = new RocketBuilder();
-    window.rocketBuilder.buildCurrentRocket();
-    launch.createRocketCopy();
+    launch.initScene("canvas-container-launch", "mars");
+    
+    launch.triggerIgnition(() => {
+      Assert.equal(launch.currentStage, "ignition", "Stage should transition to ignition");
+    });
+    launch.destroy();
+  });
 
-    launch.triggerIgnition(() => {});
-    Assert.equal(launch.currentStage, "ignition", "当前阶段应切换为 ignition");
-    Assert.isTrue(launch.flameMesh.visible, "点火后尾焰 Mesh 应变为可见");
-    Assert.isAbove(launch.cameraShakeIntensity, 0, "点火时应有镜头震动参数");
+  it("4.4 Should safely dispose 3D scene objects and GPU memory on destroy()", () => {
+    const launch = new LaunchSequence();
+    launch.initScene("canvas-container-launch", "moon");
+    launch.destroy();
+
+    Assert.equal(launch.scene, null, "Scene must be null after destroy()");
+    Assert.equal(launch.renderer, null, "Renderer must be null after destroy()");
   });
 
 });

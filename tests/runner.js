@@ -1,14 +1,10 @@
 /**
- * 乘法火箭实验室 - 轻量自动化测试框架 (tests/runner.js)
+ * Multiplication Rocket Lab - Lightweight Test Runner (tests/runner.js)
  */
 class TestRunner {
   constructor() {
     this.suites = [];
     this.currentSuite = null;
-    this.totalTests = 0;
-    this.passedTests = 0;
-    this.failedTests = 0;
-    this.results = [];
   }
 
   describe(name, fn) {
@@ -16,7 +12,6 @@ class TestRunner {
     this.suites.push(suite);
     this.currentSuite = suite;
     fn();
-    this.currentSuite = null;
   }
 
   it(name, fn) {
@@ -25,112 +20,98 @@ class TestRunner {
     }
   }
 
-  async runAll(onProgress, onComplete) {
-    this.totalTests = 0;
-    this.passedTests = 0;
-    this.failedTests = 0;
-    this.results = [];
-
-    // 计算总测试数
-    this.suites.forEach(s => this.totalTests += s.tests.length);
-
+  runAll(onProgress, onComplete) {
+    let total = 0;
+    let passed = 0;
+    let failed = 0;
     let executed = 0;
 
-    for (const suite of this.suites) {
-      const suiteResult = { name: suite.name, tests: [] };
+    this.suites.forEach(s => total += s.tests.length);
 
+    for (const suite of this.suites) {
+      this.currentSuite = suite;
       for (const test of suite.tests) {
         executed++;
-        const testResult = { name: test.name, passed: false, error: null, timeMs: 0 };
         const startTime = Date.now();
+        let isPass = false;
+        let errStr = "";
 
         try {
-          await test.fn();
-          testResult.passed = true;
-          this.passedTests++;
+          test.fn();
+          isPass = true;
+          passed++;
         } catch (e) {
-          testResult.passed = false;
-          testResult.error = e.message || String(e);
-          this.failedTests++;
+          failed++;
+          errStr = e.message || String(e);
         }
-        testResult.timeMs = Date.now() - startTime;
-        suiteResult.tests.push(testResult);
 
+        const duration = Date.now() - startTime;
         if (onProgress) {
           onProgress({
             executed,
-            total: this.totalTests,
-            passed: this.passedTests,
-            failed: this.failedTests,
-            currentTest: testResult
+            total,
+            passed,
+            failed,
+            currentTest: {
+              name: test.name,
+              passed: isPass,
+              error: errStr,
+              timeMs: duration
+            }
           });
         }
       }
-      this.results.push(suiteResult);
     }
 
     if (onComplete) {
-      onComplete({
-        total: this.totalTests,
-        passed: this.passedTests,
-        failed: this.failedTests,
-        suites: this.results
-      });
+      onComplete({ total, executed, passed, failed });
     }
-
-    return {
-      total: this.totalTests,
-      passed: this.passedTests,
-      failed: this.failedTests,
-      suites: this.results
-    };
   }
 }
 
-class Assert {
-  static isTrue(val, msg) {
-    if (!val) throw new Error(msg || `Expected true, got ${val}`);
-  }
-  static isFalse(val, msg) {
-    if (val) throw new Error(msg || `Expected false, got ${val}`);
-  }
-  static equal(actual, expected, msg) {
+const Assert = {
+  equal(actual, expected, message) {
     if (actual !== expected) {
-      throw new Error(msg || `Expected ${expected}, but got ${actual}`);
+      throw new Error(message || `Expected ${expected}, but got ${actual}`);
+    }
+  },
+  isTrue(val, message) {
+    if (val !== true) {
+      throw new Error(message || `Expected true, but got ${val}`);
+    }
+  },
+  isFalse(val, message) {
+    if (val !== false) {
+      throw new Error(message || `Expected false, but got ${val}`);
+    }
+  },
+  includes(arrOrStr, item, message) {
+    if (!arrOrStr || (typeof arrOrStr.includes === "function" && !arrOrStr.includes(item))) {
+      throw new Error(message || `Expected ${arrOrStr} to include ${item}`);
+    }
+  },
+  isAtLeast(val, min, message) {
+    if (val < min) {
+      throw new Error(message || `Expected ${val} >= ${min}`);
+    }
+  },
+  isAtMost(val, max, message) {
+    if (val > max) {
+      throw new Error(message || `Expected ${val} <= ${max}`);
     }
   }
-  static notEqual(actual, expected, msg) {
-    if (actual === expected) {
-      throw new Error(msg || `Expected value not to equal ${expected}`);
-    }
-  }
-  static isAbove(actual, expected, msg) {
-    if (actual <= expected) {
-      throw new Error(msg || `Expected ${actual} > ${expected}`);
-    }
-  }
-  static isAtLeast(actual, expected, msg) {
-    if (actual < expected) {
-      throw new Error(msg || `Expected ${actual} >= ${expected}`);
-    }
-  }
-  static includes(arr, val, msg) {
-    if (!arr.includes(val)) {
-      throw new Error(msg || `Expected array [${arr}] to include ${val}`);
-    }
-  }
-}
-
-// 导出全局对象
-const testRunner = new TestRunner();
-const describe = (name, fn) => testRunner.describe(name, fn);
-const it = (name, fn) => testRunner.it(name, fn);
+};
 
 if (typeof module !== "undefined") {
-  module.exports = { testRunner, describe, it, Assert };
+  module.exports = { TestRunner, Assert };
+  global.TestRunner = TestRunner;
+  global.Assert = Assert;
+  global.describe = (name, fn) => testRunner.describe(name, fn);
+  global.it = (name, fn) => testRunner.it(name, fn);
+  global.testRunner = new TestRunner();
 } else {
-  window.testRunner = testRunner;
-  window.describe = describe;
-  window.it = it;
+  window.testRunner = new TestRunner();
+  window.describe = (name, fn) => window.testRunner.describe(name, fn);
+  window.it = (name, fn) => window.testRunner.it(name, fn);
   window.Assert = Assert;
 }

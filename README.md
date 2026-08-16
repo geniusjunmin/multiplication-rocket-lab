@@ -1,57 +1,51 @@
-# Multiplication Rocket Lab 🚀 (乘法火箭实验室 v2.0.0)
+# Multiplication Rocket Lab 🚀 (乘法火箭实验室 v3.0.0)
 
 [![GitHub Pages Deployment](https://img.shields.io/badge/Live_Demo-GitHub_Pages-6366f1?style=for-the-badge&logo=github)](https.geniusjunmin.github.io/multiplication-rocket-lab/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-10b981.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-**Multiplication Rocket Lab** is a production-grade, gamified 3D math learning application designed specifically for primary school children in the **UK National Curriculum (Year 2 to Year 4, Ages 6-9)**. Combining times table practice with procedural Three.js 3D rocket construction, space launches, and an adaptive spaced-repetition learning engine, it inspires children to master multiplication facts through positive reinforcement without frustration.
+**Multiplication Rocket Lab** is a production-grade, gamified 3D math learning application designed for primary school children (UK National Curriculum & Worldwide, Ages 6-12). Combining multiplication & division practice with procedural Three.js 3D rocket construction and interplanetary space exploration, it inspires children to accomplish genuine interstellar space missions through positive reinforcement.
 
 ---
 
-## 🌟 Key Features & Improvements in v2.0.0
+## 🌟 What's New in Version 3.0.0
 
-### 1. 🇬🇧 UK National Curriculum Presets & 1×1 to 12×12 Multiplication
-- **Year 2 (Ages 6-7)**: Focus on ×2, ×5, ×10 tables.
-- **Year 3 (Ages 7-8)**: Master ×3, ×4, ×8 & review ×2, ×5, ×10.
-- **Year 4 (Ages 8-9)**: Full 1×1 to 12×12 multiplication tables.
-- **Custom Preset**: Select any custom combination of 1 to 12 tables.
+### 1. 🧮 Flexible Math Challenge System & Free Presets
+Decouples **Learning Content** (what questions are asked) from **Challenge Difficulty** (how you answer: Easy choices/hints, Normal keypad, Hard timer).
+- **Curriculum Mode**: UK Year 2 (×2, ×5, ×10), Year 3 (×3, ×4, ×8), Year 4 (×1~×12).
+- **Free Challenge Mode**:
+  - ⭐ **Starter (9×9)**: 1×1 to 9×9 multiplication.
+  - 🚀 **Standard (12×12)**: 1×1 to 12×12 multiplication.
+  - 🔥 **Advanced (20×20)**: High-range facts (e.g. 14×6, 17×8, 12×16, 19×7).
+  - ⚡ **Multiply & Divide (× & ÷)**: Mixed multiplication and exact integer division (e.g. 7×8=56, 56÷7=8, 56÷8=7).
+  - 🧠 **Expert (20×20 × & ÷)**: High-level 20×20 multiplication and division.
+  - 🛠️ **Custom Range**: Custom Factor A (1-30), Factor B (1-20), and Operations.
 
-### 2. 🧠 Fact-Level Adaptive Learning Engine
-- Tracks mastery for all **144 individual multiplication facts** (`1x1` to `12x12`).
-- Computes fact-level **Mastery Scores (0-100%)** based on first-try accuracy, streaks, response speed, and recency.
-- Spaced-repetition priority weighting ensures weak facts appear more frequently while preventing repetitive consecutive prompts.
-- **Smart Strategy Hints**: Fact-tailored hints (e.g. ×2 double, ×5 count, ×9 = 10-1, ×10 add 0, near known facts like 6×7=42 → 7×7=42+7).
+### 2. 👨‍👩‍👧 Fact Family Engine & Division Mastery
+- **Fact Family Linkage**: Unifies `7×8=56`, `8×7=56`, `56÷7=8`, `56÷8=7` into a conceptual **Fact Family key (`family:7:8`)**.
+- **Operation-Specific Statistics**: Independently tracks Multiplication Mastery % vs Division Mastery % in the Parent Dashboard.
+- **Division Smart Hints**: Reverse multiplication hints (e.g. `56 ÷ 7 = ?` → `Think: 7 × ? = 56`).
+- **Easy Mode Visual Helpers**: Visual arrays for multiplication and grouped dot objects for division.
 
-### 3. 👨‍🚀 Multi-Child Player Profiles
-- Local profile manager ("Who's playing? 🚀 Alex | Amy | ➕ Add Player").
-- Independent stats, year presets, unlocked badges, 3D rockets, and settings per child.
-- **Zero Internet / Zero Server**: All data stays 100% locally on the device (privacy guaranteed).
+### 3. 🪐 6 Interplanetary Destinations & Space Passport
+Decouples Math Challenge from Space Destinations so children can pair any math level with any space mission!
+- 🌍 **Earth Orbit**: Low Earth Orbit station mission (400 km).
+- 🌙 **Moon Base**: Lunar orbit and crater surface approach.
+- 🔴 **Mars Colony**: Red Planet atmospheric descent and canyon approach.
+- 🪐 **Jupiter Flyby**: Gas giant flyby with Great Red Spot & moons.
+- 🪐 **Saturn Ring Explorer**: Traversal of Saturn's magnificent 3D translucent rings.
+- 🌌 **Deep Space Explorer**: Journey beyond the Solar System into interstellar nebulae.
+- 🎫 **Space Passport Stamps**: Interactive passport tracking completed planetary visits (`🌍 ✓`, `🌙 ✓`, `🔴 ✓`, `🪐 ✓`, `🌌 ✓`).
 
-### 4. 📊 Comprehensive Parent Dashboard & 12×12 Heatmap Matrix
-- **Today's Stats**: Answered count, first-try accuracy %, avg response speed (s), highest streak.
-- **Lifetime Stats**: Total answered, practice time, space launches, overall accuracy.
-- **12×12 Fact Matrix**: Interactive color-coded heatmap grid representing all 144 facts. Click any cell to inspect attempts, accuracy, speed, and last practice date.
-- **Data Portability**: Export/Import JSON data and Export CSV summary report.
-
-### 5. 🌐 Internationalization (Bilingual English & Chinese)
-- Default **UK English (`en`)** experience for UK students.
-- One-click toggle to **Chinese (`zh`)** for bilingual households.
-
-### 6. 🚀 5 Procedural 3D Rocket Models & 5 Themes
-- 🚀 **Classic Explorer**
-- 🛰️ **SpaceX Starship** (Stainless steel, aero flaps, Super Heavy booster base)
-- ⚡ **Falcon Heavy** (Triple-core booster, grid fins)
-- 🇨🇳 **Long March 5** (5m core & strap-on boosters)
-- 🌌 **Cyber Starship** (Neon energy rings, ring engine)
-
-### 7. 📱 PWA & Offline Tablet Play
-- Includes `manifest.webmanifest` and Service Worker (`sw.js`).
-- Full support for iPad, iPhone, Android tablets, and Desktop (touch targets ≥ 48px, 100dvh layout, reduced motion support).
+### 4. 🎬 Cinematic Launch & Arrival Sequence
+- **Multi-Layer Engine Flame**: Inner white/yellow core, main orange flame, outer red aura, pointlight glow, exhaust particles, smoke pool, shock diamonds.
+- **Cinematic Camera Director**: 9 camera angles with smooth interpolation, altitude cloud layer, star field parallax, and atmosphere transition (Blue ➔ Dark Blue ➔ Deep Space Black).
+- **Planet Arrival Scenes**: Destination-specific 3D scenes (Saturn 3D Rings, Mars Red Canyons, Cratered Moon, Jupiter Gas Bands).
 
 ---
 
 ## 🧪 Automated Testing Suite
 
-Comprehensive automated test runner with **24 unit & integration assertions**:
+Comprehensive automated test runner with **25 unit & integration assertions**:
 
 ```bash
 # Run CLI test suite via Node.js

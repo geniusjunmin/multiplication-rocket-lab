@@ -1,5 +1,5 @@
 /**
- * Node.js Command Line Automated Test Suite Runner (tests/run-node-tests.js)
+ * Node.js Command Line Automated Test Suite Runner (tests/run-node-tests.js) - Version 3.0.0
  */
 const vm = require('vm');
 const fs = require('fs');
@@ -29,6 +29,7 @@ function createMockElement(id = "") {
 
 // Mock Node global DOM environment
 global.window = global;
+global.window.WebGLRenderingContext = class {};
 global.window.addEventListener = () => {};
 global.window.removeEventListener = () => {};
 global.requestAnimationFrame = (fn) => setTimeout(fn, 16);
@@ -67,6 +68,7 @@ global.THREE = {
   TorusGeometry: class { rotateX() {} dispose() {} },
   SphereGeometry: class { rotateX() {} dispose() {} },
   CircleGeometry: class { rotateX() {} dispose() {} },
+  RingGeometry: class { rotateX() {} dispose() {} },
   OctahedronGeometry: class { rotateX() {} dispose() {} },
   BufferGeometry: class { setAttribute() {} rotateX() {} dispose() {} },
   BufferAttribute: class {},
@@ -104,7 +106,7 @@ appFiles.forEach(f => {
   vm.runInThisContext(code);
 });
 
-console.log("\n🚀 === Multiplication Rocket Lab Automated CLI Test Suite ===\n");
+console.log("\n🚀 === Multiplication Rocket Lab 3.0 Automated CLI Test Suite ===\n");
 
 testRunner.runAll(
   (progress) => {

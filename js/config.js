@@ -1,12 +1,10 @@
 /**
  * Multiplication Rocket Lab - Centralized Configuration (js/config.js)
- * Version 2.0.0
+ * Version 3.0.0 Product-Grade Architecture
  */
 const CONFIG = {
-  APP_VERSION: "2.0.0",
-  SCHEMA_VERSION: 2,
-  MAX_TABLE: 12,
-  MIN_TABLE: 1,
+  APP_VERSION: "3.0.0",
+  SCHEMA_VERSION: 3,
   PART_COUNT: 10,
   DEFAULT_QUESTION_COUNT: 15,
 
@@ -16,6 +14,7 @@ const CONFIG = {
       nameEn: "Year 2 (Ages 6-7)",
       nameZh: "Year 2 (6-7岁)",
       tables: [2, 5, 10],
+      operations: ["multiply"],
       descriptionEn: "Focus on ×2, ×5, ×10 tables",
       descriptionZh: "重点掌握 2、5、10 的乘法表"
     },
@@ -23,22 +22,166 @@ const CONFIG = {
       nameEn: "Year 3 (Ages 7-8)",
       nameZh: "Year 3 (7-8岁)",
       tables: [2, 3, 4, 5, 8, 10],
+      operations: ["multiply"],
       descriptionEn: "Master ×3, ×4, ×8 & review ×2, ×5, ×10",
       descriptionZh: "掌握 3、4、8 并复习 2、5、10 乘法表"
     },
     year4: {
       nameEn: "Year 4 (Ages 8-9)",
       nameZh: "Year 4 (8-9岁)",
-      tables: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      tables: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      operations: ["multiply"],
       descriptionEn: "Full 1×1 to 12×12 Multiplication Tables",
       descriptionZh: "完整覆盖 1×1 到 12×12 乘法表"
+    }
+  },
+
+  // Free Challenge Math Presets
+  MATH_CHALLENGE_PRESETS: {
+    times9: {
+      id: "times9",
+      nameEn: "⭐ Starter — 9×9",
+      nameZh: "⭐ 基础九九乘法 (9×9)",
+      operations: ["multiply"],
+      factorAMin: 1, factorAMax: 9,
+      factorBMin: 1, factorBMax: 9,
+      descEn: "1×1 to 9×9 multiplication facts",
+      descZh: "1×1 至 9×9 基础乘法表练习"
+    },
+    times12: {
+      id: "times12",
+      nameEn: "🚀 Standard — 12×12",
+      nameZh: "🚀 标准乘法表 (12×12)",
+      operations: ["multiply"],
+      factorAMin: 1, factorAMax: 12,
+      factorBMin: 1, factorBMax: 12,
+      descEn: "1×1 to 12×12 multiplication facts",
+      descZh: "1×1 至 12×12 进阶乘法表"
+    },
+    times20: {
+      id: "times20",
+      nameEn: "🔥 Advanced — 20×20",
+      nameZh: "🔥 极速高阶乘法 (20×20)",
+      operations: ["multiply"],
+      factorAMin: 1, factorAMax: 20,
+      factorBMin: 1, factorBMax: 20,
+      descEn: "Advanced facts up to 20×20 (e.g. 14×6, 17×8)",
+      descZh: "1~20 范围高阶乘法 (如 14×6, 17×8)"
+    },
+    multDivide12: {
+      id: "multDivide12",
+      nameEn: "⚡ Multiply & Divide (1-12)",
+      nameZh: "⚡ 乘除混合计算 (1-12)",
+      operations: ["multiply", "divide"],
+      factorAMin: 1, factorAMax: 12,
+      factorBMin: 1, factorBMax: 12,
+      exactDivisionOnly: true,
+      descEn: "Mixed multiplication & exact integer division",
+      descZh: "1~12 乘法与整除法混合练习"
+    },
+    expert20: {
+      id: "expert20",
+      nameEn: "🧠 Expert — 20×20 × & ÷",
+      nameZh: "🧠 专家级乘除大挑战 (20×20)",
+      operations: ["multiply", "divide"],
+      factorAMin: 1, factorAMax: 20,
+      factorBMin: 1, factorBMax: 20,
+      exactDivisionOnly: true,
+      descEn: "High-level 20×20 multiplication and division",
+      descZh: "20×20 范围内乘法与整除法大师挑战"
     },
     custom: {
-      nameEn: "Custom Selection",
-      nameZh: "自定义乘法表",
-      tables: [2, 3, 4, 5],
-      descriptionEn: "Choose specific multiplication tables",
-      descriptionZh: "自由勾选需要的乘法表"
+      id: "custom",
+      nameEn: "🛠️ Custom Range",
+      nameZh: "🛠️ 自定义数字与运算范围",
+      operations: ["multiply"],
+      factorAMin: 1, factorAMax: 12,
+      factorBMin: 1, factorBMax: 12,
+      exactDivisionOnly: true,
+      descEn: "Configure custom ranges and operations",
+      descZh: "自定义乘除法运算与因子区间"
+    }
+  },
+
+  // 6 Interplanetary Destination Missions
+  DESTINATIONS: {
+    earthOrbit: {
+      id: "earthOrbit",
+      nameEn: "Earth Orbit",
+      nameZh: "近地轨道",
+      icon: "🌍",
+      type: "orbit",
+      distanceKm: "400 km",
+      difficulty: 1,
+      descEn: "Low Earth orbit station mission",
+      descZh: "空间站近地轨道部署任务",
+      recommendedPreset: "times9",
+      color: "#0284c7"
+    },
+    moon: {
+      id: "moon",
+      nameEn: "Moon Base",
+      nameZh: "月球基地号",
+      icon: "🌙",
+      type: "landing",
+      distanceKm: "384,400 km",
+      difficulty: 2,
+      descEn: "Lunar orbit and surface approach",
+      descZh: "月球轨道环绕与环形山降落任务",
+      recommendedPreset: "times9",
+      color: "#94a3b8"
+    },
+    mars: {
+      id: "mars",
+      nameEn: "Mars Colony",
+      nameZh: "火星拓荒号",
+      icon: "🔴",
+      type: "landing",
+      distanceKm: "225,000,000 km",
+      difficulty: 3,
+      descEn: "Red Planet orbital insertion and landing",
+      descZh: "红色火星大气穿梭与基地抵达任务",
+      recommendedPreset: "times12",
+      color: "#ef4444"
+    },
+    jupiter: {
+      id: "jupiter",
+      nameEn: "Jupiter Flyby",
+      nameZh: "木星风暴探险号",
+      icon: "🪐",
+      type: "flyby",
+      distanceKm: "778,000,000 km",
+      difficulty: 4,
+      descEn: "Gas giant flyby & Great Red Spot study",
+      descZh: "气态巨行星大红斑与卫群近距离飞掠",
+      recommendedPreset: "multDivide12",
+      color: "#f59e0b"
+    },
+    saturn: {
+      id: "saturn",
+      nameEn: "Saturn Ring Explorer",
+      nameZh: "土星光环探索者",
+      icon: "🪐",
+      type: "orbit",
+      distanceKm: "1,400,000,000 km",
+      difficulty: 5,
+      descEn: "Traverse Saturn's 3D magnificent rings",
+      descZh: "穿越土星壮丽的 3D 冰晶光环轨道",
+      recommendedPreset: "times20",
+      color: "#eab308"
+    },
+    deepSpace: {
+      id: "deepSpace",
+      nameEn: "Deep Space Explorer",
+      nameZh: "深空星云开拓号",
+      icon: "🌌",
+      type: "exploration",
+      distanceKm: "Deep Space",
+      difficulty: 6,
+      descEn: "Journey beyond the Solar System into interstellar nebulae",
+      descZh: "穿过太阳系边缘进入璀璨星云深处",
+      recommendedPreset: "expert20",
+      color: "#818cf8"
     }
   },
 

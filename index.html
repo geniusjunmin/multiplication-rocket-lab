@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title data-i18n="appTitle">Multiplication Rocket Lab 🚀</title>
+  <title data-i18n="appTitle">Multiplication Rocket Lab 3.0 🚀</title>
   
-  <meta name="description" content="Learn Times Tables, Build 3D Rockets & Launch to Deep Space!">
+  <meta name="description" content="Master Times Tables & Division, Build 3D Rockets & Explore the Solar System!">
   <meta name="theme-color" content="#6366f1">
   <link rel="manifest" href="manifest.webmanifest">
 
@@ -50,7 +50,7 @@
     <header id="global-header" class="global-header">
       <div class="header-brand">
         <button id="btn-home" class="btn-icon" aria-label="Home">🏠</button>
-        <h1 class="game-logo" data-i18n="appTitle">Multiplication Rocket Lab 🚀</h1>
+        <h1 class="game-logo" data-i18n="appTitle">Multiplication Rocket Lab 3.0 🚀</h1>
       </div>
 
       <!-- Profile Selector HUD -->
@@ -75,19 +75,19 @@
       <section id="screen-home" class="screen screen-home">
         <div class="hero-layout">
           <div class="hero-text-card card">
-            <span class="badge-pill">🚀 NASA Control Center • Educational Game v2.0</span>
-            <h2 class="hero-title">Build. Learn. Launch!</h2>
-            <p class="hero-subtitle" data-i18n="tagline">Learn Times Tables • Build 3D Rockets • Launch to Deep Space!</p>
+            <span class="badge-pill">🚀 Interplanetary Space Missions • Educational Game v3.0</span>
+            <h2 class="hero-title">Build. Learn. Explore the Solar System!</h2>
+            <p class="hero-subtitle" data-i18n="tagline">Master Times Tables & Division • Build 3D Rockets • Explore the Solar System!</p>
             
             <div class="hero-actions">
               <button id="btn-start-game" class="btn btn-primary btn-large btn-pulse" data-i18n="btnStartGame">
-                🚀 Start Rocket Building
+                🚀 Start Rocket Mission
               </button>
               <button id="btn-continue-game" class="btn btn-secondary btn-large hidden" data-i18n="btnContinueGame">
-                ▶️ Continue Rocket
+                ▶️ Continue Mission
               </button>
               <button id="btn-open-settings" class="btn btn-outline" data-i18n="btnSettings">
-                ⚙️ Learning Settings
+                ⚙️ Math & Mission Setup
               </button>
               <button id="btn-open-report" class="btn btn-outline" data-i18n="btnReport">
                 📊 Parent Dashboard
@@ -101,10 +101,10 @@
         </div>
       </section>
 
-      <!-- 2. SETTINGS SCREEN -->
+      <!-- 2. SETTINGS & MISSION PLANNER SCREEN -->
       <section id="screen-settings" class="screen screen-settings hidden">
         <div class="settings-card card">
-          <h2 data-i18n="settingsTitle">⚙️ Learning & Difficulty Settings</h2>
+          <h2 data-i18n="settingsTitle">⚙️ Math Challenge & Mission Settings</h2>
 
           <div class="setting-group">
             <label class="setting-label" data-i18n="playerNameLabel">Child's Name:</label>
@@ -112,11 +112,58 @@
           </div>
 
           <div class="setting-group">
-            <label class="setting-label" data-i18n="curriculumPresetLabel">UK Curriculum Quick Presets:</label>
+            <label class="setting-label" data-i18n="curriculumPresetLabel">UK Curriculum Presets:</label>
             <div class="preset-buttons-grid">
               <button class="btn btn-outline btn-preset" data-preset="year2">Year 2 (×2, ×5, ×10)</button>
               <button class="btn btn-outline btn-preset" data-preset="year3">Year 3 (×3, ×4, ×8)</button>
               <button class="btn btn-outline btn-preset" data-preset="year4">Year 4 (×1~×12)</button>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-label" data-i18n="freeChallengeLabel">Free Challenge Presets:</label>
+            <div class="preset-buttons-grid">
+              <button class="btn btn-outline btn-challenge-preset active" data-challenge="times9">⭐ Starter — 9×9</button>
+              <button class="btn btn-outline btn-challenge-preset" data-challenge="times12">🚀 Standard — 12×12</button>
+              <button class="btn btn-outline btn-challenge-preset" data-challenge="times20">🔥 Advanced — 20×20</button>
+              <button class="btn btn-outline btn-challenge-preset" data-challenge="multDivide12">⚡ Multiply & Divide (1-12)</button>
+              <button class="btn btn-outline btn-challenge-preset" data-challenge="expert20">🧠 Expert (20×20 × & ÷)</button>
+            </div>
+          </div>
+
+          <!-- Interplanetary Mission Selector -->
+          <div class="setting-group">
+            <label class="setting-label" data-i18n="selectDestinationTitle">🪐 Select Interplanetary Mission Destination:</label>
+            <div class="dest-cards-grid">
+              <div class="dest-card selected" data-dest="earthOrbit">
+                <span class="dest-icon">🌍</span>
+                <span class="dest-name" data-i18n="destEarthOrbit">Earth Orbit (400 km)</span>
+              </div>
+              <div class="dest-card" data-dest="moon">
+                <span class="dest-icon">🌙</span>
+                <span class="dest-name" data-i18n="destMoon">Moon Base Mission</span>
+              </div>
+              <div class="dest-card" data-dest="mars">
+                <span class="dest-icon">🔴</span>
+                <span class="dest-name" data-i18n="destMars">Mars Colony Mission</span>
+              </div>
+              <div class="dest-card" data-dest="jupiter">
+                <span class="dest-icon">🪐</span>
+                <span class="dest-name" data-i18n="destJupiter">Jupiter Flyby Mission</span>
+              </div>
+              <div class="dest-card" data-dest="saturn">
+                <span class="dest-icon">🪐</span>
+                <span class="dest-name" data-i18n="destSaturn">Saturn Ring Explorer</span>
+              </div>
+              <div class="dest-card" data-dest="deepSpace">
+                <span class="dest-icon">🌌</span>
+                <span class="dest-name" data-i18n="destDeepSpace">Deep Space Explorer</span>
+              </div>
+            </div>
+
+            <!-- 3D Planet Preview -->
+            <div class="planet-preview-box">
+              <div id="planet-preview-canvas" class="planet-canvas-wrapper"></div>
             </div>
           </div>
 
@@ -169,11 +216,11 @@
           </div>
 
           <div class="setting-group">
-            <label class="setting-label" data-i18n="timerSelectLabel">Hard Mode Timer:</label>
+            <label class="setting-label" data-i18n="timerSelectLabel">Question Timer:</label>
             <select id="select-timer-seconds" class="input-select">
-              <option value="5">5 Seconds (Fast)</option>
-              <option value="8" selected>8 Seconds (Standard)</option>
-              <option value="10">10 Seconds (Extended)</option>
+              <option value="5" data-i18n="timer5s">5 Seconds (Fast Pilot)</option>
+              <option value="8" selected data-i18n="timer8s">8 Seconds (Standard)</option>
+              <option value="10" data-i18n="timer10s">10 Seconds (Extended)</option>
             </select>
           </div>
 
@@ -201,7 +248,7 @@
           <div class="blueprint-header">
             <div>
               <h2 data-i18n="blueprintTitle">📐 Rocket Engineering Blueprint</h2>
-              <p class="blueprint-subtitle" data-i18n="blueprintSubtitle">Answer multiplication facts to collect all 10 rocket parts!</p>
+              <p class="blueprint-subtitle" data-i18n="blueprintSubtitle">Answer math challenges to collect all 10 rocket parts!</p>
             </div>
             <div class="blueprint-progress-box">
               <span data-i18n="partsCollected">Parts Collected:</span>
@@ -257,7 +304,7 @@
 
               <!-- Question Display (Giant Formula Typography) -->
               <div class="question-box">
-                <div class="formula-display">
+                <div id="formula-display-box" class="formula-display">
                   <span id="factor-a" class="factor">7</span>
                   <span class="operator">×</span>
                   <span id="factor-b" class="factor">8</span>
@@ -358,7 +405,7 @@
       <!-- 6. FUEL SCREEN -->
       <section id="screen-fuel" class="screen screen-fuel hidden">
         <div class="fuel-layout card">
-          <h2 data-i18n="fuelTitle">⛽ Multiplication Fuel Chamber</h2>
+          <h2 data-i18n="fuelTitle">⛽ Math Fuel Chamber</h2>
           <p class="fuel-subtitle" data-i18n="fuelSubtitle">Each correct answer adds +10% fuel! Maintain a streak for +5% bonus!</p>
 
           <div class="fuel-gauge-container">
@@ -402,7 +449,7 @@
 
           <div class="fuel-launch-trigger">
             <button id="btn-ready-to-launch" class="btn btn-launch btn-large disabled" disabled data-i18n="btnReadyLaunch">
-              🚀 Ready to Launch Rocket!
+              🚀 Ready for Launch!
             </button>
           </div>
         </div>
@@ -418,7 +465,7 @@
             <ul class="checklist">
               <li id="check-item-1"><span data-i18n="sysNav">⚙️ Guidance & Navigation</span> <span class="status">Checking...</span></li>
               <li id="check-item-2"><span data-i18n="sysEng">🔥 Engine Ignition System</span> <span class="status">Standby</span></li>
-              <li id="check-item-3"><span data-i18n="sysFuel">⛽ High-Energy Fuel</span> <span class="status">Standby</span></li>
+              <li id="check-item-3"><span data-i18n="sysFuel">⛽ Math High-Energy Fuel</span> <span class="status">Standby</span></li>
               <li id="check-item-4"><span data-i18n="sysComp">🛰️ Math Core Processor</span> <span class="status">Standby</span></li>
             </ul>
           </div>
@@ -429,9 +476,9 @@
           </div>
 
           <div id="space-victory-banner" class="victory-banner hidden">
-            <h2 data-i18n="spaceVictoryTitle">MISSION SUCCESS! ROCKET IN ORBIT! 🌌</h2>
+            <h2 data-i18n="spaceVictoryTitle">MISSION SUCCESS! ARRIVED AT DESTINATION! 🌌</h2>
             <button id="btn-view-results" class="btn btn-primary btn-large btn-pulse" data-i18n="btnViewResults">
-              📊 View Performance & Results
+              📊 View Mission Summary
             </button>
           </div>
         </div>
@@ -440,7 +487,7 @@
       <!-- 8. RESULTS SCREEN -->
       <section id="screen-results" class="screen screen-results hidden">
         <div class="results-card card">
-          <h2 data-i18n="resultsTitle">🏆 Rocket Launch Mission Summary</h2>
+          <h2 data-i18n="resultsTitle">🏆 Interplanetary Mission Summary</h2>
           <div class="star-rating">
             <span id="star-1" class="star">⭐</span>
             <span id="star-2" class="star">⭐</span>
@@ -461,7 +508,7 @@
             </div>
           </div>
           <div class="results-actions">
-            <button id="btn-restart-game" class="btn btn-primary btn-large" data-i18n="btnRestartGame">🚀 Build New Rocket</button>
+            <button id="btn-restart-game" class="btn btn-primary btn-large" data-i18n="btnRestartGame">🚀 Launch New Mission</button>
             <button id="btn-retry-wrongs" class="btn btn-secondary btn-large" data-i18n="btnRetryWrongs">📝 Practice Missed Facts</button>
             <button id="btn-results-home" class="btn btn-outline" data-i18n="btnHome">🏠 Home</button>
           </div>
@@ -530,12 +577,18 @@
         <div class="report-stats-grid">
           <div class="rep-box"><span data-i18n="todayAnswered">Questions Answered</span><span id="rep-today-answered" class="val">0</span></div>
           <div class="rep-box"><span data-i18n="todayAccuracy">First-Try Accuracy</span><span id="rep-today-accuracy" class="val">100%</span></div>
-          <div class="rep-box"><span data-i18n="todayAvgSpeed">Avg Response Time</span><span id="rep-today-speed" class="val">3.5s</span></div>
-          <div class="rep-box"><span data-i18n="todayMaxStreak">Highest Streak</span><span id="rep-today-streak" class="val">0</span></div>
+          <div class="rep-box"><span data-i18n="multMasteryTitle">Multiplication Mastery</span><span id="rep-mult-mastery" class="val">0%</span></div>
+          <div class="rep-box"><span data-i18n="divMasteryTitle">Division Mastery</span><span id="rep-div-mastery" class="val">0%</span></div>
+        </div>
+
+        <!-- Space Passport Stamps -->
+        <div class="passport-section">
+          <h3 data-i18n="spacePassportTitle">🎫 Space Passport Stamps</h3>
+          <div id="space-passport-stamps-grid" class="passport-stamps-grid"></div>
         </div>
 
         <div class="heatmap-section">
-          <h3 data-i18n="masteryHeatmapTitle">12×12 Multiplication Fact Heatmap Matrix</h3>
+          <h3 data-i18n="tabHeatmap">Fact Matrix Heatmap</h3>
           <div id="mastery-heatmap-container" class="heatmap-wrapper"></div>
         </div>
 

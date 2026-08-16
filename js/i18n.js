@@ -1,19 +1,19 @@
 /**
  * Multiplication Rocket Lab - Internationalization (js/i18n.js)
- * Supports English (en - UK default) and Chinese (zh)
+ * Supports English (en - UK default) and Chinese (zh) - Version 3.0.0
  */
 class I18nManager {
   constructor() {
     this.currentLanguage = this.detectLanguage();
     this.translations = {
       en: {
-        appTitle: "Multiplication Rocket Lab 🚀",
-        tagline: "Learn Times Tables • Build 3D Rockets • Launch to Deep Space!",
+        appTitle: "Multiplication Rocket Lab 3.0 🚀",
+        tagline: "Master Times Tables & Division • Build 3D Rockets • Explore the Solar System!",
         
         // Navigation & General UI
-        btnStartGame: "🚀 Start Rocket Building",
-        btnContinueGame: "▶️ Continue Rocket",
-        btnSettings: "⚙️ Learning Settings",
+        btnStartGame: "🚀 Start Rocket Mission",
+        btnContinueGame: "▶️ Continue Mission",
+        btnSettings: "⚙️ Math & Mission Setup",
         btnReport: "📊 Parent Dashboard",
         btnHome: "🏠 Home",
         btnPause: "⏸️ Pause",
@@ -32,22 +32,32 @@ class I18nManager {
         profileNamePrompt: "Enter Child's Name:",
         selectYearGroup: "Select Year Group:",
 
-        // Settings Screen
-        settingsTitle: "⚙️ Learning & Difficulty Settings",
+        // Settings Screen - Math Missions
+        settingsTitle: "⚙️ Math Challenge & Mission Settings",
         playerNameLabel: "Child's Name:",
-        curriculumPresetLabel: "UK Curriculum Quick Presets:",
+        curriculumPresetLabel: "UK Curriculum Presets:",
+        freeChallengeLabel: "Free Challenge Presets:",
         selectTablesLabel: "Select Multiplication Tables (1-12):",
         selectAll: "Select All",
-        difficultyLabel: "Difficulty & Mode:",
-        diffEasy: "Easy (3 Choices + Array Dot Hints)",
-        diffNormal: "Normal (Numeric Keypad Input)",
-        diffHard: "Hard (Timer Challenge + Bonus)",
-        timerSelectLabel: "Hard Mode Timer:",
+        difficultyLabel: "Challenge Difficulty (How you answer):",
+        diffEasy: "Easy (3 Choices + Visual Arrays & Hints)",
+        diffNormal: "Normal (Keypad Input + Smart Hints)",
+        diffHard: "Hard (Timer Challenge + Speed Bonus)",
+        timerSelectLabel: "Question Timer:",
+        timerOff: "Timer Off (No Time Pressure)",
+        timer5s: "5 Seconds (Fast Pilot)",
+        timer8s: "8 Seconds (Standard)",
+        timer10s: "10 Seconds (Extended)",
         reducedMotionLabel: "Reduce Motion Effects (Sensory Friendly)",
+
+        // Operations
+        opMultiplyOnly: "Multiplication (×) Only",
+        opDivideOnly: "Division (÷) Only",
+        opBoth: "Multiplication & Division (× & ÷)",
 
         // Blueprint Screen
         blueprintTitle: "📐 Rocket Engineering Blueprint",
-        blueprintSubtitle: "Answer multiplication facts to collect all 10 rocket parts!",
+        blueprintSubtitle: "Answer math challenges to collect all 10 rocket parts!",
         partsCollected: "Parts Collected:",
         btnStartAnswering: "✏️ Start Quiz to Collect Parts",
         btnGoAssembly: "🔧 3D Assembly Dock",
@@ -58,7 +68,7 @@ class I18nManager {
         hudTime: "Time",
         hudScore: "Score",
         submitAnswer: "Submit Answer",
-        easyHintLabel: "💡 Visual Helper (Dots & Addition):",
+        easyHintLabel: "💡 Visual Helper:",
         stratHintTitle: "🧠 Smart Strategy Hint:",
 
         // Assembly Screen
@@ -72,82 +82,83 @@ class I18nManager {
         lockedModel: "🔒 Complete launches to unlock",
 
         // Fuel Screen
-        fuelTitle: "⛽ Multiplication Fuel Chamber",
+        fuelTitle: "⛽ Math Fuel Chamber",
         fuelSubtitle: "Each correct answer adds +10% fuel! Maintain a streak for +5% bonus!",
         fuelStatusEmpty: "Fuel low. Waiting for fuel loading...",
         fuelStatusHalf: "Fuel loading in progress...",
         fuelStatusFull: "Fuel tanks 100% full! Ready for launch!",
-        btnReadyLaunch: "🚀 Ready to Launch Rocket!",
+        btnReadyLaunch: "🚀 Ready for Launch!",
         fuelSuccessBoost: "⛽ Fuel Loaded! +{boost}%",
 
-        // Launch & Space
+        // Mission Control & Destinations
+        selectDestinationTitle: "🪐 Select Interplanetary Mission Destination",
+        destEarthOrbit: "🌍 Earth Orbit (400 km)",
+        destMoon: "🌙 Moon Base Mission",
+        destMars: "🔴 Mars Colony Mission",
+        destJupiter: "🪐 Jupiter Flyby Mission",
+        destSaturn: "🪐 Saturn Ring Explorer",
+        destDeepSpace: "🌌 Deep Space Explorer",
+        btnSelectDest: "Select Destination ➔",
+        spacePassportTitle: "🎫 Space Passport Stamps",
+
+        // Launch & Cinematic Stages
         launchTitle: "🚀 Rocket Launch Control Center",
-        btnSkipCountdown: "⏩ Skip Countdown & Liftoff",
+        btnSkipCountdown: "⏩ Skip Countdown & Fly",
+        btnReplayMission: "▶️ Replay Space Mission",
         checklistTitle: "System Pre-flight Checklist",
         sysNav: "⚙️ Guidance & Navigation",
         sysEng: "🔥 Engine Ignition System",
-        sysFuel: "⛽ High-Energy Fuel",
+        sysFuel: "⛽ Math High-Energy Fuel",
         sysComp: "🛰️ Math Core Processor",
         statusChecking: "Checking...",
         statusReady: "✅ Ready",
         ignitionText: "IGNITION!",
-        spaceVictoryTitle: "MISSION SUCCESS! ROCKET IN ORBIT! 🌌",
-        btnViewResults: "📊 View Performance & Results",
+        spaceVictoryTitle: "MISSION SUCCESS! ARRIVED AT DESTINATION! 🌌",
+        btnViewResults: "📊 View Mission Summary",
 
         // Results Screen
-        resultsTitle: "🏆 Rocket Launch Mission Summary",
+        resultsTitle: "🏆 Interplanetary Mission Summary",
         resScoreLabel: "Final Score",
         resAccuracyLabel: "Accuracy",
         resMaxComboLabel: "Highest Streak",
-        btnRestartGame: "🚀 Build New Rocket",
+        btnRestartGame: "🚀 Launch New Mission",
         btnRetryWrongs: "📝 Practice Missed Facts",
 
         // Parent Dashboard
         parentReportTitle: "📊 Parent Dashboard & Learning Analytics",
         tabToday: "Today's Summary",
         tabOverall: "Lifetime Progress",
-        tabHeatmap: "12×12 Fact Matrix",
+        tabHeatmap: "Fact Matrix Heatmap",
+        tabOperations: "× & ÷ Breakdown",
         todayAnswered: "Questions Answered",
         todayAccuracy: "First-Try Accuracy",
         todayAvgSpeed: "Avg Response Time",
         todayMaxStreak: "Highest Streak",
         overallTotal: "Total Questions",
         overallTime: "Total Time",
-        overallLaunches: "Rockets Launched",
+        overallLaunches: "Missions Completed",
         overallAccuracy: "Total Accuracy",
+        multMasteryTitle: "Multiplication Mastery (×)",
+        divMasteryTitle: "Division Mastery (÷)",
         weakFactsTitle: "🎯 Recommended Practice Facts:",
-        masteryHeatmapTitle: "12×12 Multiplication Fact Heatmap Matrix",
         privacyNotice: "🔒 All learning data is stored locally on this device only. No account or internet required.",
 
-        // Badges
-        badgeFirstLaunch: "🚀 First Launch",
-        badgeCombo5: "🔥 5-Streak Pilot",
-        badgeCombo10: "🌟 10-Streak Master",
-        badgeMaster2: "🧠 Master ×2",
-        badgeMaster5: "🧠 Master ×5",
-        badgeMaster10: "🧠 Master ×10",
-        badgeSpeed: "⚡ Speed Pilot",
-        badgePerfect: "🎯 Perfect Round",
-        badge100Q: "🌌 100 Questions",
-
-        // Modals & Feedback
-        modalRewardTitle: "New Rocket Part Unlocked!",
-        btnRewardInstall: "🛠️ Go to 3D Assembly",
-        btnRewardContinue: "✏️ Continue Answering",
-        modalCompleteTitle: "All Rocket Parts Unlocked!",
+        // Feedback & Hints
+        divThinkHint: "Think: {operandB} × ? = {operandA}",
+        divVisualHelper: "Sharing {operandA} objects into {operandB} equal groups:",
         correctFeedback: "✨ Excellent! Correct!",
         wrongFeedback: "Not quite — let's try again!",
         timeoutFeedback: "⏰ Time's up! Let's try the next one."
       },
 
       zh: {
-        appTitle: "乘法火箭实验室 🚀",
-        tagline: "学习乘法口诀 • 组装 3D 火箭 • 探索漫漫星空！",
+        appTitle: "乘法火箭实验室 3.0 🚀",
+        tagline: "掌握乘法与除法口诀 • 组装 3D 火箭 • 探索漫漫太阳系！",
         
         // 导航与通用
-        btnStartGame: "🚀 开始建造火箭",
+        btnStartGame: "🚀 开始星际火箭任务",
         btnContinueGame: "▶️ 继续已有进度",
-        btnSettings: "⚙️ 学习与难度设置",
+        btnSettings: "⚙️ 数学与任务设置",
         btnReport: "📊 家长学习分析报告",
         btnHome: "🏠 首页",
         btnPause: "⏸️ 暂停",
@@ -167,21 +178,31 @@ class I18nManager {
         selectYearGroup: "选择英国小学年级预设：",
 
         // 设置页面
-        settingsTitle: "⚙️ 学习与难度设置",
+        settingsTitle: "⚙️ 数学挑战与任务设置",
         playerNameLabel: "小宇航员昵称：",
-        curriculumPresetLabel: "英国 National Curriculum 年级预设：",
+        curriculumPresetLabel: "英国 Curriculum 年级预设：",
+        freeChallengeLabel: "自由数学挑战模式：",
         selectTablesLabel: "选择练习乘法表 (1-12)：",
         selectAll: "全选",
-        difficultyLabel: "答题难度模式：",
-        diffEasy: "简单模式 (3个备选项 + 阵列点图辅助)",
-        diffNormal: "普通模式 (全键盘数字输入)",
+        difficultyLabel: "答题交互难度 (回答方式)：",
+        diffEasy: "简单模式 (3个备选项 + 阵列图与提示)",
+        diffNormal: "普通模式 (数字输入 + 巧算提示)",
         diffHard: "挑战模式 (单题倒计时 + 速度加分)",
-        timerSelectLabel: "挑战模式单题限制时间：",
+        timerSelectLabel: "单题限制时间：",
+        timerOff: "无时间限制 (轻松练习)",
+        timer5s: "5 秒 (极速挑战)",
+        timer8s: "8 秒 (标准挑战)",
+        timer10s: "10 秒 (宽松挑战)",
         reducedMotionLabel: "开启减弱动画模式 (护眼与防眩晕)",
+
+        // 运算类型
+        opMultiplyOnly: "仅练习乘法 (×)",
+        opDivideOnly: "仅练习除法 (÷)",
+        opBoth: "乘法与除法混合练习 (× & ÷)",
 
         // 工程蓝图
         blueprintTitle: "📐 乘法火箭工程蓝图",
-        blueprintSubtitle: "答对乘法题，收集全部 10 个火箭组件！",
+        blueprintSubtitle: "答对乘除法挑战，收集全部 10 个火箭组件！",
         partsCollected: "已解锁组件：",
         btnStartAnswering: "✏️ 开始答题收集零件",
         btnGoAssembly: "🔧 3D 组装车间",
@@ -192,7 +213,7 @@ class I18nManager {
         hudTime: "时间",
         hudScore: "积分",
         submitAnswer: "提交答案",
-        easyHintLabel: "💡 阵列点图与加法拆解：",
+        easyHintLabel: "💡 视觉辅助图示：",
         stratHintTitle: "🧠 智能巧算提示：",
 
         // 组装车间
@@ -203,7 +224,7 @@ class I18nManager {
         rocketThemeLabel: "火箭涂装配色：",
         btnGoFuel: "⛽ 冲向燃料补充舱",
         partsInstalled: "已安装零件：",
-        lockedModel: "🔒 完成指定发射任务解锁",
+        lockedModel: "🔒 完成指定任务解锁",
 
         // 燃料补充舱
         fuelTitle: "⛽ 乘法燃料补充舱",
@@ -214,9 +235,21 @@ class I18nManager {
         btnReadyLaunch: "🚀 准备发射火箭！",
         fuelSuccessBoost: "⛽ 燃料加注成功！+{boost}%",
 
-        // 发射与太空
+        // 目的地选择
+        selectDestinationTitle: "🪐 选择本次星际探索目的地",
+        destEarthOrbit: "🌍 近地轨道 (400 km)",
+        destMoon: "🌙 月球基地探险号",
+        destMars: "🔴 火星拓荒号",
+        destJupiter: "🪐 木星风暴探险号",
+        destSaturn: "🪐 土星光环探索者",
+        destDeepSpace: "🌌 深空星云开拓号",
+        btnSelectDest: "选择该目的地 ➔",
+        spacePassportTitle: "🎫 航天护照纪念印章",
+
+        // 发射与动画
         launchTitle: "🚀 火箭发射控制中心",
-        btnSkipCountdown: "⏩ 跳过等待，立即升空",
+        btnSkipCountdown: "⏩ 跳过动画，直接抵达",
+        btnReplayMission: "▶️ 再次播放星际飞行",
         checklistTitle: "系统起飞前自检清单",
         sysNav: "⚙️ 姿态与航向导航",
         sysEng: "🔥 主发动机点火器",
@@ -225,50 +258,39 @@ class I18nManager {
         statusChecking: "自检中...",
         statusReady: "✅ 正常待命",
         ignitionText: "点火升空！",
-        spaceVictoryTitle: "发射成功！火箭已成功进入轨道太空！🌌",
-        btnViewResults: "📊 查看本次学习成绩单",
+        spaceVictoryTitle: "任务成功！火箭已成功抵达目标星球！🌌",
+        btnViewResults: "📊 查看本次任务成绩单",
 
         // 结算
-        resultsTitle: "🏆 乘法火箭发射任务总结",
+        resultsTitle: "🏆 星际探索任务总结",
         resScoreLabel: "本次得分",
         resAccuracyLabel: "正确率",
         resMaxComboLabel: "最高连胜",
-        btnRestartGame: "🚀 建造新火箭",
+        btnRestartGame: "🚀 开始新任务",
         btnRetryWrongs: "📝 专门重练本次错题",
 
         // 家长报告
         parentReportTitle: "📊 家长 Dashboard 与学习分析报告",
         tabToday: "今日学习概览",
         tabOverall: "累计学习数据",
-        tabHeatmap: "12×12 乘法事实热力图",
+        tabHeatmap: "乘法/除法掌握度矩阵",
+        tabOperations: "乘法与除法对比分析",
         todayAnswered: "今日练习题数",
         todayAccuracy: "首次正确率",
         todayAvgSpeed: "平均答题速度",
         todayMaxStreak: "今日最高连胜",
         overallTotal: "累计总答题数",
         overallTime: "累计练习时长",
-        overallLaunches: "成功发射火箭数",
+        overallLaunches: "完成星际任务数",
         overallAccuracy: "总体正确率",
-        weakFactsTitle: "🎯 建议重点复习的乘法事实：",
-        masteryHeatmapTitle: "12×12 乘法表掌握度热力矩阵",
+        multMasteryTitle: "乘法掌握度 (×)",
+        divMasteryTitle: "除法掌握度 (÷)",
+        weakFactsTitle: "🎯 建议重点复习的数学事实：",
         privacyNotice: "🔒 本应用所有学习数据仅保存在您的设备本地，保护儿童隐私，无需注册登录。",
 
-        // 勋章
-        badgeFirstLaunch: "🚀 首次发射",
-        badgeCombo5: "🔥 5连胜宇航员",
-        badgeCombo10: "🌟 10连胜大师",
-        badgeMaster2: "🧠 精通×2乘法表",
-        badgeMaster5: "🧠 精通×5乘法表",
-        badgeMaster10: "🧠 精通×10乘法表",
-        badgeSpeed: "⚡ 极速先锋",
-        badgePerfect: "🎯 完美无错关卡",
-        badge100Q: "🌌 100题成就",
-
-        // 弹窗与反馈
-        modalRewardTitle: "新火箭零件已解锁！",
-        btnRewardInstall: "🛠️ 立即前往 3D 车间",
-        btnRewardContinue: "✏️ 继续答题",
-        modalCompleteTitle: "火箭零件全部解锁！",
+        // 反馈与提示
+        divThinkHint: "逆向思考：{operandB} × ? = {operandA}",
+        divVisualHelper: "将 {operandA} 个物体平均分为 {operandB} 组：",
         correctFeedback: "✨ 太棒了！回答正确！",
         wrongFeedback: "差一点点，再试一次！",
         timeoutFeedback: "⏰ 时间到！我们来看下一题。"

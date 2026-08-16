@@ -1,61 +1,156 @@
 /**
- * Multiplication Rocket Lab - Missions & Quests Engine (js/missions.js)
+ * Multiplication Rocket Lab - Interplanetary Mission & Destination Manager (js/missions.js)
+ * Supports 6 Planets/Destinations, 3D Planet Previews, Space Passport Stamps & Mission History
  */
-class MissionManager {
+class DestinationManager {
   constructor() {
-    this.missions = [
-      {
-        id: "m1_moon",
-        nameEn: "Mission 1: Moon Base Supply",
-        nameZh: "任务 1: 月球基地补给线",
-        tables: [2, 5, 10],
-        icon: "🌙",
-        descEn: "Practice ×2, ×5, ×10 tables to supply the lunar science base!",
-        descZh: "练习 2、5、10 乘法表，为月球科考基地输送物资！"
-      },
-      {
-        id: "m2_mars",
-        nameEn: "Mission 2: Mars Colonization",
-        nameZh: "任务 2: 火星拓荒行动",
-        tables: [3, 4, 8],
-        icon: "🔴",
-        descEn: "Master ×3, ×4, ×8 tables to power the Mars colony engines!",
-        descZh: "掌握 3、4、8 乘法表，为火星殖民地火箭注入能量！"
-      },
-      {
-        id: "m3_jupiter",
-        nameEn: "Mission 3: Jupiter Probe Exploration",
-        nameZh: "任务 3: 木星风暴探险号",
-        tables: [6, 7, 9],
-        icon: "🪐",
-        descEn: "Conquer ×6, ×7, ×9 tables for deep space Jovian exploration!",
-        descZh: "征服 6、7、9 乘法表，深入木星赤红风暴探索！"
-      },
-      {
-        id: "m4_deepspace",
-        nameEn: "Mission 4: Grand Tour (1-12)",
-        nameZh: "任务 4: 深空大满贯 (1-12)",
-        tables: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-        icon: "🌌",
-        descEn: "Full 1×1 to 12×12 multiplication master challenge!",
-        descZh: "完整 1×1 到 12×12 乘法表大师终极挑战！"
-      }
-    ];
+    this.destinations = CONFIG.DESTINATIONS;
+    this.currentDestinationId = "moon";
+    this.previewScene = null;
+    this.previewCamera = null;
+    this.previewRenderer = null;
+    this.previewPlanetMesh = null;
+    this.animationId = null;
   }
 
-  getDailyMission() {
-    const today = new Date().toDateString();
-    return {
-      id: "daily_" + today,
-      nameEn: "Today's Daily Space Quest ⭐",
-      nameZh: "今日宇航特别任务 ⭐",
-      tables: [6, 7, 8, 9],
-      targetCount: 10,
-      icon: "⭐",
-      descEn: "Answer 10 focus questions (×6, ×7, ×8, ×9) to earn bonus stars!",
-      descZh: "完成 10 道重点练习题 (×6, ×7, ×8, ×9)，赢取星际功勋勋章！"
-    };
+  getDestination(destId) {
+    return this.destinations[destId] || this.destinations.moon;
+  }
+
+  setDestination(destId) {
+    if (this.destinations[destId]) {
+      this.currentDestinationId = destId;
+      if (window.storageManager) window.storageManager.set("selectedDestination", destId);
+    }
+  }
+
+  /**
+   * 3D Interactive Planet Preview Mesh Generator
+   */
+  initPlanetPreview(containerId, destId) {
+    this.destroyPreview();
+
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = "";
+    const width = container.clientWidth || 300;
+    const height = container.clientHeight || 300;
+
+    if (!window.WebGLRenderingContext) return;
+
+    try {
+      this.previewScene = new THREE.Scene();
+      this.previewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+      this.previewCamera.position.set(0, 0, 5);
+
+      this.previewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      this.previewRenderer.setSize(width, height);
+      this.previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(this.previewRenderer.domElement);
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      this.previewScene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+      dirLight.position.set(5, 5, 5);
+      this.previewScene.add(dirLight);
+
+      this.createPlanetMesh(destId);
+      this.animatePreview();
+    } catch (e) {
+      console.warn("DestinationManager: Planet preview WebGL init error:", e);
+    }
+  }
+
+  createPlanetMesh(destId) {
+    if (this.previewPlanetMesh && this.previewScene) {
+      this.previewScene.remove(this.previewPlanetMesh);
+    }
+
+    const dest = this.getDestination(destId);
+    const planetGroup = new THREE.Group();
+
+    switch (destId) {
+      case "earthOrbit": {
+        const geo = new THREE.SphereGeometry(1.5, 32, 32);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 });
+        const mesh = new THREE.Mesh(geo, mat);
+        planetGroup.add(mesh);
+        break;
+      }
+      case "moon": {
+        const geo = new THREE.SphereGeometry(1.5, 32, 32);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 });
+        const mesh = new THREE.Mesh(geo, mat);
+        planetGroup.add(mesh);
+        break;
+      }
+      case "mars": {
+        const geo = new THREE.SphereGeometry(1.5, 32, 32);
+        const mat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.6 });
+        const mesh = new THREE.Mesh(geo, mat);
+        planetGroup.add(mesh);
+        break;
+      }
+      case "jupiter": {
+        const geo = new THREE.SphereGeometry(1.6, 32, 32);
+        const mat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.5 });
+        const mesh = new THREE.Mesh(geo, mat);
+        planetGroup.add(mesh);
+        break;
+      }
+      case "saturn": {
+        const planetGeo = new THREE.SphereGeometry(1.3, 32, 32);
+        const planetMat = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.5 });
+        const planetMesh = new THREE.Mesh(planetGeo, planetMat);
+        planetGroup.add(planetMesh);
+
+        // 3D RingGeometry for Saturn Rings
+        const ringGeo = new THREE.RingGeometry(1.6, 2.5, 32);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xfde047, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.rotation.x = Math.PI / 2.5;
+        planetGroup.add(ringMesh);
+        break;
+      }
+      case "deepSpace": {
+        const geo = new THREE.OctahedronGeometry(1.4, 3);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x818cf8, wireframe: true });
+        const mesh = new THREE.Mesh(geo, mat);
+        planetGroup.add(mesh);
+        break;
+      }
+    }
+
+    this.previewPlanetMesh = planetGroup;
+    this.previewScene.add(this.previewPlanetMesh);
+  }
+
+  animatePreview() {
+    this.animationId = requestAnimationFrame(() => this.animatePreview());
+    if (this.previewPlanetMesh) {
+      this.previewPlanetMesh.rotation.y += 0.01;
+    }
+    if (this.previewRenderer && this.previewScene && this.previewCamera) {
+      this.previewRenderer.render(this.previewScene, this.previewCamera);
+    }
+  }
+
+  destroyPreview() {
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+    if (this.previewRenderer) {
+      if (this.previewRenderer.domElement) this.previewRenderer.domElement.remove();
+      this.previewRenderer.dispose();
+      this.previewRenderer = null;
+    }
+    this.previewScene = null;
+    this.previewCamera = null;
+    this.previewPlanetMesh = null;
   }
 }
 
-window.missionManager = new MissionManager();
+window.destinationManager = new DestinationManager();

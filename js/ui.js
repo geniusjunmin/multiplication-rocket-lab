@@ -1,11 +1,11 @@
 /**
  * Multiplication Rocket Lab - UI & DOM Rendering Manager (js/ui.js)
- * Supports Giant Formula Typography, Easy Mode Visual Helpers, 12x12 Parent Heatmap Matrix, Profile Selector & i18n
+ * Supports Version 3.0.0 Universal Math Formulas, Division Visual Helpers, Destination Mission Planner & Parent Dashboard
  */
 class UIManager {
   constructor() {
     this.currentAnswerInput = "";
-    this.selectedHeatmapFact = null;
+    this.selectedHeatmapOperation = "multiply";
   }
 
   showScreen(screenId) {
@@ -47,17 +47,25 @@ class UIManager {
     this.currentAnswerInput = "";
     this.updateAnswerDisplay("?");
 
-    const factorA = document.getElementById("factor-a");
-    const factorB = document.getElementById("factor-b");
-    if (factorA) factorA.innerText = question.factorA;
-    if (factorB) factorB.innerText = question.factorB;
+    // Formula Display
+    const formulaContainer = document.getElementById("formula-display-box");
+    if (formulaContainer) {
+      const isDiv = question.operation === "divide";
+      const symbol = isDiv ? "÷" : "×";
+      formulaContainer.innerHTML = `
+        <span id="factor-a" class="factor">${question.operandA}</span>
+        <span class="operator">${symbol}</span>
+        <span id="factor-b" class="factor">${question.operandB}</span>
+        <span class="operator">=</span>
+        <span id="answer-box" class="answer-box-placeholder">?</span>
+      `;
+    }
 
     const fuelFactorA = document.getElementById("fuel-factor-a");
     const fuelFactorB = document.getElementById("fuel-factor-b");
-    if (fuelFactorA) fuelFactorA.innerText = question.factorA;
-    if (fuelFactorB) fuelFactorB.innerText = question.factorB;
+    if (fuelFactorA) fuelFactorA.innerText = question.operandA;
+    if (fuelFactorB) fuelFactorB.innerText = question.operandB;
 
-    // Clear feedback messages
     const feedback = document.getElementById("quiz-feedback");
     if (feedback) { feedback.className = "quiz-feedback hidden"; feedback.innerText = ""; }
     const fuelFeedback = document.getElementById("fuel-feedback");
@@ -72,7 +80,7 @@ class UIManager {
       if (keypadContainer) keypadContainer.classList.add("hidden");
       if (easyHelper) {
         easyHelper.classList.remove("hidden");
-        const helperData = window.mathEngine.getVisualArrayData(question.factorA, question.factorB);
+        const helperData = window.mathEngine.getVisualArrayData(question);
         this.renderVisualHelper(helperData);
       }
 
@@ -112,7 +120,7 @@ class UIManager {
     } else if (key === "backspace") {
       this.currentAnswerInput = this.currentAnswerInput.slice(0, -1);
     } else if (/^\d$/.test(key)) {
-      if (this.currentAnswerInput.length < 4) {
+      if (this.currentAnswerInput.length < 5) {
         this.currentAnswerInput += key;
       }
     }
@@ -143,19 +151,40 @@ class UIManager {
     const container = document.getElementById("easy-visual-helper");
     if (!container) return;
 
-    let dotsHtml = "";
-    for (let r = 0; r < Math.min(visualData.rows, 12); r++) {
-      dotsHtml += `<div class="array-row">`;
-      for (let c = 0; c < Math.min(visualData.cols, 12); c++) {
-        dotsHtml += `<span class="array-dot">🚀</span>`;
-      }
-      dotsHtml += `</div>`;
-    }
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
 
-    container.innerHTML = `
-      <div class="visual-array-grid">${dotsHtml}</div>
-      <div class="addition-formula">${visualData.additionFormula}</div>
-    `;
+    if (visualData.type === "divide") {
+      let dotsHtml = "";
+      const groupCount = Math.min(visualData.groups, 10);
+      const perGroup = Math.min(visualData.perGroup, 10);
+
+      for (let g = 0; g < groupCount; g++) {
+        dotsHtml += `<div class="array-row group-border">`;
+        for (let i = 0; i < perGroup; i++) {
+          dotsHtml += `<span class="array-dot">⭐</span>`;
+        }
+        dotsHtml += `</div>`;
+      }
+
+      container.innerHTML = `
+        <div class="visual-array-grid">${dotsHtml}</div>
+        <div class="addition-formula">${isZh ? `将 ${visualData.total} 个星光平均分成 ${visualData.groups} 组` : `Sharing ${visualData.total} items into ${visualData.groups} groups`}</div>
+      `;
+    } else {
+      let dotsHtml = "";
+      for (let r = 0; r < Math.min(visualData.rows, 12); r++) {
+        dotsHtml += `<div class="array-row">`;
+        for (let c = 0; c < Math.min(visualData.cols, 12); c++) {
+          dotsHtml += `<span class="array-dot">🚀</span>`;
+        }
+        dotsHtml += `</div>`;
+      }
+
+      container.innerHTML = `
+        <div class="visual-array-grid">${dotsHtml}</div>
+        <div class="addition-formula">${visualData.additionFormula}</div>
+      `;
+    }
   }
 
   updateQuizHUD(currentNum, totalNum, combo, score) {
@@ -200,7 +229,7 @@ class UIManager {
     if (!grid || !window.rocketBuilder) return;
 
     grid.innerHTML = "";
-    window.rocketBuilder.partDefinitions.forEach((part, idx) => {
+    window.rocketBuilder.partDefinitions.forEach((part) => {
       const isUnlocked = unlocked.includes(part.id);
       const isZh = window.i18n && window.i18n.currentLanguage === "zh";
       const name = isZh ? part.nameZh : part.nameEn;
@@ -297,34 +326,44 @@ class UIManager {
     const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
     if (!profile) return;
 
-    // 1. Today Stats
+    // Today Stats
     document.getElementById("rep-today-answered").innerText = profile.totalQuestionsAnswered || 0;
     const acc = profile.totalQuestionsAnswered > 0 ? Math.round((profile.totalCorrectAnswers / profile.totalQuestionsAnswered) * 100) : 100;
     document.getElementById("rep-today-accuracy").innerText = `${acc}%`;
     document.getElementById("rep-today-speed").innerText = `${profile.averageResponseTime ? (profile.averageResponseTime / 1000).toFixed(1) : 3.5}s`;
     document.getElementById("rep-today-streak").innerText = `🔥 ${profile.maxComboAllTime || 0}`;
 
-    // 2. Lifetime Stats
+    // Lifetime Stats
     document.getElementById("rep-total-answered").innerText = profile.totalQuestionsAnswered || 0;
     document.getElementById("rep-total-launches").innerText = profile.gamesCompleted || 0;
 
-    // 3. 12x12 Multiplication Heatmap Matrix
-    this.renderHeatmapMatrix(profile);
+    // Operation Mastery Summary (Multiplication vs Division)
+    if (window.mathEngine) {
+      const summary = window.mathEngine.getOperationMasterySummary();
+      const mulEl = document.getElementById("rep-mult-mastery");
+      const divEl = document.getElementById("rep-div-mastery");
+      if (mulEl) mulEl.innerText = `${summary.multiplication}%`;
+      if (divEl) divEl.innerText = `${summary.division}%`;
+    }
+
+    this.renderHeatmapMatrix(profile, this.selectedHeatmapOperation);
+    this.renderSpacePassportStamps(profile);
   }
 
-  renderHeatmapMatrix(profile) {
+  renderHeatmapMatrix(profile, operation = "multiply") {
     const container = document.getElementById("mastery-heatmap-container");
     if (!container) return;
 
+    const isDiv = operation === "divide";
     let html = `<div class="heatmap-grid">`;
-    // Header row
-    html += `<div class="hm-cell header">×</div>`;
+    html += `<div class="hm-cell header">${isDiv ? "÷" : "×"}</div>`;
     for (let c = 1; c <= 12; c++) html += `<div class="hm-cell header">${c}</div>`;
 
     for (let r = 1; r <= 12; r++) {
       html += `<div class="hm-cell header">${r}</div>`;
       for (let c = 1; c <= 12; c++) {
-        const key = `${r}x${c}`;
+        const prod = r * c;
+        const key = isDiv ? `div:${prod}/${r}` : `mul:${r}x${c}`;
         const fact = profile.facts[key] || { masteryScore: 0 };
         const score = fact.masteryScore || 0;
 
@@ -334,7 +373,7 @@ class UIManager {
         else if (score >= 40) bg = "#d97706";
         else if (score > 0) bg = "#dc2626";
 
-        html += `<div class="hm-cell fact-cell" style="background-color: ${bg}" data-fact="${key}" title="${r}×${c}=${r*c} (Mastery: ${score}%)">${score > 0 ? score : ""}</div>`;
+        html += `<div class="hm-cell fact-cell" style="background-color: ${bg}" data-fact="${key}" title="${isDiv ? `${prod}÷${r}=${c}` : `${r}×${c}=${prod}`} (Mastery: ${score}%)">${score > 0 ? score : ""}</div>`;
       }
     }
     html += `</div>`;
@@ -349,11 +388,32 @@ class UIManager {
     });
   }
 
+  renderSpacePassportStamps(profile) {
+    const container = document.getElementById("space-passport-stamps-grid");
+    if (!container) return;
+
+    const visited = profile.destinationsVisited || { earthOrbit: true };
+    container.innerHTML = "";
+
+    Object.values(CONFIG.DESTINATIONS).forEach(dest => {
+      const isStamped = !!visited[dest.id];
+      const stamp = document.createElement("div");
+      stamp.className = `passport-stamp ${isStamped ? "stamped" : "unvisited"}`;
+      stamp.innerHTML = `
+        <div class="stamp-icon">${dest.icon}</div>
+        <div class="stamp-name">${dest.nameEn}</div>
+        <div class="stamp-status">${isStamped ? "✓ VISITED" : "🔒 UNVISITED"}</div>
+      `;
+      container.appendChild(stamp);
+    });
+  }
+
   showFactInspectorModal(fact) {
     const modal = document.getElementById("modal-fact-inspector");
     if (!modal) return;
 
-    document.getElementById("fact-title").innerText = `${fact.factorA} × ${fact.factorB} = ${fact.answer}`;
+    const displayStr = fact.operation === "divide" ? `${fact.operandA} ÷ ${fact.operandB} = ${fact.answer}` : `${fact.operandA} × ${fact.operandB} = ${fact.answer}`;
+    document.getElementById("fact-title").innerText = displayStr;
     document.getElementById("fact-mastery-score").innerText = `${fact.masteryScore}%`;
     document.getElementById("fact-attempts").innerText = fact.attempts;
     document.getElementById("fact-first-try").innerText = fact.firstTryCorrect;

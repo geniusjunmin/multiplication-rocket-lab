@@ -1,6 +1,6 @@
 /**
  * Multiplication Rocket Lab - Core Stylesheet (css/style.css)
- * Theme: NASA Control Center + Friendly Educational Game (100dvh, Touch >=48px)
+ * Version 3.0.0 Product-Grade Styling (NASA Control Center + Friendly Educational Game, Touch >=48px)
  */
 :root {
   --bg-dark: #0b0e1b;
@@ -225,6 +225,97 @@ html, body {
 .key-btn:active, .choice-btn:active, .fuel-key:active { background: rgba(99, 102, 241, 0.4); }
 
 .btn-submit-lg { width: 100%; min-height: 54px; font-size: 1.2rem; }
+
+/* Preset Buttons Grid */
+.preset-buttons-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.btn-challenge-preset.active {
+  background: #6366f1;
+  border-color: #818cf8;
+}
+
+/* Interplanetary Destination Selector */
+.dest-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.dest-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid var(--bg-card-border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dest-card:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.1); }
+.dest-card.selected { border-color: #38bdf8; background: rgba(56, 189, 248, 0.15); box-shadow: 0 0 15px rgba(56, 189, 248, 0.3); }
+
+.dest-icon { font-size: 2rem; }
+.dest-name { font-size: 0.85rem; font-weight: 800; color: white; }
+
+/* 3D Planet Preview Box */
+.planet-preview-box {
+  width: 100%;
+  height: 180px;
+  margin-top: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-card-border);
+  overflow: hidden;
+}
+
+.planet-canvas-wrapper { width: 100%; height: 100%; }
+
+/* Space Passport Stamps Grid */
+.passport-section { margin-top: 1.25rem; }
+.passport-stamps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.passport-stamp {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed var(--bg-card-border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+}
+
+.passport-stamp.stamped {
+  border-style: solid;
+  border-color: #34d399;
+  background: rgba(52, 211, 153, 0.12);
+}
+
+.stamp-icon { font-size: 1.6rem; }
+.stamp-name { font-size: 0.75rem; font-weight: 800; margin-top: 0.25rem; }
+.stamp-status { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.15rem; }
+.passport-stamp.stamped .stamp-status { color: #34d399; font-weight: 800; }
+
+/* Grouped Dots Division Visual Helper */
+.group-border {
+  border: 2px dashed rgba(56, 189, 248, 0.4);
+  border-radius: 8px;
+  padding: 4px;
+  margin: 4px 0;
+  background: rgba(56, 189, 248, 0.05);
+}
 
 /* Parent Dashboard Heatmap Matrix */
 .heatmap-wrapper { overflow-x: auto; margin-top: 1rem; }

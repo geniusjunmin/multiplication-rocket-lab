@@ -1,9 +1,10 @@
 /**
  * Multiplication Rocket Lab - Multi-Player Profile & Storage Manager (js/profiles.js)
+ * Schema Version 3.0.0 (Fact Families, Mixed Operations, Interplanetary Destinations & Space Passport)
  */
 class ProfileManager {
   constructor() {
-    this.STORAGE_KEY = "multiplication_rocket_profiles_v2";
+    this.STORAGE_KEY = "multiplication_rocket_profiles_v3";
     this.profiles = [];
     this.activeProfileId = null;
     this.initStorage();
@@ -14,38 +15,49 @@ class ProfileManager {
     const preset = CONFIG.CURRICULUM_PRESETS[yearPreset] || CONFIG.CURRICULUM_PRESETS.year2;
 
     const facts = {};
-    for (let a = 1; a <= 12; a++) {
-      for (let b = 1; b <= 12; b++) {
-        const key = `${a}x${b}`;
-        facts[key] = {
-          id: key,
-          factorA: a,
-          factorB: b,
-          answer: a * b,
-          attempts: 0,
-          firstTryCorrect: 0,
-          wrongCount: 0,
-          totalResponseTimeMs: 0,
-          averageResponseTime: 0,
-          lastAnsweredAt: null,
-          lastWrongAt: null,
-          streak: 0,
-          masteryScore: 0,
-          nextReviewAt: 0
-        };
+    const factFamilies = {};
+
+    for (let a = 1; a <= 20; a++) {
+      for (let b = 1; b <= 20; b++) {
+        const prod = a * b;
+        const mulKey = `mul:${a}x${b}`;
+        const divKeyA = `div:${prod}/${a}`;
+        const divKeyB = `div:${prod}/${b}`;
+        const famKey = `family:${Math.min(a, b)}:${Math.max(a, b)}`;
+
+        facts[mulKey] = this.createEmptyFactRecord(mulKey, "multiply", a, b, prod);
+        facts[divKeyA] = this.createEmptyFactRecord(divKeyA, "divide", prod, a, b);
+        facts[divKeyB] = this.createEmptyFactRecord(divKeyB, "divide", prod, b, a);
+
+        if (!factFamilies[famKey]) {
+          factFamilies[famKey] = {
+            id: famKey,
+            factorA: Math.min(a, b),
+            factorB: Math.max(a, b),
+            product: prod,
+            overallMastery: 0
+          };
+        }
       }
     }
 
     return {
       id,
-      schemaVersion: CONFIG.SCHEMA_VERSION || 2,
+      schemaVersion: CONFIG.SCHEMA_VERSION || 3,
       name: this.sanitizeText(name),
       yearPreset,
       selectedTables: [...preset.tables],
+      selectedMathChallenge: "times12",
+      selectedDestination: "moon",
+      operations: ["multiply"],
+      customRange: { factorAMin: 1, factorAMax: 12, factorBMin: 1, factorBMax: 12 },
+      
       difficulty: "normal",
       timerSeconds: 8,
+      timerEnabled: false,
       reducedMotion: false,
       soundEnabled: true,
+      graphicsQuality: "auto",
       
       score: 0,
       currentRocketModel: "classic",
@@ -55,17 +67,41 @@ class ProfileManager {
       unlockedRocketModels: ["classic"],
       unlockedRocketThemes: ["explorer"],
       badges: [],
-      
+
+      destinationsVisited: { earthOrbit: true },
+      missionHistory: [],
+
       gamesCompleted: 0,
       totalCorrectAnswers: 0,
       totalQuestionsAnswered: 0,
+      totalMultiplicationAnswered: 0,
+      totalMultiplicationCorrect: 0,
+      totalDivisionAnswered: 0,
+      totalDivisionCorrect: 0,
       maxComboAllTime: 0,
       totalPracticeTimeMs: 0,
       
       facts,
-      sessions: [],
-      activeSession: null,
+      factFamilies,
       createdTimestamp: Date.now()
+    };
+  }
+
+  createEmptyFactRecord(id, operation, opA, opB, ans) {
+    return {
+      id,
+      operation, // "multiply" | "divide"
+      operandA: opA,
+      operandB: opB,
+      answer: ans,
+      attempts: 0,
+      firstTryCorrect: 0,
+      wrongCount: 0,
+      averageResponseTime: 0,
+      lastAnsweredAt: null,
+      lastWrongAt: null,
+      streak: 0,
+      masteryScore: 0
     };
   }
 
@@ -78,9 +114,9 @@ class ProfileManager {
 
   initStorage() {
     try {
-      const raw = localStorage.getItem(this.STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
+      const rawV3 = localStorage.getItem(this.STORAGE_KEY);
+      if (rawV3) {
+        const parsed = JSON.parse(rawV3);
         if (parsed && Array.isArray(parsed.profiles) && parsed.profiles.length > 0) {
           this.profiles = parsed.profiles.map(p => this.migrateProfile(p));
           this.activeProfileId = parsed.activeProfileId || this.profiles[0].id;
@@ -88,55 +124,66 @@ class ProfileManager {
         }
       }
     } catch (e) {
-      console.warn("ProfileManager: Failed to parse LocalStorage, creating default profile.", e);
+      console.warn("ProfileManager: Failed to parse V3 LocalStorage, checking V2 migration.", e);
     }
 
-    // Fallback or legacy v1 data migration
-    this.migrateV1Data();
+    this.migrateV2Data();
   }
 
-  migrateV1Data() {
-    let legacyData = null;
+  migrateV2Data() {
+    let v2Data = null;
     try {
-      const rawV1 = localStorage.getItem("multiplication_rocket_save_v1");
-      if (rawV1) legacyData = JSON.parse(rawV1);
+      const rawV2 = localStorage.getItem("multiplication_rocket_profiles_v2");
+      if (rawV2) v2Data = JSON.parse(rawV2);
     } catch (e) {}
 
-    const defaultProfile = this.createDefaultProfile(
-      legacyData ? legacyData.playerName : "Alex",
-      "year2"
-    );
-
-    if (legacyData) {
-      defaultProfile.score = legacyData.score || 0;
-      defaultProfile.unlockedParts = legacyData.unlockedParts || [];
-      defaultProfile.installedParts = legacyData.installedParts || [];
-      defaultProfile.badges = legacyData.badges || [];
-      defaultProfile.gamesCompleted = legacyData.gamesCompleted || 0;
-      defaultProfile.totalCorrectAnswers = legacyData.totalCorrectAnswers || 0;
-      defaultProfile.totalQuestionsAnswered = legacyData.totalQuestionsAnswered || 0;
-      if (legacyData.selectedTables) defaultProfile.selectedTables = legacyData.selectedTables;
+    if (v2Data && Array.isArray(v2Data.profiles) && v2Data.profiles.length > 0) {
+      this.profiles = v2Data.profiles.map(p => this.migrateProfile(p));
+      this.activeProfileId = v2Data.activeProfileId || this.profiles[0].id;
+    } else {
+      const defaultProfile = this.createDefaultProfile("Alex", "year2");
+      this.profiles = [defaultProfile];
+      this.activeProfileId = defaultProfile.id;
     }
-
-    this.profiles = [defaultProfile];
-    this.activeProfileId = defaultProfile.id;
     this.save();
   }
 
   migrateProfile(profile) {
     const defaultObj = this.createDefaultProfile(profile.name || "Alex", profile.yearPreset || "year2");
     const merged = { ...defaultObj, ...profile };
-    merged.schemaVersion = CONFIG.SCHEMA_VERSION || 2;
-    
-    // Ensure all 144 facts exist
-    for (let a = 1; a <= 12; a++) {
-      for (let b = 1; b <= 12; b++) {
-        const key = `${a}x${b}`;
-        if (!merged.facts[key]) {
-          merged.facts[key] = defaultObj.facts[key];
+    merged.schemaVersion = CONFIG.SCHEMA_VERSION || 3;
+
+    // Migrate old keys like "7x8" to "mul:7x8"
+    if (profile.facts) {
+      Object.keys(profile.facts).forEach(k => {
+        if (!k.includes(":")) {
+          const newKey = `mul:${k}`;
+          merged.facts[newKey] = {
+            ...this.createEmptyFactRecord(newKey, "multiply", profile.facts[k].factorA || 1, profile.facts[k].factorB || 1, profile.facts[k].answer || 1),
+            ...profile.facts[k]
+          };
+          merged.facts[newKey].id = newKey;
+          merged.facts[newKey].operation = "multiply";
         }
+      });
+    }
+
+    // Ensure all 1~20 facts exist
+    for (let a = 1; a <= 20; a++) {
+      for (let b = 1; b <= 20; b++) {
+        const prod = a * b;
+        const mulKey = `mul:${a}x${b}`;
+        const divKeyA = `div:${prod}/${a}`;
+        const divKeyB = `div:${prod}/${b}`;
+        const famKey = `family:${Math.min(a, b)}:${Math.max(a, b)}`;
+
+        if (!merged.facts[mulKey]) merged.facts[mulKey] = defaultObj.facts[mulKey];
+        if (!merged.facts[divKeyA]) merged.facts[divKeyA] = defaultObj.facts[divKeyA];
+        if (!merged.facts[divKeyB]) merged.facts[divKeyB] = defaultObj.facts[divKeyB];
+        if (!merged.factFamilies[famKey]) merged.factFamilies[famKey] = defaultObj.factFamilies[famKey];
       }
     }
+
     return merged;
   }
 
@@ -201,6 +248,13 @@ class ProfileManager {
     this.save();
   }
 
+  recordDestinationVisited(destId) {
+    const active = this.getActiveProfile();
+    if (!active.destinationsVisited) active.destinationsVisited = {};
+    active.destinationsVisited[destId] = true;
+    this.save();
+  }
+
   exportDataJson() {
     const payload = {
       exportTimestamp: new Date().toISOString(),
@@ -229,10 +283,10 @@ class ProfileManager {
 
   exportReportCsv() {
     const active = this.getActiveProfile();
-    let csv = "Fact ID,Factor A,Factor B,Answer,Attempts,First Try Correct,Wrong Count,Mastery Score (%),Avg Response Time (ms)\n";
+    let csv = "Fact ID,Operation,Operand A,Operand B,Answer,Attempts,First Try Correct,Wrong Count,Mastery Score (%),Avg Response Time (ms)\n";
     
     Object.values(active.facts).forEach(f => {
-      csv += `"${f.id}",${f.factorA},${f.factorB},${f.answer},${f.attempts},${f.firstTryCorrect},${f.wrongCount},${f.masteryScore},${f.averageResponseTime}\n`;
+      csv += `"${f.id}",${f.operation},${f.operandA},${f.operandB},${f.answer},${f.attempts},${f.firstTryCorrect},${f.wrongCount},${f.masteryScore},${f.averageResponseTime}\n`;
     });
     return csv;
   }
