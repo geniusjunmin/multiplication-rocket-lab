@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>乘法火箭实验室 - 全功能自动化测试面板</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body {
+      background-color: #0b0e1b;
+      color: #f8fafc;
+      font-family: "Nunito", sans-serif;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+    .test-dashboard {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      background: rgba(22, 27, 51, 0.8);
+      padding: 1.5rem;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--bg-card-border);
+    }
+    .progress-bar-box {
+      background: rgba(0,0,0,0.4);
+      border-radius: var(--radius-full);
+      height: 20px;
+      overflow: hidden;
+      margin: 1rem 0;
+      border: 1px solid var(--bg-card-border);
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #6366f1, #10b981);
+      transition: width 0.2s ease;
+    }
+    .stats-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--bg-card-border);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat-card .val {
+      font-size: 1.8rem;
+      font-weight: 900;
+    }
+    .val.pass { color: #34d399; }
+    .val.fail { color: #f87171; }
+    .suite-card {
+      background: rgba(22, 27, 51, 0.7);
+      border: 1px solid var(--bg-card-border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .suite-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #38bdf8;
+      margin-bottom: 0.75rem;
+    }
+    .test-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.95rem;
+    }
+    .test-item.pass .symbol { color: #34d399; font-weight: 800; }
+    .test-item.fail .symbol { color: #f87171; font-weight: 800; }
+    .test-item.fail { background: rgba(239,68,68,0.1); flex-direction: column; }
+    .test-err {
+      color: #fca5a5;
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+      font-family: monospace;
+    }
+  </style>
+
+  <!-- Load Three.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- Load App Scripts -->
+  <script src="js/storage.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/math.js"></script>
+  <script src="js/rocket.js"></script>
+  <script src="js/launch.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+
+  <!-- Load Test Runner & Suites -->
+  <script src="tests/runner.js"></script>
+  <script src="tests/test-math.js"></script>
+  <script src="tests/test-storage.js"></script>
+  <script src="tests/test-rocket.js"></script>
+  <script src="tests/test-launch.js"></script>
+  <script src="tests/test-game.js"></script>
+  <script src="tests/test-ui.js"></script>
+</head>
+<body>
+
+  <!-- Hidden DOM elements required by UI rendering -->
+  <div style="display: none;">
+    <div id="global-header"></div>
+    <div id="screen-home" class="screen"></div>
+    <div id="screen-settings" class="screen"></div>
+    <div id="screen-blueprint" class="screen"></div>
+    <div id="screen-question" class="screen"></div>
+    <div id="screen-assembly" class="screen"></div>
+    <div id="screen-fuel" class="screen"></div>
+    <div id="screen-launch" class="screen"></div>
+    <div id="screen-results" class="screen"></div>
+    <div id="canvas-container-home"></div>
+    <div id="canvas-container-quiz"></div>
+    <div id="canvas-container-assembly"></div>
+    <div id="canvas-container-launch"></div>
+    <div id="blueprint-grid"></div>
+    <div id="blueprint-progress-fill"></div>
+    <div id="blueprint-progress-text"></div>
+    <div id="quiz-current-num"></div>
+    <div id="quiz-total-num"></div>
+    <div id="quiz-combo-count"></div>
+    <div id="display-score"></div>
+    <div id="factor-a"></div>
+    <div id="factor-b"></div>
+    <div id="answer-box"></div>
+    <div id="fuel-factor-a"></div>
+    <div id="fuel-factor-b"></div>
+    <div id="fuel-answer-box"></div>
+    <div id="fuel-fill-level"></div>
+    <div id="fuel-percentage"></div>
+    <div id="fuel-status-label"></div>
+    <button id="btn-ready-to-launch"></button>
+    <div id="assembly-parts-list"></div>
+    <div id="mastery-bars-container"></div>
+    <div id="wrong-questions-tags"></div>
+    <div id="modal-report"></div>
+    <div id="modal-part-reward"></div>
+    <div id="modal-rocket-complete"></div>
+    <div id="res-score"></div>
+    <div id="res-accuracy"></div>
+    <div id="res-max-combo"></div>
+    <div id="star-1"></div>
+    <div id="star-2"></div>
+    <div id="star-3"></div>
+  </div>
+
+  <div class="test-dashboard">
+    <div class="dashboard-header">
+      <div>
+        <h2>🧪 乘法火箭实验室 - 全功能自动化测试面板</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Multiplication Rocket Lab Automated E2E Test Suite</p>
+      </div>
+      <div>
+        <button id="btn-run-tests" class="btn btn-primary btn-large">
+          🚀 运行全套测试
+        </button>
+        <a href="index.html" class="btn btn-outline" style="text-decoration: none; margin-left: 0.5rem;">
+          🏠 返回游戏
+        </a>
+      </div>
+    </div>
+
+    <div class="stats-cards">
+      <div class="stat-card">
+        <div style="font-size: 0.8rem; color: var(--text-muted);">总断言数</div>
+        <div id="stat-total" class="val">0</div>
+      </div>
+      <div class="stat-card">
+        <div style="font-size: 0.8rem; color: var(--text-muted);">已完成</div>
+        <div id="stat-executed" class="val">0</div>
+      </div>
+      <div class="stat-card">
+        <div style="font-size: 0.8rem; color: var(--text-muted);">通过测试 (Pass)</div>
+        <div id="stat-passed" class="val pass">0</div>
+      </div>
+      <div class="stat-card">
+        <div style="font-size: 0.8rem; color: var(--text-muted);">失败测试 (Fail)</div>
+        <div id="stat-failed" class="val fail">0</div>
+      </div>
+    </div>
+
+    <div class="progress-bar-box">
+      <div id="test-progress-fill" class="progress-bar-fill"></div>
+    </div>
+
+    <div id="suites-container"></div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const btnRun = document.getElementById("btn-run-tests");
+      btnRun.addEventListener("click", () => startAutomatedTestRun());
+      startAutomatedTestRun();
+    });
+
+    async function startAutomatedTestRun() {
+      const container = document.getElementById("suites-container");
+      container.innerHTML = "";
+
+      const fill = document.getElementById("test-progress-fill");
+      fill.style.width = "0%";
+
+      let currentSuiteDiv = null;
+
+      testRunner.runAll(
+        (progress) => {
+          document.getElementById("stat-total").innerText = progress.total;
+          document.getElementById("stat-executed").innerText = progress.executed;
+          document.getElementById("stat-passed").innerText = progress.passed;
+          document.getElementById("stat-failed").innerText = progress.failed;
+
+          const pct = Math.round((progress.executed / progress.total) * 100);
+          fill.style.width = `${pct}%`;
+
+          // 寻找或创建 Suite 容器
+          const suiteName = testRunner.currentSuite ? testRunner.currentSuite.name : "测试套件";
+          let suiteDiv = document.getElementById(`suite-${suiteName.replace(/\s+/g, '-')}`);
+          
+          if (!suiteDiv) {
+            suiteDiv = document.createElement("div");
+            suiteDiv.id = `suite-${suiteName.replace(/\s+/g, '-')}`;
+            suiteDiv.className = "suite-card";
+            suiteDiv.innerHTML = `<div class="suite-title">${suiteName}</div><div class="suite-items"></div>`;
+            container.appendChild(suiteDiv);
+          }
+
+          const itemsDiv = suiteDiv.querySelector(".suite-items");
+          const testItem = document.createElement("div");
+          const res = progress.currentTest;
+
+          if (res.passed) {
+            testItem.className = "test-item pass";
+            testItem.innerHTML = `
+              <span><span class="symbol">✓</span> ${res.name}</span>
+              <span style="color: var(--text-muted); font-size: 0.8rem;">${res.timeMs}ms</span>
+            `;
+          } else {
+            testItem.className = "test-item fail";
+            testItem.innerHTML = `
+              <div><span class="symbol">✕</span> ${res.name}</div>
+              <div class="test-err">Stack: ${res.error}</div>
+            `;
+          }
+          itemsDiv.appendChild(testItem);
+        },
+        (summary) => {
+          console.log("测试套件运行完毕！", summary);
+        }
+      );
+    }
+  </script>
+</body>
+</html>

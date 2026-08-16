@@ -1,0 +1,98 @@
+/* ==========================================================================
+   乘法火箭实验室 - 动画与微交互系统 (animations.css)
+   ========================================================================== */
+
+/* 1. Keyframe Animations */
+
+/* Continuous Pulse for Action Buttons */
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 16px rgba(99, 102, 241, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+
+.btn-pulse {
+  animation: pulseGlow 2s infinite;
+}
+
+/* Shake Animation for Incorrect Answer Feedback */
+@keyframes gentleShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: gentleShake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* Pop/Bounce Scale Up for Modal Unlocks */
+@keyframes bouncePop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(40px);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05) translateY(-10px);
+  }
+  70% { transform: scale(0.95) translateY(0); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+.animate-bounce {
+  animation: bouncePop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Floating Bobbing Effect for 3D Previews */
+@keyframes floatBobbing {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+  100% { transform: translateY(0px); }
+}
+
+.floating-preview {
+  animation: floatBobbing 3s ease-in-out infinite;
+}
+
+/* Countdown Number Zoom */
+@keyframes countdownZoom {
+  0% { transform: scale(1.5); opacity: 0.2; }
+  50% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+.animate-countdown {
+  animation: countdownZoom 0.9s ease-out infinite;
+}
+
+/* 2. Micro-Interactions */
+.choice-btn:active, .key-btn:active {
+  transform: scale(0.92);
+}
+
+/* 3. Reduced Motion Support for Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .btn-pulse {
+    animation: none !important;
+  }
+  
+  .floating-preview {
+    animation: none !important;
+  }
+}
