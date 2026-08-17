@@ -9,6 +9,9 @@ class LaunchSequence {
     this.renderer = null;
     this.rocket = null;
     this.flameMesh = null;
+    this.flameBaseScale = (typeof THREE !== "undefined" && THREE.Vector3) ? new THREE.Vector3(1, 1, 1) : { x: 1, y: 1, z: 1 };
+    this.flameThrottle = 1.0;
+    this.hasShownTowerClear = false;
     this.engineLight = null;
     this.landingGearGroup = null;
     this.contactShadow = null;
@@ -462,6 +465,9 @@ class LaunchSequence {
   /**
    * Attaches realistic 3 or 4-leg landing gear for Moon and Mars missions
    */
+  /**
+   * Attaches realistic 3 or 4-leg landing gear for Moon and Mars missions
+   */
   attachLandingGear(rocket, modelId) {
     if (this.landingGearGroup && this.rocket) {
       this.rocket.remove(this.landingGearGroup);
@@ -475,18 +481,17 @@ class LaunchSequence {
     const padMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.85, roughness: 0.2 });
 
     let legRadius = 1.35;
-    let attachY = -1.8;
-    let legLength = 1.35;
-    let padOffsetY = -2.55;
+    let attachY = -1.7;
+    let legLength = 1.95;
 
     if (modelId === "starship") {
-      legRadius = 1.05; attachY = -2.0; legLength = 1.15; padOffsetY = -2.52;
+      legRadius = 1.15; attachY = -1.6; legLength = 1.95;
     } else if (modelId === "falconHeavy") {
-      legRadius = 1.85; attachY = -1.9; legLength = 1.45; padOffsetY = -2.60;
+      legRadius = 1.95; attachY = -1.6; legLength = 2.10;
     } else if (modelId === "longMarch") {
-      legRadius = 2.1; attachY = -1.8; legLength = 1.55; padOffsetY = -2.58;
+      legRadius = 2.20; attachY = -1.6; legLength = 2.10;
     } else if (modelId === "cyber") {
-      legRadius = 1.5; attachY = -1.9; legLength = 1.35; padOffsetY = -2.55;
+      legRadius = 1.55; attachY = -1.6; legLength = 1.95;
     }
 
     const legCount = 4;
@@ -494,20 +499,20 @@ class LaunchSequence {
       const angle = (i * Math.PI * 2) / legCount;
       const legGroup = new THREE.Group();
 
-      // Angled main strut
-      const strutGeo = new THREE.CylinderGeometry(0.06, 0.06, legLength, 12);
+      // Angled main strut extending downwards and outwards
+      const strutGeo = new THREE.CylinderGeometry(0.07, 0.07, legLength, 12);
       const strut = new THREE.Mesh(strutGeo, legMat);
-      strut.rotation.z = 0.35;
-      strut.position.set(0.25, -0.35, 0);
+      strut.rotation.z = 0.38;
+      strut.position.set(0.35, -legLength * 0.38, 0);
       legGroup.add(strut);
 
-      // Foot pad
-      const footGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.08, 16);
+      // Foot pad resting flat on planetary ground
+      const footGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.08, 16);
       const foot = new THREE.Mesh(footGeo, padMat);
-      foot.position.set(0.55, -legLength * 0.65, 0);
+      foot.position.set(0.72, -legLength * 0.73, 0);
       legGroup.add(foot);
 
-      legGroup.position.set(Math.cos(angle) * (legRadius * 0.7), attachY, Math.sin(angle) * (legRadius * 0.7));
+      legGroup.position.set(Math.cos(angle) * (legRadius * 0.85), attachY, Math.sin(angle) * (legRadius * 0.85));
       legGroup.rotation.y = -angle;
       this.landingGearGroup.add(legGroup);
     }
@@ -516,34 +521,43 @@ class LaunchSequence {
   }
 
   /**
-   * BoundingBox Calculation: Accurately finds physical lowest point excluding flame
+   * BoundingBox Calculation: Accurately finds physical lowest point strictly excluding flame mesh
    */
   calculateRocketDimensions() {
     if (!this.rocket) return;
 
-    const prevFlameVis = this.flameMesh ? this.flameMesh.visible : false;
-    if (this.flameMesh) this.flameMesh.visible = false;
-
     try {
       if (THREE.Box3) {
+        // Temporarily detach flame mesh so its 5.0m plume geometry NEVER inflates rocket landing box
+        let flameParent = null;
+        if (this.flameMesh && this.flameMesh.parent) {
+          flameParent = this.flameMesh.parent;
+          flameParent.remove(this.flameMesh);
+        }
+
+        this.rocket.updateMatrixWorld(true);
         const box = new THREE.Box3().setFromObject(this.rocket);
         const currentY = this.rocket.position.y || 0;
         this.rocketLocalMinY = box.min.y - currentY;
         this.rocketLocalMaxY = box.max.y - currentY;
+
+        // Re-attach flame mesh
+        if (flameParent && this.flameMesh) {
+          flameParent.add(this.flameMesh);
+        }
       } else {
-        this.rocketLocalMinY = -2.55;
+        this.rocketLocalMinY = -3.12;
         this.rocketLocalMaxY = 3.5;
       }
     } catch (e) {
-      this.rocketLocalMinY = -2.55;
+      console.warn("calculateRocketDimensions fallback:", e);
+      this.rocketLocalMinY = -3.12;
       this.rocketLocalMaxY = 3.5;
     }
 
-    if (this.flameMesh) this.flameMesh.visible = prevFlameVis;
-
     this.rocketHeight = this.rocketLocalMaxY - this.rocketLocalMinY;
     this.rocketCenterY = (this.rocketLocalMinY + this.rocketLocalMaxY) / 2;
-    this.touchdownRocketY = this.GROUND_Y - this.rocketLocalMinY + this.CONTACT_EPSILON;
+    this.touchdownRocketY = this.GROUND_Y - this.rocketLocalMinY;
   }
 
   createRocketCopy() {
@@ -754,7 +768,9 @@ class LaunchSequence {
     }
 
     const t = setTimeout(() => {
-      // Hide launch pad, cloud layers, and distant sphere
+      // Hide launch pad, cloud layers, distant sphere, checklist and countdown
+      document.getElementById("launch-checklist")?.classList.add("hidden");
+      document.getElementById("launch-countdown-box")?.classList.add("hidden");
       if (this.launchPadGroup) this.launchPadGroup.visible = false;
       if (this.cloudsGroup) this.cloudsGroup.visible = false;
       if (this.destinationMesh) this.destinationMesh.visible = false;
@@ -763,6 +779,12 @@ class LaunchSequence {
       // Build & enable surface scene situated at GROUND_Y = 0, z = 0
       this.createLandingSurface(this.destinationId);
       if (this.surfaceGroup) this.surfaceGroup.visible = true;
+
+      document.getElementById("launch-checklist")?.classList.add("hidden");
+      document.getElementById("launch-countdown-box")?.classList.add("hidden");
+
+      // Recalculate dimensions for precision local landing
+      this.calculateRocketDimensions();
 
       // Re-position rocket high above local landing site
       this.rocket.position.set(0, 32, 0);
@@ -939,14 +961,14 @@ class LaunchSequence {
       }
     }
 
-    // 4. Phase D: Touchdown Hold (2.6s Hero Angle Inspection)
+    // 4. Phase D: Touchdown Hold (1.5s Hero Angle Inspection)
     else if (this.landingPhase === "touchdownHold") {
       this.rocket.position.y = this.touchdownRocketY;
       this.currentVerticalSpeed = 0;
       if (this.flameMesh) this.flameMesh.visible = false;
       if (this.engineLight) this.engineLight.intensity = 0;
 
-      const progress = Math.min(1, this.landingPhaseElapsed / 2.6);
+      const progress = Math.min(1, this.landingPhaseElapsed / 1.5);
 
       // Low-Angle Slow Hero Orbit Camera
       if (this.camera) {
@@ -960,29 +982,33 @@ class LaunchSequence {
       }
 
       if (progress >= 1 && !this.hasRecordedVisit) {
-        // Physical Settlement Validation
-        const settled = Math.abs(this.rocket.position.y - this.touchdownRocketY) < 0.08 && Math.abs(this.currentVerticalSpeed) < 0.05;
-        if (settled) {
-          this.hasRecordedVisit = true;
-          this.finishMissionSuccess();
-        }
+        this.hasRecordedVisit = true;
+        this.finishMissionSuccess();
       }
     }
   }
 
   updateFlybyOrOrbit(dt) {
     this.timelineElapsed += dt;
+    const destConfig = CONFIG.DESTINATIONS[this.destinationId] || {};
+    const destSeconds = destConfig.cinematic?.destinationSeconds || 7.0;
 
     if (this.destinationId === "jupiter") {
-      const progress = Math.min(1, this.timelineElapsed / 3.0);
-      const altitude = progress * 20;
-      this.rocket.rotation.z = Math.sin(progress * Math.PI) * 0.45;
-      this.rocket.rotation.y += 0.015;
+      const progress = Math.min(1, this.timelineElapsed / destSeconds);
+      const altitude = progress * 24;
+      this.rocket.rotation.z = Math.sin(progress * Math.PI) * 0.55;
+      this.rocket.rotation.y += 0.018;
 
-      if (this.destinationMesh) this.destinationMesh.rotation.y += 0.02;
+      if (this.destinationMesh) {
+        this.destinationMesh.rotation.y += 0.022;
+        // Slowly move Great Red Spot toward camera
+        this.destinationMesh.position.x = -15 + progress * 25;
+      }
 
       if (this.camera) {
-        this.camera.position.set(8 * (1 - progress), altitude + 1, 9 + progress * 4);
+        // Dramatic banking flyby camera
+        const camAngle = progress * Math.PI * 0.8;
+        this.camera.position.set(Math.sin(camAngle) * 12, altitude + 1.2, Math.cos(camAngle) * 14 + 2);
         this.camera.lookAt(0, altitude, 0);
       }
 
@@ -992,15 +1018,18 @@ class LaunchSequence {
         this.finishMissionSuccess();
       }
     } else if (this.destinationId === "saturn") {
-      const progress = Math.min(1, this.timelineElapsed / 3.2);
-      const altitude = Math.sin(progress * Math.PI * 0.5) * 5;
+      const progress = Math.min(1, this.timelineElapsed / destSeconds);
+      const altitude = Math.sin(progress * Math.PI * 0.5) * 8;
 
-      if (this.destinationMesh) this.destinationMesh.rotation.y += 0.012;
+      if (this.destinationMesh) {
+        this.destinationMesh.rotation.y += 0.015;
+      }
 
       if (this.camera) {
-        const angle = progress * Math.PI * 0.7;
-        this.camera.position.set(Math.sin(angle) * 10, altitude + 0.6, Math.cos(angle) * 10);
-        this.camera.lookAt(0, altitude + 1.2, 0);
+        // Dive near ring plane, tilt up to view golden planetary sphere
+        const angle = 0.2 + progress * Math.PI * 0.75;
+        this.camera.position.set(Math.sin(angle) * 14, altitude + 1.5, Math.cos(angle) * 14);
+        this.camera.lookAt(0, altitude + 2.0, 0);
       }
 
       if (progress >= 1 && !this.hasRecordedVisit) {
@@ -1009,12 +1038,12 @@ class LaunchSequence {
         this.finishMissionSuccess();
       }
     } else {
-      const progress = Math.min(1, this.timelineElapsed / 2.8);
+      const progress = Math.min(1, this.timelineElapsed / destSeconds);
       if (this.destinationMesh) this.destinationMesh.rotation.y += 0.015;
 
       if (this.camera) {
         const camAngle = progress * Math.PI * 0.6;
-        this.camera.position.set(Math.sin(camAngle) * 8, 1, Math.cos(camAngle) * 8);
+        this.camera.position.set(Math.sin(camAngle) * 9, 1.5, Math.cos(camAngle) * 9);
         this.camera.lookAt(0, 1.5, 0);
       }
 
@@ -1034,16 +1063,25 @@ class LaunchSequence {
     }
 
     const isReducedMotion = window.storageManager ? window.storageManager.get("reducedMotion") : false;
+    const destConfig = CONFIG.DESTINATIONS[this.destinationId] || {};
+    const timing = CONFIG.CINEMATIC_TIMING || { ignition: 2.0, liftoff: 4.0, atmosphere: 4.5, earthOrbit: 3.0 };
 
-    // 1. Liftoff Stage (0 - 45m, ~3.0s)
+    // 1. Liftoff Stage (0 - 50m)
     if (this.currentStage === "liftoff") {
       this.timelineElapsed += dt;
-      const progress = Math.min(1, this.timelineElapsed / 3.0);
-      const altitude = progress * progress * 45;
+      const liftoffDuration = timing.liftoff || 4.0;
+      const progress = Math.min(1, this.timelineElapsed / liftoffDuration);
+      const altitude = progress * progress * 50;
       this.rocket.position.y = altitude;
 
       if (!isReducedMotion) {
-        this.cameraShakeIntensity = 0.2 * (1 - progress * 0.5);
+        this.cameraShakeIntensity = 0.22 * (1 - progress * 0.5);
+      }
+
+      if (this.timelineElapsed >= 1.5 && !this.hasShownTowerClear) {
+        this.hasShownTowerClear = true;
+        this.showMilestoneBanner("🚀 TOWER CLEAR");
+        if (window.audioManager) window.audioManager.playUnlock();
       }
 
       if (this.scene) {
@@ -1051,8 +1089,8 @@ class LaunchSequence {
       }
 
       if (this.camera) {
-        this.camera.position.set(0, altitude + 1.6, 9.5);
-        this.camera.lookAt(0, altitude + 3.0, 0);
+        this.camera.position.set(0, altitude + 1.8, 9.5);
+        this.camera.lookAt(0, altitude + 3.2, 0);
       }
 
       if (progress >= 1) {
@@ -1061,15 +1099,17 @@ class LaunchSequence {
       }
     }
 
-    // 2. Atmospheric Ascent (45 - 120m, ~3.0s)
+    // 2. Atmospheric Ascent Stage (50 - 250m)
     else if (this.currentStage === "atmospheric") {
       this.timelineElapsed += dt;
-      const progress = Math.min(1, this.timelineElapsed / 3.0);
-      const altitude = 45 + progress * 75;
+      const atmosphereDuration = timing.atmosphere || 4.5;
+      const progress = Math.min(1, this.timelineElapsed / atmosphereDuration);
+      const altitude = 50 + progress * 200;
       this.rocket.position.y = altitude;
+      this.rocket.rotation.z = -progress * 0.45; // Gravity turn tilt
 
       if (!isReducedMotion) {
-        this.cameraShakeIntensity = 0.1 * (1 - progress);
+        this.cameraShakeIntensity = 0.12 * (1 - progress);
       }
 
       if (this.scene) {
@@ -1092,33 +1132,40 @@ class LaunchSequence {
       }
     }
 
-    // 3. Earth Orbit Insertion (120 - 160m, ~1.8s)
+    // 3. Earth Orbit Insertion (130 - 170m) - Unhurried Earth Vista
     else if (this.currentStage === "earthOrbit") {
       this.timelineElapsed += dt;
-      const progress = Math.min(1, this.timelineElapsed / 1.8);
-      const altitude = 120 + progress * 40;
+      const orbitDuration = timing.earthOrbit || 3.0;
+      const progress = Math.min(1, this.timelineElapsed / orbitDuration);
+      const altitude = 130 + progress * 40;
       this.rocket.position.y = altitude;
       this.cameraShakeIntensity = 0;
 
       if (this.camera) {
-        this.camera.position.set(6, altitude - 1.5, 12);
+        this.camera.position.set(7 * (1 - progress * 0.3), altitude - 1.2, 13 + progress * 2);
         this.camera.lookAt(0, altitude, 0);
       }
 
       if (progress >= 1) {
         this.currentStage = "transfer";
         this.timelineElapsed = 0;
-        this.showMilestoneBanner(window.i18n ? window.i18n.t("transferBurnBanner") : "🚀 HYPER-DRIVE TRANSFER BURN");
+        this.showMilestoneBanner(window.i18n ? window.i18n.t("transferBurnBanner") : "⚡ INTERPLANETARY BOOST");
         if (this.destinationMesh) this.destinationMesh.visible = true;
+        if (window.audioManager) window.audioManager.playIgnition();
       }
     }
 
-    // 4. Interplanetary Transfer (160 - 220m, ~2.5s)
+    // 4. Interplanetary Transfer (170 - 240m)
     else if (this.currentStage === "transfer") {
       this.timelineElapsed += dt;
-      const progress = Math.min(1, this.timelineElapsed / 2.5);
-      const altitude = 160 + progress * 60;
+      const transferDuration = destConfig.cinematic?.transferSeconds || 5.0;
+      const progress = Math.min(1, this.timelineElapsed / transferDuration);
+      const altitude = 170 + progress * 70;
       this.rocket.position.y = altitude;
+
+      if (this.flameMesh) {
+        this.flameThrottle = 1.35;
+      }
 
       if (this.camera) {
         if (!isReducedMotion) {
@@ -1130,12 +1177,13 @@ class LaunchSequence {
       }
 
       if (this.destinationMesh) {
-        this.destinationMesh.rotation.y += 0.012;
+        this.destinationMesh.rotation.y += 0.015;
       }
 
       if (progress >= 1) {
         this.currentStage = "destinationApproach";
         this.timelineElapsed = 0;
+        this.flameThrottle = 1.0;
         if (this.camera) {
           this.camera.fov = 50;
           this.camera.updateProjectionMatrix();
@@ -1143,13 +1191,13 @@ class LaunchSequence {
       }
     }
 
-    // 5. Cinematic Planet Approach (Planet distance closes in from 140 to 55)
+    // 5. Cinematic Planet Approach
     else if (this.currentStage === "destinationApproach") {
       this.timelineElapsed += dt;
-      const progress = Math.min(1, this.timelineElapsed / 2.5);
+      const approachDuration = destConfig.cinematic?.approachSeconds || 5.0;
+      const progress = Math.min(1, this.timelineElapsed / approachDuration);
 
       if (this.destinationMesh) {
-        // Interpolate distance from -140 to -55 and scale up
         const distZ = -140 + progress * 85;
         this.destinationMesh.position.z = distZ;
         this.destinationMesh.rotation.y += 0.015;
@@ -1158,8 +1206,8 @@ class LaunchSequence {
       }
 
       if (this.camera) {
-        const camAngle = progress * Math.PI * 0.4;
-        this.camera.position.set(Math.sin(camAngle) * 8, 2, Math.cos(camAngle) * 8 + 3);
+        const camAngle = progress * Math.PI * 0.45;
+        this.camera.position.set(Math.sin(camAngle) * 8.5, 2, Math.cos(camAngle) * 8.5 + 3);
         this.camera.lookAt(0, 0, 0);
       }
 
@@ -1178,6 +1226,21 @@ class LaunchSequence {
     else if (this.currentStage === "destinationAction") {
       this.updateLandingSystem(dt);
     }
+
+    // 7. Mission Complete Ambient Hero Camera
+    else if (this.currentStage === "missionComplete") {
+      this.timelineElapsed += dt;
+      if (this.camera) {
+        const heroAngle = 0.7 + this.timelineElapsed * 0.12;
+        const camDist = 11.5;
+        this.camera.position.set(
+          Math.sin(heroAngle) * camDist,
+          2.8 + Math.sin(this.timelineElapsed * 0.4) * 0.3,
+          Math.cos(heroAngle) * camDist
+        );
+        this.camera.lookAt(0, (this.touchdownRocketY || 0) + (this.rocketCenterY || 1.5), 0);
+      }
+    }
   }
 
   /**
@@ -1185,6 +1248,7 @@ class LaunchSequence {
    */
   finishMissionSuccess() {
     this.currentStage = "missionComplete";
+    this.timelineElapsed = 0;
 
     if (window.profileManager) {
       window.profileManager.recordDestinationVisited(this.destinationId);
@@ -1195,19 +1259,40 @@ class LaunchSequence {
       }
     }
 
-    const t = setTimeout(() => {
-      document.getElementById("space-victory-banner")?.classList.remove("hidden");
-      document.getElementById("victory-badge-notice")?.classList.remove("hidden");
+    // Hide interim touchdown toast and stage banner
+    document.getElementById("touchdown-banner")?.classList.add("hidden");
+    document.getElementById("launch-stage-banner")?.classList.add("hidden");
 
-      if (window.game) {
-        window.game.setGameState(GAME_STATES.MISSION_COMPLETE);
-      }
+    // Show Climax Victory Banner
+    const victoryBanner = document.getElementById("space-victory-banner");
+    if (victoryBanner) {
+      victoryBanner.classList.remove("hidden");
+    }
 
-      if (this.onCompleteCallback) {
-        this.onCompleteCallback();
-      }
-    }, 1200);
-    this.timeouts.push(t);
+    const badgeNotice = document.getElementById("victory-badge-notice");
+    if (badgeNotice) {
+      badgeNotice.classList.remove("hidden");
+    }
+
+    const titleEl = document.getElementById("victory-title-text");
+    if (titleEl) {
+      const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+      const destConfig = CONFIG.DESTINATIONS[this.destinationId] || {};
+      const dName = isZh ? (destConfig.nameZh || "目标星球") : (destConfig.nameEn || "Destination");
+      titleEl.innerText = isZh ? `🎉 成功抵达 ${dName}！任务圆满完成！` : `🎉 Arrived at ${dName}! Mission Complete!`;
+    }
+
+    if (window.audioManager) {
+      window.audioManager.playVictory();
+    }
+
+    if (window.game) {
+      window.game.setGameState(GAME_STATES.MISSION_COMPLETE);
+    }
+
+    if (this.onCompleteCallback) {
+      this.onCompleteCallback();
+    }
   }
 
   /**
@@ -1286,11 +1371,14 @@ class LaunchSequence {
       this.camera.position.y += (Math.random() - 0.5) * this.cameraShakeIntensity;
     }
 
-    // Engine Flame Flicker
+    // Stable Engine Flame Flicker without cumulative multiplication
     if (this.flameMesh && this.flameMesh.visible) {
       const flicker = 1.0 + Math.sin(now * 0.04) * 0.15;
-      const baseScaleY = this.flameMesh.scale.y || 1.0;
-      this.flameMesh.scale.y = baseScaleY * flicker;
+      const bx = this.flameBaseScale ? this.flameBaseScale.x : 1.0;
+      const by = this.flameBaseScale ? this.flameBaseScale.y : 1.0;
+      const bz = this.flameBaseScale ? this.flameBaseScale.z : 1.0;
+      const th = this.flameThrottle || 1.0;
+      this.flameMesh.scale.set(bx * th, by * th * flicker, bz * th);
     }
 
     // Smoke Particles

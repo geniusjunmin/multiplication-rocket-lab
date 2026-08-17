@@ -7,7 +7,7 @@
   
   <meta name="description" content="Master Times Tables & Division, Build 3D Rockets & Explore the Solar System!">
   <meta name="theme-color" content="#6366f1">
-  <link rel="manifest" href="manifest.webmanifest">
+  <script>if(typeof window!=="undefined"&&window.location&&window.location.protocol.startsWith("http")){var l=document.createElement("link");l.rel="manifest";l.href="manifest.webmanifest";document.head.appendChild(l);}</script>
 
   <!-- Core Styles -->
   <link rel="stylesheet" href="css/style.css">
@@ -18,9 +18,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 
-  <!-- Three.js 3D Library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Three.js 3D Library (Local + CDN Fallback) -->
+  <script src="lib/three.min.js"></script>
+  <script>if (typeof THREE === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>'); }</script>
+  <script src="lib/OrbitControls.js"></script>
+  <script>if (typeof THREE !== "undefined" && !THREE.OrbitControls) { document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"><\/script>'); }</script>
 
   <!-- Game Modular Scripts -->
   <script src="js/config.js"></script>
@@ -140,29 +142,47 @@
           <div class="setting-group">
             <label class="setting-label" data-i18n="selectDestinationTitle">🪐 Select Interplanetary Mission Destination:</label>
             <div class="dest-cards-grid">
-              <div class="dest-card selected" data-dest="earthOrbit">
+              <div class="dest-card" data-dest="earthOrbit">
                 <span class="dest-icon">🌍</span>
-                <span class="dest-name" data-i18n="destEarthOrbit">Earth Orbit (400 km)</span>
+                <div class="dest-info">
+                  <span class="dest-name" data-i18n="destEarthOrbit">Earth Orbit (400 km)</span>
+                  <span class="dest-fuel-tag">⛽ 50 Fuel</span>
+                </div>
               </div>
               <div class="dest-card" data-dest="moon">
                 <span class="dest-icon">🌙</span>
-                <span class="dest-name" data-i18n="destMoon">Moon Base Mission</span>
+                <div class="dest-info">
+                  <span class="dest-name" data-i18n="destMoon">Moon Base Mission</span>
+                  <span class="dest-fuel-tag">⛽ 70 Fuel</span>
+                </div>
               </div>
               <div class="dest-card" data-dest="mars">
                 <span class="dest-icon">🔴</span>
-                <span class="dest-name" data-i18n="destMars">Mars Colony Mission</span>
+                <div class="dest-info">
+                  <span class="dest-name" data-i18n="destMars">Mars Colony Mission</span>
+                  <span class="dest-fuel-tag">⛽ 100 Fuel</span>
+                </div>
               </div>
               <div class="dest-card" data-dest="jupiter">
                 <span class="dest-icon">🪐</span>
-                <span class="dest-name" data-i18n="destJupiter">Jupiter Flyby Mission</span>
+                <div class="dest-info">
+                  <span class="dest-name" data-i18n="destJupiter">Jupiter Flyby Mission</span>
+                  <span class="dest-fuel-tag">⛽ 120 Fuel</span>
+                </div>
               </div>
               <div class="dest-card" data-dest="saturn">
                 <span class="dest-icon">🪐</span>
-                <span class="dest-name" data-i18n="destSaturn">Saturn Ring Explorer</span>
+                <div class="dest-info">
+                  <span class="dest-name" data-i18n="destSaturn">Saturn Ring Explorer</span>
+                  <span class="dest-fuel-tag">⛽ 140 Fuel</span>
+                </div>
               </div>
               <div class="dest-card" data-dest="deepSpace">
                 <span class="dest-icon">🌌</span>
-                <span class="dest-name" data-i18n="destDeepSpace">Deep Space Explorer</span>
+                <div class="dest-info">
+                  <span class="dest-name" data-i18n="destDeepSpace">Deep Space Explorer</span>
+                  <span class="dest-fuel-tag">⛽ 160 Fuel</span>
+                </div>
               </div>
             </div>
 
@@ -321,11 +341,11 @@
               <!-- Easy Mode Visual Helper (Dots & Addition) -->
               <div id="easy-visual-helper" class="easy-helper-box hidden"></div>
 
-              <!-- Smart Strategy Hint Box (Hidden until wrong answer!) -->
-              <div id="strat-hint-box" class="strat-hint-box hidden"></div>
-
-              <!-- Feedback Alert Msg -->
+              <!-- Feedback Alert Msg (Right below question) -->
               <div id="quiz-feedback" class="quiz-feedback hidden"></div>
+
+              <!-- Smart Strategy Hint Box (Positioned between feedback and keypad) -->
+              <div id="strat-hint-box" class="strat-hint-box hidden"></div>
 
               <!-- Easy Choice Buttons -->
               <div id="quiz-choices-container" class="quiz-choices-grid hidden">
@@ -462,6 +482,9 @@
               <!-- Glowing Round Pedestal Base Graphic -->
               <div class="pedestal-glow-ring"></div>
 
+              <!-- Assembly Visual Debug Telemetry HUD -->
+              <div id="assembly-debug-hud" class="assembly-debug-overlay hidden"></div>
+
               <!-- Celebration Banner Overlay -->
               <div id="assembly-celebration-banner" class="assembly-complete-banner hidden">
                 <div class="celebration-content">
@@ -550,11 +573,27 @@
 
           <!-- Right: Fuel Quiz & Keypad -->
           <div class="fuel-right-panel card">
-            <p class="fuel-subtitle" data-i18n="fuelSubtitle">Each correct answer adds +10% fuel! Maintain a streak for +5% bonus!</p>
+            
+            <!-- Mission Fuel Target Card -->
+            <div id="fuel-mission-target-card" class="fuel-mission-target-card">
+              <div class="target-head">
+                <span class="target-pill">MISSION FUEL TARGET</span>
+                <span id="fuel-dest-badge" class="fuel-dest-badge">🪐 土星光环探索者</span>
+              </div>
+              <div class="target-metrics">
+                <div class="metric-row">
+                  <span>目标燃料 / Required:</span> <strong id="fuel-required-val">140</strong>
+                </div>
+                <div class="metric-row">
+                  <span>已加注 / Loaded:</span> <strong id="fuel-loaded-val">0 / 140</strong> (<span id="fuel-pct-val">0%</span>)
+                </div>
+                <div id="fuel-estimate-msg" class="fuel-estimate-msg">⚡ 约还需要 14 道正确答案</div>
+              </div>
+            </div>
 
             <!-- Full Fuel Alert Banner -->
             <div id="fuel-full-alert-banner" class="fuel-full-alert hidden" data-i18n="fuelFullAlert">
-              🎉 燃料已 100% 加满！火箭发射系统就绪！点击下方【🚀 准备发射火箭！】点火出航！
+              🎉 燃料已加满！火箭发射系统就绪！点击下方【🚀 准备发射火箭！】点火出航！
             </div>
 
             <!-- Floating Energy Badge Indicator -->
@@ -570,7 +609,11 @@
               </div>
             </div>
 
-            <div id="fuel-feedback" class="quiz-feedback hidden"></div>
+            <!-- Fuel Feedback & Strategy Hint Slot -->
+            <div class="fuel-status-slot">
+              <div id="fuel-feedback" class="quiz-feedback hidden"></div>
+              <div id="fuel-strat-hint-box" class="strat-hint-box hidden"></div>
+            </div>
 
             <div id="fuel-keypad" class="quiz-keypad-wrapper">
               <div class="keypad-grid sm">

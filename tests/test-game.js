@@ -1,5 +1,5 @@
 /**
- * State Machine & Game Flow Test Suite (tests/test-game.js)
+ * State Machine & Game Flow Test Suite (tests/test-game.js) - Version 3.1.0
  */
 testRunner.describe("5. Game Flow & State Machine Tests", () => {
 
@@ -58,13 +58,15 @@ testRunner.describe("5. Game Flow & State Machine Tests", () => {
 
   testRunner.it("5.5 submitFuelAnswer should correctly clamp fuelPercentage between 0 and 100", () => {
     const game = new MultiplicationGame();
-    game.fuelPercentage = 95;
+    game.fuelRequired = 100;
+    game.fuelLoaded = 95;
     game.comboCount = 2;
     game.isAnswerLocked = false;
     game.currentQuestion = { id: "3x3", answer: 9 };
 
     game.submitFuelAnswer(9);
     Assert.equal(game.fuelPercentage, 100, "Fuel percentage should clamp to maximum 100%");
+    Assert.equal(game.fuelLoaded, 100, "Fuel loaded should clamp to maximum fuelRequired");
   });
 
   testRunner.it("5.6 Should strictly enforce assembly completion before entering FUEL_CHALLENGE", () => {
@@ -112,6 +114,43 @@ testRunner.describe("5. Game Flow & State Machine Tests", () => {
     // Transition outside family: MISSION_COMPLETE -> RESULTS
     game.onExitState(GAME_STATES.MISSION_COMPLETE, GAME_STATES.RESULTS);
     Assert.equal(destroyed, true, "launchSequence must be destroyed when transitioning out of launch family");
+  });
+
+  testRunner.it("5.9 submitFuelAnswer should correctly reward streak bonuses (+2 at 3-streak, +3 at 5-streak)", () => {
+    const game = new MultiplicationGame();
+    game.fuelRequired = 140; // Saturn
+    game.fuelLoaded = 0;
+    game.comboCount = 0;
+    game.isAnswerLocked = false;
+    game.currentQuestion = { id: "6x7", answer: 42 };
+
+    // 1st correct answer -> +10 (loaded: 10)
+    game.submitFuelAnswer(42);
+    Assert.equal(game.fuelLoaded, 10, "1st correct answer adds 10 fuel units");
+
+    // 2nd correct answer -> +10 (loaded: 20)
+    game.isAnswerLocked = false;
+    game.currentQuestion = { id: "6x7", answer: 42 };
+    game.submitFuelAnswer(42);
+    Assert.equal(game.fuelLoaded, 20, "2nd correct answer adds 10 fuel units");
+
+    // 3rd correct answer (streak 3) -> +12 (loaded: 32)
+    game.isAnswerLocked = false;
+    game.currentQuestion = { id: "6x7", answer: 42 };
+    game.submitFuelAnswer(42);
+    Assert.equal(game.fuelLoaded, 32, "3rd streak correct answer adds 12 fuel units (+2 bonus)");
+
+    // 4th correct answer (streak 4) -> +12 (loaded: 44)
+    game.isAnswerLocked = false;
+    game.currentQuestion = { id: "6x7", answer: 42 };
+    game.submitFuelAnswer(42);
+    Assert.equal(game.fuelLoaded, 44, "4th streak correct answer adds 12 fuel units (+2 bonus)");
+
+    // 5th correct answer (streak 5) -> +13 (loaded: 57)
+    game.isAnswerLocked = false;
+    game.currentQuestion = { id: "6x7", answer: 42 };
+    game.submitFuelAnswer(42);
+    Assert.equal(game.fuelLoaded, 57, "5th streak correct answer adds 13 fuel units (+3 bonus)");
   });
 
 });

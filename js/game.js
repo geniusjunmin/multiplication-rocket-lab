@@ -42,7 +42,12 @@ class MultiplicationGame {
     this.currentQuestionIdx = 0;
     this.totalQuestionsCount = CONFIG.DEFAULT_QUESTION_COUNT;
     this.correctAnswersCount = 0;
+    
+    // Fuel Economy Framework
+    this.fuelLoaded = 0;
+    this.fuelRequired = 100;
     this.fuelPercentage = 0;
+    this.fuelAttemptCount = 0;
 
     this.currentQuestion = null;
     this.attemptCount = 0;
@@ -142,6 +147,7 @@ class MultiplicationGame {
         if (window.uiManager) window.uiManager.updateBlueprintView();
         break;
       case GAME_STATES.QUESTION:
+        if (window.uiManager) window.uiManager.hideAllWrongAnswerHints();
         if (!this.currentQuestion) {
           this.nextQuestion();
         } else {
@@ -151,6 +157,9 @@ class MultiplicationGame {
       case GAME_STATES.ASSEMBLY:
         if (window.rocketBuilder) {
           window.rocketBuilder.initScene("canvas-container-assembly");
+          requestAnimationFrame(() => {
+            if (window.rocketBuilder) window.rocketBuilder.onWindowResize("canvas-container-assembly");
+          });
         }
         if (window.uiManager) window.uiManager.renderAssemblyDock();
         break;
@@ -165,11 +174,19 @@ class MultiplicationGame {
           return;
         }
 
+        const destId = window.storageManager ? (window.storageManager.get("selectedDestination") || "moon") : "moon";
+        this.fuelRequired = (CONFIG.DESTINATIONS[destId] && CONFIG.DESTINATIONS[destId].fuelRequired) || 100;
+        if (typeof this.fuelLoaded !== "number") this.fuelLoaded = 0;
+        this.fuelPercentage = Math.min(100, Math.round((this.fuelLoaded / this.fuelRequired) * 100));
+        this.fuelAttemptCount = 0;
+
         if (window.rocketBuilder) {
           window.rocketBuilder.initScene("canvas-container-fuel");
           window.rocketBuilder.setFuelGlowLevel(this.fuelPercentage);
         }
         if (window.uiManager) {
+          window.uiManager.hideAllWrongAnswerHints();
+          window.uiManager.updateFuelMissionTarget(destId, this.fuelLoaded, this.fuelRequired);
           window.uiManager.updateFuelGauge(this.fuelPercentage);
         }
         if (window.mathEngine) {
@@ -335,7 +352,7 @@ class MultiplicationGame {
     if (window.audioManager) window.audioManager.playWrong();
     if (window.uiManager) {
       window.uiManager.showFeedback(false, window.i18n ? window.i18n.t("timeoutFeedback") : "⏰ 时间到！");
-      window.uiManager.showWrongAnswerHint(this.currentQuestion);
+      window.uiManager.showWrongAnswerHint(this.currentQuestion, { context: "quiz", attempt: 1 });
     }
 
     if (window.mathEngine && this.currentQuestion) {
@@ -343,7 +360,8 @@ class MultiplicationGame {
     }
 
     this.comboCount = 0;
-    setTimeout(() => this.nextQuestion(), 1800);
+    // Give child 3.5s to read the smart strategy hint
+    setTimeout(() => this.nextQuestion(), 3500);
   }
 
   submitAnswer(userAnswer) {
@@ -407,13 +425,13 @@ class MultiplicationGame {
       }, 800);
 
     } else {
-      // WRONG ANSWER: Show Prominent Hint Box and let child try again!
+      // WRONG ANSWER: Show Prominent Strategy Hint (Level 1 first, Level 2 on 2nd mistake)
       this.comboCount = 0;
       if (window.audioManager) window.audioManager.playWrong();
 
       if (window.uiManager) {
         window.uiManager.showFeedback(false, window.i18n ? window.i18n.t("wrongFeedback") : "差一点点，看下方小提示再试一次！");
-        window.uiManager.showWrongAnswerHint(this.currentQuestion);
+        window.uiManager.showWrongAnswerHint(this.currentQuestion, { context: "quiz", attempt: this.attemptCount });
         window.uiManager.currentAnswerInput = "";
         window.uiManager.updateAnswerDisplay("?");
       }
@@ -455,18 +473,29 @@ class MultiplicationGame {
     if (this.isAnswerLocked || !this.currentQuestion) return;
     this.isAnswerLocked = true;
 
+    const destId = window.storageManager ? (window.storageManager.get("selectedDestination") || "moon") : "moon";
     const numAns = Number(userAnswer);
+
     if (numAns === this.currentQuestion.answer) {
       if (window.audioManager) window.audioManager.playCorrect();
       this.comboCount++;
-      const isBonus = this.comboCount > 1;
-      const boost = 10 + (isBonus ? 5 : 0);
-      const prevFuel = this.fuelPercentage;
-      this.fuelPercentage = Math.min(100, this.fuelPercentage + boost);
+      this.fuelAttemptCount = 0;
+
+      // Fuel economy: +10 base, +2 bonus for 3+ streak, +3 bonus for 5+ streak
+      const baseUnits = 10;
+      let bonusUnits = 0;
+      if (this.comboCount >= 5) bonusUnits = 3;
+      else if (this.comboCount >= 3) bonusUnits = 2;
+      const addedUnits = baseUnits + bonusUnits;
+
+      const prevPct = this.fuelPercentage;
+      this.fuelLoaded = Math.min(this.fuelRequired, this.fuelLoaded + addedUnits);
+      this.fuelPercentage = Math.min(100, Math.round((this.fuelLoaded / this.fuelRequired) * 100));
 
       if (window.uiManager) {
-        window.uiManager.animateFuelIncrease(prevFuel, this.fuelPercentage, isBonus ? 5 : 0);
-        window.uiManager.showFuelFeedback(true, window.i18n ? window.i18n.t("fuelSuccessBoost", { boost }) : `⛽ 燃料加注成功！+${boost}%`);
+        window.uiManager.animateFuelIncrease(prevPct, this.fuelPercentage, bonusUnits);
+        window.uiManager.showFuelFeedback(true, window.i18n ? window.i18n.t("fuelSuccessBoost", { boost: addedUnits }) : `⛽ 燃料加注成功！+${addedUnits} 能量`);
+        window.uiManager.updateFuelMissionTarget(destId, this.fuelLoaded, this.fuelRequired);
         window.uiManager.currentAnswerInput = "";
       }
 
@@ -478,17 +507,21 @@ class MultiplicationGame {
         this.isAnswerLocked = false;
         if (window.mathEngine) {
           this.currentQuestion = window.mathEngine.generateQuestion("normal");
-          if (window.uiManager) window.uiManager.renderQuestion(this.currentQuestion, "normal");
+          if (window.uiManager) {
+            window.uiManager.hideAllWrongAnswerHints();
+            window.uiManager.renderQuestion(this.currentQuestion, "normal");
+          }
         }
       }, 700);
 
     } else {
       this.comboCount = 0;
+      this.fuelAttemptCount = (this.fuelAttemptCount || 0) + 1;
       this.isAnswerLocked = false;
       if (window.audioManager) window.audioManager.playWrong();
       if (window.uiManager) {
         window.uiManager.showFuelFeedback(false, window.i18n ? window.i18n.t("wrongFeedback") : "计算有误，再试一次！");
-        window.uiManager.showWrongAnswerHint(this.currentQuestion);
+        window.uiManager.showWrongAnswerHint(this.currentQuestion, { context: "fuel", attempt: this.fuelAttemptCount });
         window.uiManager.currentAnswerInput = "";
         window.uiManager.updateAnswerDisplay("?");
       }
@@ -502,6 +535,8 @@ class MultiplicationGame {
       gameMode: this.gameMode,
       score: this.score,
       currentQuestionIdx: this.currentQuestionIdx,
+      fuelLoaded: this.fuelLoaded,
+      fuelRequired: this.fuelRequired,
       fuelPercentage: this.fuelPercentage,
       savedAt: Date.now()
     });

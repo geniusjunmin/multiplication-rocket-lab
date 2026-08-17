@@ -121,9 +121,9 @@ class I18nManager {
         ignitionText: "IGNITION!",
         orbitAchievedBanner: "🌍 ORBIT ACHIEVED",
         transferBurnBanner: "🚀 HYPER-DRIVE TRANSFER BURN",
-        destinationArrivalBanner: "🪐 ARRIVED AT {destination}!",
         spaceVictoryTitle: "MISSION COMPLETE! ARRIVED AT DESTINATION! 🌌",
         btnViewResults: "📊 View Mission Summary",
+        btnReplayLanding: "🔄 Replay Landing",
         newPassportStamp: "🎉 New Space Passport Stamp Unlocked!",
 
         // Results Screen
@@ -277,9 +277,9 @@ class I18nManager {
         ignitionText: "点火升空！",
         orbitAchievedBanner: "🌍 成功进入地球轨道",
         transferBurnBanner: "🚀 星际变轨超光速加速",
-        destinationArrivalBanner: "🪐 成功抵达 {destination}！",
         spaceVictoryTitle: "任务成功！火箭已成功抵达目标星球！🌌",
         btnViewResults: "📊 查看本次任务成绩单",
+        btnReplayLanding: "🔄 再看一次降落",
         newPassportStamp: "🎉 解锁全新航天护照印章！",
 
         // 结算

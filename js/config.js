@@ -103,6 +103,14 @@ const CONFIG = {
     }
   },
 
+  // Global Flight Timeline Standards (seconds)
+  CINEMATIC_TIMING: {
+    ignition: 2.0,
+    liftoff: 4.0,
+    atmosphere: 4.5,
+    earthOrbit: 3.0
+  },
+
   // 6 Interplanetary Destination Missions
   DESTINATIONS: {
     earthOrbit: {
@@ -112,11 +120,17 @@ const CONFIG = {
       icon: "🌍",
       type: "orbit",
       distanceKm: "400 km",
+      fuelRequired: 50,
       difficulty: 1,
       descEn: "Low Earth orbit station mission",
       descZh: "空间站近地轨道部署任务",
       recommendedPreset: "times9",
-      color: "#0284c7"
+      color: "#0284c7",
+      cinematic: {
+        transferSeconds: 3.5,
+        approachSeconds: 3.5,
+        destinationSeconds: 4.5
+      }
     },
     moon: {
       id: "moon",
@@ -125,11 +139,17 @@ const CONFIG = {
       icon: "🌙",
       type: "landing",
       distanceKm: "384,400 km",
+      fuelRequired: 70,
       difficulty: 2,
-      descEn: "Lunar orbit and surface approach",
+      descEn: "Lunar orbit and surface touchdown",
       descZh: "月球轨道环绕与环形山降落任务",
       recommendedPreset: "times9",
-      color: "#94a3b8"
+      color: "#94a3b8",
+      cinematic: {
+        transferSeconds: 4.5,
+        approachSeconds: 4.5,
+        destinationSeconds: 7.0
+      }
     },
     mars: {
       id: "mars",
@@ -138,11 +158,17 @@ const CONFIG = {
       icon: "🔴",
       type: "landing",
       distanceKm: "225,000,000 km",
+      fuelRequired: 100,
       difficulty: 3,
-      descEn: "Red Planet orbital insertion and landing",
-      descZh: "红色火星大气穿梭与基地抵达任务",
+      descEn: "Red Planet orbital insertion and touchdown",
+      descZh: "红色火星大气穿梭与基地降落任务",
       recommendedPreset: "times12",
-      color: "#ef4444"
+      color: "#ef4444",
+      cinematic: {
+        transferSeconds: 5.5,
+        approachSeconds: 5.0,
+        destinationSeconds: 7.5
+      }
     },
     jupiter: {
       id: "jupiter",
@@ -151,11 +177,17 @@ const CONFIG = {
       icon: "🪐",
       type: "flyby",
       distanceKm: "778,000,000 km",
+      fuelRequired: 120,
       difficulty: 4,
       descEn: "Gas giant flyby & Great Red Spot study",
       descZh: "气态巨行星大红斑与卫群近距离飞掠",
       recommendedPreset: "multDivide12",
-      color: "#f59e0b"
+      color: "#f59e0b",
+      cinematic: {
+        transferSeconds: 6.0,
+        approachSeconds: 5.5,
+        destinationSeconds: 7.0
+      }
     },
     saturn: {
       id: "saturn",
@@ -164,11 +196,17 @@ const CONFIG = {
       icon: "🪐",
       type: "orbit",
       distanceKm: "1,400,000,000 km",
+      fuelRequired: 140,
       difficulty: 5,
       descEn: "Traverse Saturn's 3D magnificent rings",
       descZh: "穿越土星壮丽的 3D 冰晶光环轨道",
       recommendedPreset: "times20",
-      color: "#eab308"
+      color: "#eab308",
+      cinematic: {
+        transferSeconds: 6.5,
+        approachSeconds: 6.0,
+        destinationSeconds: 8.0
+      }
     },
     deepSpace: {
       id: "deepSpace",
@@ -177,11 +215,17 @@ const CONFIG = {
       icon: "🌌",
       type: "exploration",
       distanceKm: "Deep Space",
+      fuelRequired: 160,
       difficulty: 6,
       descEn: "Journey beyond the Solar System into interstellar nebulae",
       descZh: "穿过太阳系边缘进入璀璨星云深处",
       recommendedPreset: "expert20",
-      color: "#818cf8"
+      color: "#818cf8",
+      cinematic: {
+        transferSeconds: 7.0,
+        approachSeconds: 6.5,
+        destinationSeconds: 8.5
+      }
     }
   },
 

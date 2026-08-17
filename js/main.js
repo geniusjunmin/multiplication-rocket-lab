@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (window.i18n) window.i18n.updateDOM();
   if (window.game) window.game.init();
 
-  if ("serviceWorker" in navigator) {
+  if ("serviceWorker" in navigator && typeof window !== "undefined" && window.location && window.location.protocol.startsWith("http")) {
     navigator.serviceWorker.register("./sw.js").then(reg => {
       console.log("ServiceWorker registered:", reg.scope);
     }).catch(err => console.warn("ServiceWorker registration skipped:", err));
@@ -125,6 +125,7 @@ function bindGlobalNavEvents() {
 
   document.getElementById("btn-open-settings")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playClick();
+    syncMissionSettingsUI();
     if (window.game) window.game.setGameState(GAME_STATES.SETTINGS);
   });
 
@@ -234,7 +235,23 @@ function bindSettingsEvents() {
   });
 }
 
+function syncMissionSettingsUI() {
+  const selectedDest = window.storageManager ? (window.storageManager.get("selectedDestination") || "moon") : "moon";
+  document.querySelectorAll(".dest-card").forEach(card => {
+    if (card.getAttribute("data-dest") === selectedDest) {
+      card.classList.add("selected");
+    } else {
+      card.classList.remove("selected");
+    }
+  });
+  if (window.destinationManager) {
+    window.destinationManager.initPlanetPreview("planet-preview-canvas", selectedDest);
+  }
+}
+
 function bindDestinationEvents() {
+  syncMissionSettingsUI();
+
   document.querySelectorAll(".dest-card").forEach(card => {
     card.addEventListener("click", () => {
       const destId = card.getAttribute("data-dest");
@@ -261,14 +278,18 @@ function bindBlueprintEvents() {
 
 function bindQuizInputEvents() {
   document.querySelectorAll(".choice-btn").forEach(btn => {
+    btn.addEventListener("mousedown", (e) => e.preventDefault());
     btn.addEventListener("click", () => {
+      btn.blur();
       const val = btn.getAttribute("data-val");
       if (window.game) window.game.submitAnswer(val);
     });
   });
 
   document.querySelectorAll(".key-btn").forEach(keyBtn => {
+    keyBtn.addEventListener("mousedown", (e) => e.preventDefault());
     keyBtn.addEventListener("click", () => {
+      keyBtn.blur();
       const key = keyBtn.getAttribute("data-key");
       if (window.audioManager) window.audioManager.playClick();
       if (window.uiManager) window.uiManager.appendKeyInput(key);
@@ -280,9 +301,12 @@ function bindQuizInputEvents() {
     if (window.audioManager) window.audioManager.playUnlock();
     if (window.game) {
       const prev = window.game.fuelPercentage;
+      window.game.fuelLoaded = window.game.fuelRequired;
       window.game.fuelPercentage = 100;
       if (window.uiManager) {
         window.uiManager.animateFuelIncrease(prev, 100, 5);
+        const destId = window.storageManager ? (window.storageManager.get("selectedDestination") || "moon") : "moon";
+        window.uiManager.updateFuelMissionTarget(destId, window.game.fuelLoaded, window.game.fuelRequired);
       }
       if (window.rocketBuilder) {
         window.rocketBuilder.setFuelGlowLevel(100);
@@ -291,7 +315,9 @@ function bindQuizInputEvents() {
   });
 
   document.querySelectorAll(".fuel-key").forEach(btn => {
+    btn.addEventListener("mousedown", (e) => e.preventDefault());
     btn.addEventListener("click", () => {
+      btn.blur();
       const key = btn.getAttribute("data-key");
       if (window.audioManager) window.audioManager.playClick();
 
@@ -348,10 +374,13 @@ function bindQuizInputEvents() {
 
     if (window.game && (window.game.currentState === GAME_STATES.QUESTION || window.game.currentState === GAME_STATES.FUEL_CHALLENGE)) {
       if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
         if (window.uiManager) window.uiManager.appendKeyInput(e.key);
       } else if (e.key === "Backspace") {
+        e.preventDefault();
         if (window.uiManager) window.uiManager.appendKeyInput("backspace");
       } else if (e.key === "Enter") {
+        e.preventDefault();
         if (window.uiManager && window.game) {
           const answer = window.uiManager.currentAnswerInput;
           if (answer) {
@@ -457,6 +486,7 @@ function bindAssemblyEvents() {
 
     document.getElementById("modal-rocket-complete")?.classList.add("hidden");
     if (window.game) {
+      window.game.fuelLoaded = 0;
       window.game.fuelPercentage = 0;
       if (window.uiManager) window.uiManager.updateFuelGauge(0);
       window.game.setGameState(GAME_STATES.FUEL_CHALLENGE);

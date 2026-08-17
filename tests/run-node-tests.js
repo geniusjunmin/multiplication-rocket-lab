@@ -63,10 +63,30 @@ global.THREE = {
   Vector3: class { constructor(x = 0, y = 0, z = 0) { this.x = x; this.y = y; this.z = z; } set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } clone() { return new global.THREE.Vector3(this.x, this.y, this.z); } copy(v) { this.x = v.x; this.y = v.y; this.z = v.z; return this; } },
   Quaternion: class { constructor(x = 0, y = 0, z = 0, w = 1) { this.x = x; this.y = y; this.z = z; this.w = w; } set(x, y, z, w) { this.x = x; this.y = y; this.z = z; this.w = w; return this; } clone() { return new global.THREE.Quaternion(this.x, this.y, this.z, this.w); } copy(q) { this.x = q.x; this.y = q.y; this.z = q.z; this.w = q.w; return this; } slerp() { return this; } },
   Box3: class {
-    constructor() { this.min = new global.THREE.Vector3(-1.5, -2.5, -1.5); this.max = new global.THREE.Vector3(1.5, 3.5, 1.5); }
-    setFromObject() { return this; }
-    getSize(target) { if (target) target.set(3.0, 6.0, 3.0); return target || new global.THREE.Vector3(3.0, 6.0, 3.0); }
-    getCenter(target) { if (target) target.set(0, 0.5, 0); return target || new global.THREE.Vector3(0, 0.5, 0); }
+    constructor() {
+      this.min = new global.THREE.Vector3(-1.5, -2.6, -1.5);
+      this.max = new global.THREE.Vector3(1.5, 3.5, 1.5);
+    }
+    setFromObject(obj) {
+      if (obj && obj.position) {
+        const py = obj.position.y || 0;
+        const px = obj.position.x || 0;
+        const pz = obj.position.z || 0;
+        this.min.set(px - 1.5, py - 2.6, pz - 1.5);
+        this.max.set(px + 1.5, py + 3.5, pz + 1.5);
+      }
+      return this;
+    }
+    getSize(target) {
+      const v = target || new global.THREE.Vector3();
+      v.set(this.max.x - this.min.x, this.max.y - this.min.y, this.max.z - this.min.z);
+      return v;
+    }
+    getCenter(target) {
+      const v = target || new global.THREE.Vector3();
+      v.set((this.max.x + this.min.x) * 0.5, (this.max.y + this.min.y) * 0.5, (this.max.z + this.min.z) * 0.5);
+      return v;
+    }
   },
   PerspectiveCamera: class {
     constructor() {
@@ -92,6 +112,7 @@ global.THREE = {
     }
     add(o) { if (o) this.children.push(o); }
     remove(o) { this.children = this.children.filter(c => c !== o); }
+    updateMatrixWorld() {}
     clone() {
       const g = new global.THREE.Group();
       g.children = this.children.map(c => c.clone ? c.clone() : c);
@@ -117,6 +138,7 @@ global.THREE = {
     }
     add(o) { if (o) this.children.push(o); }
     remove(o) { this.children = this.children.filter(c => c !== o); }
+    updateMatrixWorld() {}
     clone() {
       const m = new global.THREE.Mesh(this.geometry, this.material);
       m.position.copy(this.position);

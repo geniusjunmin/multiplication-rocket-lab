@@ -45,6 +45,24 @@ class RocketBuilder {
       lightning: { body: 0x0f172a, nose: 0xeab308, fin: 0xa855f7, engine: 0xec4899, accent: 0x38bdf8, dark: 0x1e1b4b },
       galaxy: { body: 0x1e1b4b, nose: 0x818cf8, fin: 0xc084fc, engine: 0x4f46e5, accent: 0x38bdf8, dark: 0x0f172a }
     };
+
+    // True 3D Assembly Platform Framework
+    this.ASSEMBLY_PLATFORM_TOP_Y = -2.6;
+    this.platformGroup = null;
+    this.assemblyReferenceBounds = null;
+    this.isAssemblyDebug = false;
+  }
+
+  checkDebugFlags() {
+    if (typeof window !== "undefined" && window.location && window.location.search) {
+      const qs = window.location.search;
+      this.isAssemblyDebug = qs.includes("assemblyDebug=1");
+    }
+    const debugEl = document.getElementById("assembly-debug-hud");
+    if (debugEl) {
+      if (this.isAssemblyDebug) debugEl.classList.remove("hidden");
+      else debugEl.classList.add("hidden");
+    }
   }
 
   // Helper methods for tracked timer management
@@ -87,6 +105,58 @@ class RocketBuilder {
     clearTimeout(tid);
   }
 
+  createAssemblyPlatform() {
+    if (this.platformGroup && this.scene) {
+      this.scene.remove(this.platformGroup);
+      this.disposeObject3D(this.platformGroup);
+      this.platformGroup = null;
+    }
+
+    this.platformGroup = new THREE.Group();
+
+    // 1. Heavy Chamfered Base Pedestal
+    const baseGeo = new THREE.CylinderGeometry(3.6, 3.9, 0.45, 48);
+    const baseMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      metalness: 0.85,
+      roughness: 0.25
+    });
+    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+    baseMesh.position.set(0, this.ASSEMBLY_PLATFORM_TOP_Y - 0.225, 0);
+    this.platformGroup.add(baseMesh);
+
+    // 2. Beveled Metallic Outer Rim
+    const rimGeo = new THREE.TorusGeometry(3.6, 0.08, 16, 48);
+    const rimMat = new THREE.MeshStandardMaterial({
+      color: 0x94a3b8,
+      metalness: 0.9,
+      roughness: 0.15
+    });
+    const rimMesh = new THREE.Mesh(rimGeo, rimMat);
+    rimMesh.rotation.x = Math.PI / 2;
+    rimMesh.position.set(0, this.ASSEMBLY_PLATFORM_TOP_Y, 0);
+    this.platformGroup.add(rimMesh);
+
+    // 3. Glowing Inner Cyan LED Strip
+    const innerLedGeo = new THREE.TorusGeometry(2.4, 0.06, 16, 48);
+    const innerLedMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8
+    });
+    const innerLedMesh = new THREE.Mesh(innerLedGeo, innerLedMat);
+    innerLedMesh.rotation.x = Math.PI / 2;
+    innerLedMesh.position.set(0, this.ASSEMBLY_PLATFORM_TOP_Y + 0.01, 0);
+    this.platformGroup.add(innerLedMesh);
+
+    // 4. Subtle Platform Illumination PointLight
+    const pLight = new THREE.PointLight(0x38bdf8, 0.7, 8);
+    pLight.position.set(0, this.ASSEMBLY_PLATFORM_TOP_Y + 0.6, 0);
+    this.platformGroup.add(pLight);
+
+    if (this.scene) {
+      this.scene.add(this.platformGroup);
+    }
+  }
+
   initScene(containerId) {
     this.destroy();
 
@@ -94,8 +164,11 @@ class RocketBuilder {
     if (!container) return;
 
     container.innerHTML = "";
-    const width = container.clientWidth || 400;
-    const height = container.clientHeight || 400;
+    
+    // Calculate initial dimensions safely from container or parent
+    const parent = container.parentElement;
+    const width = container.clientWidth || (parent ? parent.clientWidth : 0) || window.innerWidth || 800;
+    const height = container.clientHeight || (parent ? parent.clientHeight : 0) || 500;
 
     // Check WebGL availability
     if (!window.WebGLRenderingContext) {
@@ -132,6 +205,9 @@ class RocketBuilder {
       pointLight.position.set(-5, -2, -5);
       this.scene.add(pointLight);
 
+      this.createAssemblyPlatform();
+      this.checkDebugFlags();
+
       // Sync active model & theme from profile/storage if available
       if (window.storageManager) {
         this.currentModel = window.storageManager.get("currentRocketModel") || this.currentModel;
@@ -140,8 +216,29 @@ class RocketBuilder {
 
       this.buildCurrentRocket();
 
+      // Modern ResizeObserver to auto-sync size on any viewport/layout change
+      if (typeof ResizeObserver !== "undefined") {
+        this.resizeObserver = new ResizeObserver((entries) => {
+          for (let entry of entries) {
+            const w = entry.contentRect.width || container.clientWidth;
+            const h = entry.contentRect.height || container.clientHeight;
+            if (w > 0 && h > 0 && this.renderer && this.camera) {
+              this.camera.aspect = w / h;
+              this.camera.updateProjectionMatrix();
+              this.renderer.setSize(w, h);
+              this.fitAssemblyCamera();
+            }
+          }
+        });
+        this.resizeObserver.observe(container);
+        if (parent) this.resizeObserver.observe(parent);
+      }
+
       this.boundResizeHandler = () => this.onWindowResize(containerId);
       window.addEventListener("resize", this.boundResizeHandler);
+
+      // Force a layout pass after next frame
+      setTimeout(() => this.onWindowResize(containerId), 50);
 
       this.animate();
     } catch (e) {
@@ -257,42 +354,81 @@ class RocketBuilder {
     this.updateInstalledParts(installed);
   }
 
-  /**
-   * Automatically adjusts camera distance and target center to fit any rocket model
-   * perfectly in the center (70-80% viewport height).
-   */
-  fitCameraToRocket() {
+  alignRocketToPlatform() {
+    if (!this.rocketGroup) return;
+
+    try {
+      if (typeof THREE !== "undefined" && THREE.Box3) {
+        // Ensure accurate world matrix
+        this.rocketGroup.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(this.rocketGroup);
+        const center = box.getCenter(new THREE.Vector3());
+
+        // 1. Center rocket horizontally strictly to (0, 0)
+        this.rocketGroup.position.x -= center.x;
+        this.rocketGroup.position.z -= center.z;
+        this.rocketGroup.updateMatrixWorld(true);
+
+        // 2. Align lowest physical bounding box point to platform top surface
+        const centeredBox = new THREE.Box3().setFromObject(this.rocketGroup);
+        const deltaY = this.ASSEMBLY_PLATFORM_TOP_Y - centeredBox.min.y;
+        this.rocketGroup.position.y += deltaY;
+        this.rocketGroup.updateMatrixWorld(true);
+
+        const finalBox = new THREE.Box3().setFromObject(this.rocketGroup);
+        const finalCenter = finalBox.getCenter(new THREE.Vector3());
+        const finalSize = finalBox.getSize(new THREE.Vector3());
+
+        this.assemblyReferenceBounds = {
+          min: finalBox.min.clone(),
+          max: finalBox.max.clone(),
+          center: finalCenter.clone(),
+          size: finalSize.clone(),
+          visualCenterY: (finalBox.min.y + finalBox.max.y) / 2
+        };
+      }
+    } catch (e) {
+      console.warn("alignRocketToPlatform fallback:", e);
+    }
+  }
+
+  fitAssemblyCamera() {
     if (!this.camera || !this.rocketGroup) return;
 
     try {
-      let minY = -2.8, maxY = 3.8, maxRadius = 2.0;
-
-      if (this.currentModel === "falconHeavy") {
-        minY = -3.2; maxY = 4.2; maxRadius = 2.8;
-      } else if (this.currentModel === "longMarch") {
-        minY = -3.0; maxY = 4.4; maxRadius = 3.0;
-      } else if (this.currentModel === "starship") {
-        minY = -3.2; maxY = 4.4; maxRadius = 2.2;
-      } else if (this.currentModel === "cyber") {
-        minY = -3.0; maxY = 4.2; maxRadius = 2.5;
+      const visualCenterY = this.assemblyReferenceBounds ? this.assemblyReferenceBounds.visualCenterY : 0.5;
+      const height = this.assemblyReferenceBounds ? this.assemblyReferenceBounds.size.y : 6.5;
+      const aspect = this.camera.aspect || 1.0;
+      const fovRad = (this.camera.fov * Math.PI) / 180;
+      
+      // Calculate distance based on both height and width to prevent horizontal cutoffs
+      const distY = (height / 2) / Math.tan(fovRad / 2);
+      let distX = distY;
+      if (aspect < 1.0) {
+        distX = distY / aspect;
       }
+      const distance = Math.max(9.5, Math.max(distY, distX) * 1.25);
 
-      const centerY = (minY + maxY) / 2;
-      const height = maxY - minY;
-      const distance = Math.max(8.5, height * 1.35, maxRadius * 3.2);
-
-      this.camera.position.set(0, centerY + 0.3, distance);
-      this.camera.lookAt(0, centerY, 0);
+      this.camera.position.set(0, visualCenterY + 0.35, distance);
+      this.camera.lookAt(0, visualCenterY, 0);
 
       if (this.controls) {
         if (this.controls.target && this.controls.target.set) {
-          this.controls.target.set(0, centerY, 0);
+          this.controls.target.set(0, visualCenterY, 0);
         }
         this.controls.update();
       }
     } catch (e) {
-      console.warn("fitCameraToRocket fallback:", e);
+      console.warn("fitAssemblyCamera fallback:", e);
     }
+  }
+
+  /**
+   * Automatically adjusts rocket placement onto assembly platform and fits camera cleanly.
+   */
+  fitCameraToRocket() {
+    this.alignRocketToPlatform();
+    this.fitAssemblyCamera();
   }
 
   // ==========================================
@@ -973,6 +1109,28 @@ class RocketBuilder {
     this.requestTrackedRaf(spinStep);
   }
 
+  updateAssemblyDebugHUD() {
+    if (!this.isAssemblyDebug) return;
+    const hud = document.getElementById("assembly-debug-hud");
+    if (!hud || !this.rocketGroup || !this.camera) return;
+
+    const box = new THREE.Box3().setFromObject(this.rocketGroup);
+    const center = box.getCenter(new THREE.Vector3());
+    const bottomY = box.min.y.toFixed(2);
+    const deltaY = (box.min.y - this.ASSEMBLY_PLATFORM_TOP_Y).toFixed(3);
+    const camPos = `(${this.camera.position.x.toFixed(1)}, ${this.camera.position.y.toFixed(1)}, ${this.camera.position.z.toFixed(1)})`;
+    const targetY = this.assemblyReferenceBounds ? this.assemblyReferenceBounds.visualCenterY.toFixed(2) : "0.00";
+
+    hud.innerHTML = `
+      <div><strong>[ASSEMBLY DEBUG TELEMETRY]</strong></div>
+      <div>Platform Top Y: ${this.ASSEMBLY_PLATFORM_TOP_Y.toFixed(2)} | Center: (0.00, 0.00)</div>
+      <div>Rocket Center: (${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)})</div>
+      <div>Rocket Bottom Y: ${bottomY} (Platform Delta: ${deltaY})</div>
+      <div>Height: ${(box.max.y - box.min.y).toFixed(2)}</div>
+      <div>Camera Target Y: ${targetY} | Cam: ${camPos}</div>
+    `;
+  }
+
   animate() {
     this.animationId = this.requestTrackedRaf(() => this.animate());
 
@@ -982,6 +1140,7 @@ class RocketBuilder {
     if (this.controls) {
       this.controls.update();
     }
+    this.updateAssemblyDebugHUD();
     if (this.renderer && this.scene && this.camera) {
       this.renderer.render(this.scene, this.camera);
     }
@@ -1022,9 +1181,18 @@ class RocketBuilder {
     this.activeTimeouts.forEach(id => clearTimeout(id));
     this.activeTimeouts.clear();
 
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
     if (this.rocketGroup) {
       this.disposeObject3D(this.rocketGroup);
       this.rocketGroup = null;
+    }
+    if (this.platformGroup && this.scene) {
+      this.scene.remove(this.platformGroup);
+      this.disposeObject3D(this.platformGroup);
+      this.platformGroup = null;
     }
     if (this.renderer) {
       if (this.renderer.domElement && this.renderer.domElement.remove) this.renderer.domElement.remove();
@@ -1036,14 +1204,18 @@ class RocketBuilder {
     this.camera = null;
   }
 
-  onWindowResize(containerId) {
+  onWindowResize(containerId = "canvas-container-assembly") {
     const container = document.getElementById(containerId);
     if (!container || !this.renderer || !this.camera) return;
-    const width = container.clientWidth || 400;
-    const height = container.clientHeight || 400;
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
+    const parent = container.parentElement;
+    const width = container.clientWidth || (parent ? parent.clientWidth : 0) || window.innerWidth;
+    const height = container.clientHeight || (parent ? parent.clientHeight : 0) || 500;
+    if (width > 0 && height > 0) {
+      this.camera.aspect = width / height;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(width, height);
+      this.fitAssemblyCamera();
+    }
   }
 }
 

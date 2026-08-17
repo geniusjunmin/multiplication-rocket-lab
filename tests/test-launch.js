@@ -124,4 +124,20 @@ describe("4. Interplanetary Launch Engine & Planet Arrival Scenes (LaunchSequenc
     launch.destroy();
   });
 
+  it("4.10 Should specify increasing fuel requirements and flight profile durations for further destinations", () => {
+    Assert.equal(CONFIG.DESTINATIONS.earthOrbit.fuelRequired, 50, "Earth Orbit requires 50 fuel");
+    Assert.equal(CONFIG.DESTINATIONS.moon.fuelRequired, 70, "Moon requires 70 fuel");
+    Assert.equal(CONFIG.DESTINATIONS.mars.fuelRequired, 100, "Mars requires 100 fuel");
+    Assert.equal(CONFIG.DESTINATIONS.jupiter.fuelRequired, 120, "Jupiter requires 120 fuel");
+    Assert.equal(CONFIG.DESTINATIONS.saturn.fuelRequired, 140, "Saturn requires 140 fuel");
+    Assert.equal(CONFIG.DESTINATIONS.deepSpace.fuelRequired, 160, "Deep Space requires 160 fuel");
+
+    const eoTime = CONFIG.DESTINATIONS.earthOrbit.cinematic.transferSeconds;
+    const saturnTime = CONFIG.DESTINATIONS.saturn.cinematic.transferSeconds;
+    const deepSpaceTime = CONFIG.DESTINATIONS.deepSpace.cinematic.transferSeconds;
+
+    Assert.isTrue(saturnTime > eoTime, "Saturn flight duration must exceed Earth Orbit");
+    Assert.isTrue(deepSpaceTime >= saturnTime, "Deep space duration must equal or exceed Saturn");
+  });
+
 });

@@ -1,5 +1,5 @@
 /**
- * Math Engine & Fact Family Unit Tests (tests/test-math.js) - Version 3.0.0
+ * Math Engine & Fact Family Unit Tests (tests/test-math.js) - Version 3.1.0
  */
 describe("1. Universal Math & Fact Family Engine (MathEngine 3.0)", () => {
 
@@ -58,6 +58,24 @@ describe("1. Universal Math & Fact Family Engine (MathEngine 3.0)", () => {
 
     Assert.equal(divQ.hint.type, "thinkMul", "Division should yield thinkMul hint");
     Assert.includes(divQ.hint.textEn, "7 × ? = 56", "Hint text must suggest reverse multiplication");
+  });
+
+  it("1.6 Should generate 2-level hints where Level 1 hides final answer and Level 2 reveals solution", () => {
+    const math = new MathEngine();
+    
+    // Multiplication: 7 × 8 = 56
+    const hintL1 = math.getSmartHint("multiply", 7, 8, 56, 1);
+    const hintL2 = math.getSmartHint("multiply", 7, 8, 56, 2);
+
+    Assert.isFalse(hintL1.textZh.includes("= 56"), "Level 1 hint must NOT expose the final answer '= 56'");
+    Assert.isTrue(hintL2.textZh.includes("= 56"), "Level 2 hint must contain the worked solution '= 56'");
+
+    // Division: 56 ÷ 7 = 8
+    const divL1 = math.getSmartHint("divide", 56, 7, 8, 1);
+    const divL2 = math.getSmartHint("divide", 56, 7, 8, 2);
+
+    Assert.isFalse(divL1.textZh.includes("= 8"), "Division Level 1 hint must NOT expose '= 8'");
+    Assert.isTrue(divL2.textZh.includes("= 8"), "Division Level 2 hint must contain solution '= 8'");
   });
 
 });

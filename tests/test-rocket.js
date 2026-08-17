@@ -1,5 +1,5 @@
 /**
- * 3D 火箭构建与多型号组装引擎单元测试 (tests/test-rocket.js)
+ * 3D 火箭构建与多型号组装引擎单元测试 (tests/test-rocket.js) - Version 3.1.0
  */
 describe("3. 3D 火箭构建器 (RocketBuilder)", () => {
 
@@ -78,6 +78,39 @@ describe("3. 3D 火箭构建器 (RocketBuilder)", () => {
 
     builder.fitCameraToRocket();
     Assert.isTrue(builder.camera.position.z >= 8.5, "镜头距离应自适应保持在合理全景视角");
+  });
+
+  it("3.9 应该构建真实的 3D WebGL 台面 (createAssemblyPlatform)", () => {
+    const builder = new RocketBuilder();
+    builder.scene = new THREE.Scene();
+    builder.createAssemblyPlatform();
+
+    Assert.isTrue(builder.platformGroup !== null, "台面 platformGroup 应被创建");
+    Assert.equal(builder.ASSEMBLY_PLATFORM_TOP_Y, -2.6, "台面顶端 Y 应为 -2.6");
+    builder.destroy();
+  });
+
+  it("3.10 五款火箭模型底座必须居中且物理贴齐台面表面 (alignRocketToPlatform)", () => {
+    const builder = new RocketBuilder();
+    builder.scene = new THREE.Scene();
+    builder.camera = new THREE.PerspectiveCamera();
+    builder.createAssemblyPlatform();
+
+    const models = ["classic", "starship", "falconHeavy", "longMarch", "cyber"];
+    models.forEach(model => {
+      builder.currentModel = model;
+      builder.buildCurrentRocket();
+
+      const box = new THREE.Box3().setFromObject(builder.rocketGroup);
+      const center = box.getCenter(new THREE.Vector3());
+      const bottomY = box.min.y;
+
+      Assert.isTrue(Math.abs(center.x) < 0.05, `型号 ${model} X 水平居中误差应 < 0.05 (当前 ${center.x})`);
+      Assert.isTrue(Math.abs(center.z) < 0.05, `型号 ${model} Z 深度居中误差应 < 0.05 (当前 ${center.z})`);
+      Assert.isTrue(Math.abs(bottomY - builder.ASSEMBLY_PLATFORM_TOP_Y) < 0.05, `型号 ${model} 底部贴台误差应 < 0.05 (底Y: ${bottomY}, 台Y: ${builder.ASSEMBLY_PLATFORM_TOP_Y})`);
+    });
+
+    builder.destroy();
   });
 
 });

@@ -187,7 +187,8 @@ class MathEngine {
     const id = isDiv ? `div:${opA}/${opB}` : `mul:${opA}x${opB}`;
 
     const distractors = this.generateDistractors(operation, opA, opB, answer);
-    const hint = this.getSmartHint(operation, opA, opB, answer);
+    const hintL1 = this.getSmartHint(operation, opA, opB, answer, 1);
+    const hintL2 = this.getSmartHint(operation, opA, opB, answer, 2);
 
     return {
       id,
@@ -200,7 +201,9 @@ class MathEngine {
       display,
       factFamilyKey,
       options: distractors,
-      hint
+      hint: hintL1,
+      hintL1,
+      hintL2
     };
   }
 
@@ -229,40 +232,74 @@ class MathEngine {
     return options;
   }
 
-  getSmartHint(operation, opA, opB, answer) {
+  getSmartHint(operation, opA, opB, answer, hintLevel = 1) {
     if (operation === "divide") {
-      return {
-        type: "thinkMul",
-        textEn: `Think: ${opB} × ? = ${opA}`,
-        textZh: `逆向思考：${opB} × ? = ${opA}`
-      };
+      if (hintLevel === 1) {
+        return {
+          type: "thinkMul",
+          level: 1,
+          textEn: `Think reverse: ${opB} × ? = ${opA}`,
+          textZh: `逆向思考：${opB} × ? = ${opA}`
+        };
+      } else {
+        return {
+          type: "thinkMulSolution",
+          level: 2,
+          textEn: `Since ${opB} × ${answer} = ${opA}, therefore ${opA} ÷ ${opB} = ${answer}`,
+          textZh: `因为 ${opB} × ${answer} = ${opA}，所以 ${opA} ÷ ${opB} = ${answer}`
+        };
+      }
     }
 
     // Multiplication Hints
     const a = opA; const b = opB;
     if (a === 2 || b === 2) {
       const other = a === 2 ? b : a;
-      return { type: "double", textEn: `Double ${other}: ${other} + ${other} = ${answer}`, textZh: `把 ${other} 加倍：${other} + ${other} = ${answer}` };
+      if (hintLevel === 1) {
+        return { type: "double", level: 1, textEn: `Double strategy: ${other} + ${other} = ?`, textZh: `翻倍思考：把 ${other} 加倍，${other} + ${other} = ?` };
+      } else {
+        return { type: "doubleSol", level: 2, textEn: `${other} + ${other} = ${answer}. So ${a} × ${b} = ${answer}`, textZh: `${other} + ${other} = ${answer}，所以 ${a} × ${b} = ${answer}` };
+      }
     }
     if (a === 5 || b === 5) {
       const other = a === 5 ? b : a;
-      return { type: "count5", textEn: `Count by 5s ${other} times: 5, 10, 15...`, textZh: `逢 5 数数 ${other} 次：5, 10, 15...` };
+      if (hintLevel === 1) {
+        return { type: "count5", level: 1, textEn: `Count by 5s ${other} times: 5, 10, 15...`, textZh: `逢 5 数数 ${other} 次：5, 10, 15...` };
+      } else {
+        return { type: "count5Sol", level: 2, textEn: `5 × ${other} = ${answer}. So ${a} × ${b} = ${answer}`, textZh: `5 × ${other} = ${answer}，所以 ${a} × ${b} = ${answer}` };
+      }
     }
     if (a === 10 || b === 10) {
       const other = a === 10 ? b : a;
-      return { type: "addZero", textEn: `Add a 0 to the end of ${other}: ${other}0`, textZh: `在 ${other} 的后面加一个 0：${other}0` };
+      if (hintLevel === 1) {
+        return { type: "addZero", level: 1, textEn: `Place a 0 after ${other}: ${other}0`, textZh: `在 ${other} 后面加一个 0` };
+      } else {
+        return { type: "addZeroSol", level: 2, textEn: `10 × ${other} = ${answer}`, textZh: `10 × ${other} = ${answer}` };
+      }
     }
     if (a === 9 || b === 9) {
       const other = a === 9 ? b : a;
-      return { type: "subNine", textEn: `Think (10 × ${other}) - ${other}: ${10 * other} - ${other} = ${answer}`, textZh: `巧妙记忆：(10 × ${other}) - ${other} = ${10 * other} - ${other} = ${answer}` };
+      if (hintLevel === 1) {
+        return { type: "subNine", level: 1, textEn: `Think (10 × ${other}) - ${other}: ${10 * other} - ${other} = ?`, textZh: `巧妙记忆：先算 10 × ${other} = ${10 * other}，再减一个 ${other}：${10 * other} - ${other} = ?` };
+      } else {
+        return { type: "subNineSol", level: 2, textEn: `${10 * other} - ${other} = ${answer}. So ${a} × ${b} = ${answer}`, textZh: `${10 * other} - ${other} = ${answer}，所以 ${a} × ${b} = ${answer}` };
+      }
     }
     
     if (a > 2) {
       const prevAns = (a - 1) * b;
-      return { type: "nearFact", textEn: `Use (${a - 1} × ${b} = ${prevAns}) + ${b} = ${answer}`, textZh: `推理提示：(${a - 1} × ${b} = ${prevAns}) 再加一个 ${b} 得到 ${answer}` };
+      if (hintLevel === 1) {
+        return { type: "nearFact", level: 1, textEn: `Think: ${a - 1} × ${b} = ${prevAns}, then add one ${b}: ${prevAns} + ${b} = ?`, textZh: `你可以先算：${a - 1} × ${b} = ${prevAns}，然后再加一个 ${b}：${prevAns} + ${b} = ?` };
+      } else {
+        return { type: "nearFactSol", level: 2, textEn: `${prevAns} + ${b} = ${answer}. So ${a} × ${b} = ${answer}`, textZh: `${prevAns} + ${b} = ${answer}，所以 ${a} × ${b} = ${answer}` };
+      }
     }
 
-    return { type: "addition", textEn: `${a} groups of ${b}`, textZh: `${a} 个 ${b} 相加` };
+    if (hintLevel === 1) {
+      return { type: "addition", level: 1, textEn: `Add ${a} groups of ${b}`, textZh: `将 ${a} 个 ${b} 相加` };
+    } else {
+      return { type: "additionSol", level: 2, textEn: `${a} × ${b} = ${answer}`, textZh: `${a} × ${b} = ${answer}` };
+    }
   }
 
   recordResult(question, isCorrect, isFirstTry = true, responseTimeMs = 0) {

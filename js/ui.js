@@ -77,11 +77,16 @@ class UIManager {
     const fuelFeedback = document.getElementById("fuel-feedback");
     if (fuelFeedback) { fuelFeedback.className = "quiz-feedback hidden"; fuelFeedback.innerText = ""; }
 
-    // HIDE Strategy Hint initially (Only show after wrong answer!)
+    // HIDE Strategy Hints initially (Only show after wrong answer!)
     const hintBox = document.getElementById("strat-hint-box");
     if (hintBox) {
       hintBox.classList.add("hidden");
       hintBox.innerText = "";
+    }
+    const fuelHintBox = document.getElementById("fuel-strat-hint-box");
+    if (fuelHintBox) {
+      fuelHintBox.classList.add("hidden");
+      fuelHintBox.innerText = "";
     }
 
     const choicesContainer = document.getElementById("quiz-choices-container");
@@ -112,20 +117,49 @@ class UIManager {
     }
   }
 
-  showWrongAnswerHint(question) {
-    const hintBox = document.getElementById("strat-hint-box");
-    if (!hintBox || !question || !question.hint) return;
+  showWrongAnswerHint(question, options = {}) {
+    const context = options.context || "quiz";
+    const attempt = options.attempt || 1;
+    const isLevel2 = attempt >= 2;
+
+    const hintContainerId = context === "fuel" ? "fuel-strat-hint-box" : "strat-hint-box";
+    const hintBox = document.getElementById(hintContainerId);
+    if (!hintBox || !question) return;
 
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
-    const hintText = isZh ? question.hint.textZh : question.hint.textEn;
+
+    // Dynamic Level 1 vs Level 2 hint text
+    let hintObj = isLevel2 ? question.hintL2 : question.hintL1;
+    if (!hintObj && window.mathEngine) {
+      hintObj = window.mathEngine.getSmartHint(question.operation, question.operandA, question.operandB, question.answer, isLevel2 ? 2 : 1);
+    }
+    if (!hintObj) hintObj = question.hint;
+
+    const hintText = isZh ? (hintObj?.textZh || "") : (hintObj?.textEn || "");
+    const titleText = isLevel2
+      ? (isZh ? "💡 完整推导解答" : "💡 Full Worked Solution")
+      : (isZh ? "💡 解题思路提示 (别灰心，再试一次！)" : "💡 Strategy Hint (Try Again!)");
 
     hintBox.className = "strat-hint-box prominent-wrong-hint animate-bounce-short";
     hintBox.classList.remove("hidden");
 
     hintBox.innerHTML = `
-      <div class="hint-title-badge">💡 ${isZh ? "答错小提示 (别灰心，再试一次！)" : "Smart Strategy Hint (Try Again!)"}</div>
+      <div class="hint-title-badge">${titleText}</div>
       <div class="hint-text-body">${hintText}</div>
     `;
+  }
+
+  hideAllWrongAnswerHints() {
+    const qHint = document.getElementById("strat-hint-box");
+    if (qHint) {
+      qHint.classList.add("hidden");
+      qHint.innerHTML = "";
+    }
+    const fHint = document.getElementById("fuel-strat-hint-box");
+    if (fHint) {
+      fHint.classList.add("hidden");
+      fHint.innerHTML = "";
+    }
   }
 
   updateAnswerDisplay(val) {
@@ -459,6 +493,35 @@ class UIManager {
     }
   }
 
+  updateFuelMissionTarget(destId, loaded, required) {
+    const dest = CONFIG.DESTINATIONS[destId] || CONFIG.DESTINATIONS.moon;
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+
+    const badgeEl = document.getElementById("fuel-dest-badge");
+    const reqEl = document.getElementById("fuel-required-val");
+    const loadedEl = document.getElementById("fuel-loaded-val");
+    const pctEl = document.getElementById("fuel-pct-val");
+    const estEl = document.getElementById("fuel-estimate-msg");
+
+    const pct = Math.min(100, Math.round((loaded / required) * 100));
+    const remainingQuestions = Math.max(0, Math.ceil((required - loaded) / 10));
+
+    if (badgeEl) badgeEl.innerText = `${dest.icon} ${isZh ? dest.nameZh : dest.nameEn}`;
+    if (reqEl) reqEl.innerText = required;
+    if (loadedEl) loadedEl.innerText = `${loaded} / ${required}`;
+    if (pctEl) pctEl.innerText = `${pct}%`;
+
+    if (estEl) {
+      if (loaded >= required) {
+        estEl.innerText = isZh ? "🎉 目标达成！可随时点火升空！" : "🎉 Target Reached! Ready for Launch!";
+        estEl.style.color = "#34d399";
+      } else {
+        estEl.innerText = isZh ? `⚡ 约还需要 ${remainingQuestions} 道正确答案` : `⚡ Estimated ~${remainingQuestions} correct answers needed`;
+        estEl.style.color = "#f59e0b";
+      }
+    }
+  }
+
   animateFuelIncrease(fromPercent, toPercent, comboBonus = 0) {
     this.spawnEnergyParticles();
 
@@ -467,9 +530,9 @@ class UIManager {
     if (bonusBox) {
       const isZh = window.i18n && window.i18n.currentLanguage === "zh";
       if (comboBonus > 0) {
-        bonusBox.innerText = isZh ? `🔥 连胜加成 +${comboBonus}%` : `🔥 COMBO BONUS +${comboBonus}%`;
+        bonusBox.innerText = isZh ? `🔥 连胜加成 +${comboBonus} 能量` : `🔥 COMBO BONUS +${comboBonus} Fuel`;
       } else {
-        bonusBox.innerText = `⛽ +10%`;
+        bonusBox.innerText = `⛽ +10 Fuel`;
       }
       bonusBox.classList.remove("hidden");
       setTimeout(() => bonusBox.classList.add("hidden"), 900);
@@ -497,16 +560,16 @@ class UIManager {
   }
 
   spawnEnergyParticles() {
-    const container = document.getElementById("screen-fuel");
+    const container = document.querySelector(".fuel-layout-container") || document.getElementById("screen-fuel");
     if (!container) return;
 
     for (let i = 0; i < 6; i++) {
       const p = document.createElement("div");
       p.className = "energy-particle";
       p.style.top = `${40 + (Math.random() - 0.5) * 10}%`;
-      p.style.right = `${35 + (Math.random() - 0.5) * 10}%`;
-      const tx = `${-200 - Math.random() * 80}px`;
-      const ty = `${-40 + (Math.random() - 0.5) * 60}px`;
+      p.style.right = `${25 + (Math.random() - 0.5) * 10}%`;
+      const tx = `${-180 - Math.random() * 80}px`;
+      const ty = `${-30 + (Math.random() - 0.5) * 50}px`;
       if (p.style.setProperty) {
         p.style.setProperty("--target-x", tx);
         p.style.setProperty("--target-y", ty);
@@ -516,7 +579,9 @@ class UIManager {
       }
       container.appendChild(p);
 
-      setTimeout(() => p.remove ? p.remove() : null, 650);
+      setTimeout(() => {
+        if (p && p.parentNode) p.parentNode.removeChild(p);
+      }, 650);
     }
   }
 
@@ -534,7 +599,7 @@ class UIManager {
 
     if (label) {
       if (percentage >= 100) {
-        label.innerText = isZh ? "🎉 燃料 100% 加满！火箭发射准备就绪！" : "🎉 Fuel 100% Full! Rocket System Ready!";
+        label.innerText = isZh ? "🎉 目标燃料已加满！火箭发射准备就绪！" : "🎉 Mission Fuel Full! Rocket System Ready!";
       } else if (percentage >= 50) {
         label.innerText = isZh ? "燃料加注中..." : "Fuel loading in progress...";
       } else {
