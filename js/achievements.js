@@ -1,69 +1,124 @@
 /**
  * Multiplication Rocket Lab - Badges & Achievements System (js/achievements.js)
+ * Version 4.0.0 Space Adventure Progression Architecture
  */
 class AchievementManager {
   constructor() {
     this.badges = {
-      first_launch: { id: "first_launch", titleKey: "badgeFirstLaunch", icon: "🚀", descEn: "Complete your 1st Space Launch", descZh: "完成首次火箭发射升空" },
-      combo_5: { id: "combo_5", titleKey: "badgeCombo5", icon: "🔥", descEn: "Achieve 5 correct answers in a row", descZh: "连续答对 5 道乘法题" },
-      combo_10: { id: "combo_10", titleKey: "badgeCombo10", icon: "🌟", descEn: "Achieve 10 correct answers in a row", descZh: "连续答对 10 道乘法题" },
-      master_2: { id: "master_2", titleKey: "badgeMaster2", icon: "🧠", descEn: "Master the ×2 multiplication table (90%+)", descZh: "完全掌握 2 的乘法表" },
-      master_5: { id: "master_5", titleKey: "badgeMaster5", icon: "🧠", descEn: "Master the ×5 multiplication table (90%+)", descZh: "完全掌握 5 的乘法表" },
-      master_10: { id: "master_10", titleKey: "badgeMaster10", icon: "🧠", descEn: "Master the ×10 multiplication table (90%+)", descZh: "完全掌握 10 的乘法表" },
-      speed_pilot: { id: "speed_pilot", titleKey: "badgeSpeed", icon: "⚡", descEn: "Answer a Hard mode question under 3 seconds", descZh: "在挑战模式 3 秒内答对题目" },
-      perfect_round: { id: "perfect_round", titleKey: "badgePerfect", icon: "🎯", descEn: "Complete a round with 100% accuracy", descZh: "以 100% 正确率完成一轮练习" },
-      q_100: { id: "q_100", titleKey: "badge100Q", icon: "🌌", descEn: "Answer 100 total questions", descZh: "累计练习 100 道乘法题" }
+      // 1. Learning Badges
+      master_2: { id: "master_2", category: "learning", titleKey: "badgeMaster2", icon: "🧠", descEn: "Master the ×2 multiplication table (90%+)", descZh: "完全掌握 2 的乘法表 (≥90%)" },
+      master_3: { id: "master_3", category: "learning", titleKey: "badgeMaster3", icon: "🧠", descEn: "Master the ×3 multiplication table (90%+)", descZh: "完全掌握 3 的乘法表 (≥90%)" },
+      master_5: { id: "master_5", category: "learning", titleKey: "badgeMaster5", icon: "🧠", descEn: "Master the ×5 multiplication table (90%+)", descZh: "完全掌握 5 的乘法表 (≥90%)" },
+      master_7: { id: "master_7", category: "learning", titleKey: "badgeMaster7", icon: "🧠", descEn: "Master the ×7 multiplication table (90%+)", descZh: "完全掌握 7 的乘法表 (≥90%)" },
+      master_8: { id: "master_8", category: "learning", titleKey: "badgeMaster8", icon: "🧠", descEn: "Master the ×8 multiplication table (90%+)", descZh: "完全掌握 8 的乘法表 (≥90%)" },
+      master_10: { id: "master_10", category: "learning", titleKey: "badgeMaster10", icon: "🧠", descEn: "Master the ×10 multiplication table (90%+)", descZh: "完全掌握 10 的乘法表 (≥90%)" },
+      division_navigator: { id: "division_navigator", category: "learning", titleKey: "badgeDivNav", icon: "➗", descEn: "Answer 25 division facts correctly", descZh: "累计正确完成 25 道整除法计算" },
+
+      // 2. Mission Badges
+      first_launch: { id: "first_launch", category: "mission", titleKey: "badgeFirstLaunch", icon: "🚀", descEn: "Complete your 1st Space Mission", descZh: "完成首次太空探索任务" },
+      missions_5: { id: "missions_5", category: "mission", titleKey: "badge5Missions", icon: "🛸", descEn: "Complete 5 Space Missions", descZh: "累计完成 5 次太空任务" },
+      missions_10: { id: "missions_10", category: "mission", titleKey: "badge10Missions", icon: "🌌", descEn: "Complete 10 Space Missions", descZh: "累计完成 10 次太空任务" },
+      stars_15: { id: "stars_15", category: "mission", titleKey: "badge15Stars", icon: "⭐", descEn: "Earn 15 Mission Stars", descZh: "累计获得 15 颗任务之星" },
+      stars_30: { id: "stars_30", category: "mission", titleKey: "badge30Stars", icon: "🌟", descEn: "Earn 30 Mission Stars", descZh: "累计获得 30 颗任务之星" },
+
+      // 3. Exploration Badges
+      moon_landing: { id: "moon_landing", category: "exploration", titleKey: "badgeMoonLand", icon: "🌙", descEn: "Complete a Lunar Mission", descZh: "成功降落月球表面" },
+      mars_landing: { id: "mars_landing", category: "exploration", titleKey: "badgeMarsLand", icon: "🔴", descEn: "Complete a Mars Mission", descZh: "成功抵达火星先锋基地" },
+      jupiter_explorer: { id: "jupiter_explorer", category: "exploration", titleKey: "badgeJupiterExp", icon: "🪐", descEn: "Fly by Jupiter and the Great Red Spot", descZh: "完成木星大红斑近距离飞掠" },
+      saturn_explorer: { id: "saturn_explorer", category: "exploration", titleKey: "badgeSaturnExp", icon: "💍", descEn: "Traverse Saturn's 3D Rings", descZh: "穿越土星壮丽冰晶光环" },
+      deep_space_explorer: { id: "deep_space_explorer", category: "exploration", titleKey: "badgeDeepSpace", icon: "🌌", descEn: "Pioneer beyond into Deep Space", descZh: "开拓进入太阳系外深空星云" },
+
+      // 4. Collection & Museum Badges
+      sample_collector_5: { id: "sample_collector_5", category: "exploration", titleKey: "badge5Samples", icon: "🪨", descEn: "Collect 5 Space Museum Samples", descZh: "收集 5 件太空博物馆藏品" },
+      museum_set_moon: { id: "museum_set_moon", category: "exploration", titleKey: "badgeMoonSet", icon: "🏛️", descEn: "Complete the Lunar Museum Collection", descZh: "集齐月球博物馆全部 3 件专属藏品" },
+
+      // 5. Skill & Streak Badges
+      combo_5: { id: "combo_5", category: "skill", titleKey: "badgeCombo5", icon: "🔥", descEn: "Achieve a 5-answer streak", descZh: "达成 5 连胜答对" },
+      combo_10: { id: "combo_10", category: "skill", titleKey: "badgeCombo10", icon: "⚡", descEn: "Achieve a 10-answer streak", descZh: "达成 10 连胜答对" },
+      speed_pilot: { id: "speed_pilot", category: "skill", titleKey: "badgeSpeed", icon: "⏱️", descEn: "Answer a Hard mode question under 3s", descZh: "在挑战模式 3 秒内答对题目" },
+      perfect_round: { id: "perfect_round", category: "skill", titleKey: "badgePerfect", icon: "🎯", descEn: "Complete a mission with 100% first-try accuracy", descZh: "以 100% 首答正确率完美通关任务" },
+      q_100: { id: "q_100", category: "skill", titleKey: "badge100Q", icon: "📖", descEn: "Answer 100 total questions", descZh: "累计练习 100 道数学题" }
     };
   }
 
   checkAndAward(context = {}) {
     const newlyAwarded = [];
-    if (!window.storageManager) return newlyAwarded;
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    if (!profile) return newlyAwarded;
 
     const stats = {
-      gamesCompleted: window.storageManager.get("gamesCompleted") || 0,
-      totalCorrectAnswers: window.storageManager.get("totalCorrectAnswers") || 0,
-      totalQuestionsAnswered: window.storageManager.get("totalQuestionsAnswered") || 0,
-      maxCombo: context.comboCount || 0,
-      accuracy: context.accuracy || 0,
-      lastResponseTime: context.responseTimeMs || 9999
+      gamesCompleted: profile.gamesCompleted || 0,
+      totalCorrectAnswers: profile.totalCorrectAnswers || 0,
+      totalQuestionsAnswered: profile.totalQuestionsAnswered || 0,
+      totalDivisionCorrect: profile.totalDivisionCorrect || 0,
+      maxCombo: Math.max(context.comboCount || 0, profile.maxComboAllTime || 0),
+      firstTryAccuracy: context.firstTryAccuracy || context.accuracy || 0,
+      lastResponseTime: context.responseTimeMs || 9999,
+      totalStars: profile.progression ? (profile.progression.totalStars || 0) : 0,
+      collectiblesCount: profile.collectibles ? profile.collectibles.length : 0,
+      destinationsVisited: profile.destinationsVisited || {},
+      missionRecords: profile.missionRecords || {}
     };
 
-    if (stats.gamesCompleted >= 1) {
-      if (window.storageManager.awardBadge("first_launch")) newlyAwarded.push(this.badges.first_launch);
-    }
-    if (stats.maxCombo >= 5) {
-      if (window.storageManager.awardBadge("combo_5")) newlyAwarded.push(this.badges.combo_5);
-    }
-    if (stats.maxCombo >= 10) {
-      if (window.storageManager.awardBadge("combo_10")) newlyAwarded.push(this.badges.combo_10);
-    }
-    if (stats.totalQuestionsAnswered >= 100) {
-      if (window.storageManager.awardBadge("q_100")) newlyAwarded.push(this.badges.q_100);
-    }
+    const award = (badgeId) => {
+      if (!profile.badges.includes(badgeId)) {
+        profile.badges.push(badgeId);
+        if (window.profileManager) window.profileManager.save();
+        if (this.badges[badgeId]) newlyAwarded.push(this.badges[badgeId]);
+        return true;
+      }
+      return false;
+    };
+
+    if (stats.gamesCompleted >= 1) award("first_launch");
+    if (stats.gamesCompleted >= 5) award("missions_5");
+    if (stats.gamesCompleted >= 10) award("missions_10");
+    if (stats.totalStars >= 15) award("stars_15");
+    if (stats.totalStars >= 30) award("stars_30");
+
+    if (stats.maxCombo >= 5) award("combo_5");
+    if (stats.maxCombo >= 10) award("combo_10");
+    if (stats.totalQuestionsAnswered >= 100) award("q_100");
+    if (stats.totalDivisionCorrect >= 25) award("division_navigator");
+
     if (context.isHardMode && stats.lastResponseTime < 3000 && context.isCorrect) {
-      if (window.storageManager.awardBadge("speed_pilot")) newlyAwarded.push(this.badges.speed_pilot);
+      award("speed_pilot");
     }
-    if (stats.accuracy >= 100 && context.totalRoundQuestions >= 10) {
-      if (window.storageManager.awardBadge("perfect_round")) newlyAwarded.push(this.badges.perfect_round);
+    if (stats.firstTryAccuracy >= 100 && (context.totalRoundQuestions || 0) >= 10) {
+      award("perfect_round");
     }
 
-    // Check table mastery
+    // Planetary exploration
+    if (stats.destinationsVisited.moon) award("moon_landing");
+    if (stats.destinationsVisited.mars) award("mars_landing");
+    if (stats.destinationsVisited.jupiter) award("jupiter_explorer");
+    if (stats.destinationsVisited.saturn) award("saturn_explorer");
+    if (stats.destinationsVisited.deepSpace) award("deep_space_explorer");
+
+    // Collectibles & Museum sets
+    if (stats.collectiblesCount >= 5) award("sample_collector_5");
+    const moonCollectibles = ["moon_basalt_rock", "moon_rover_wheel", "moon_far_side_map"];
+    if (moonCollectibles.every(c => profile.collectibles && profile.collectibles.includes(c))) {
+      award("museum_set_moon");
+    }
+
+    // Check table mastery report accurately
     if (window.mathEngine) {
       const report = window.mathEngine.getTableMasteryReport();
-      const t2 = report.find(r => r.table === 2);
-      const t5 = report.find(r => r.table === 5);
-      const t10 = report.find(r => r.table === 10);
+      const checkTable = (tblNum, badgeKey) => {
+        const item = report.find(r => r.table === tblNum);
+        const score = item ? (item.averageMastery !== undefined ? item.averageMastery : item.percentage) : 0;
+        if (score >= 90) {
+          award(badgeKey);
+        }
+      };
 
-      if (t2 && t2.percentage >= 90) {
-        if (window.storageManager.awardBadge("master_2")) newlyAwarded.push(this.badges.master_2);
-      }
-      if (t5 && t5.percentage >= 90) {
-        if (window.storageManager.awardBadge("master_5")) newlyAwarded.push(this.badges.master_5);
-      }
-      if (t10 && t10.percentage >= 90) {
-        if (window.storageManager.awardBadge("master_10")) newlyAwarded.push(this.badges.master_10);
-      }
+      checkTable(2, "master_2");
+      checkTable(3, "master_3");
+      checkTable(5, "master_5");
+      checkTable(7, "master_7");
+      checkTable(8, "master_8");
+      checkTable(10, "master_10");
     }
 
     return newlyAwarded;
@@ -71,3 +126,6 @@ class AchievementManager {
 }
 
 window.achievementManager = new AchievementManager();
+if (typeof module !== "undefined") {
+  module.exports = { AchievementManager };
+}

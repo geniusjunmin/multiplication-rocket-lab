@@ -564,6 +564,9 @@ class LaunchSequence {
     if (window.rocketBuilder) {
       const activeModel = window.storageManager ? (window.storageManager.get("currentRocketModel") || "classic") : "classic";
       const activeTheme = window.storageManager ? (window.storageManager.get("currentRocketTheme") || "explorer") : "explorer";
+      const activePayload = window.storageManager ? (window.storageManager.get("selectedPayload") || "probe") : "probe";
+      const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+      const activeTrail = (profile && profile.rocketCosmetics && profile.rocketCosmetics.trail) || "trail_standard";
 
       this.rocket = window.rocketBuilder.createDetachedRocket(activeModel, activeTheme);
       this.rocket.position.set(0, 0, 0);
@@ -573,30 +576,58 @@ class LaunchSequence {
         this.attachLandingGear(this.rocket, activeModel);
       }
 
+      // Create & Attach Payload Module
+      if (RocketBuilder.createPayloadMesh) {
+        this.payloadMesh = RocketBuilder.createPayloadMesh(activePayload);
+        if (this.payloadMesh) {
+          this.payloadMesh.position.set(0, 0.8, 0);
+          this.payloadMesh.scale.set(0.65, 0.65, 0.65);
+          this.rocket.add(this.payloadMesh);
+        }
+      }
+
       if (this.scene && this.rocket) {
         this.scene.add(this.rocket);
       }
 
-      // Flame plume
+      // Cosmetic Flame plume colors
+      let flameColorCore = 0xffffff;
+      let flameColorMain = 0xfbbf24;
+      let flameColorOuter = 0xef4444;
+
+      if (activeTrail === "trail_plasma_blue") {
+        flameColorMain = 0x38bdf8;
+        flameColorOuter = 0x0284c7;
+      } else if (activeTrail === "trail_ion_green") {
+        flameColorMain = 0x34d399;
+        flameColorOuter = 0x059669;
+      } else if (activeTrail === "trail_solar_flare") {
+        flameColorMain = 0xf87171;
+        flameColorOuter = 0xb91c1c;
+      } else if (activeTrail === "trail_starlight") {
+        flameColorMain = 0xc084fc;
+        flameColorOuter = 0x7c3aed;
+      }
+
       const flameGroup = new THREE.Group();
 
       const coreFlame = new THREE.Mesh(
         new THREE.ConeGeometry(0.4, 2.6, 32),
-        new THREE.MeshBasicMaterial({ color: 0xffffff })
+        new THREE.MeshBasicMaterial({ color: flameColorCore })
       );
       coreFlame.rotation.x = Math.PI;
       flameGroup.add(coreFlame);
 
       const mainFlame = new THREE.Mesh(
         new THREE.ConeGeometry(0.75, 3.8, 32),
-        new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.9 })
+        new THREE.MeshBasicMaterial({ color: flameColorMain, transparent: true, opacity: 0.9 })
       );
       mainFlame.rotation.x = Math.PI;
       flameGroup.add(mainFlame);
 
       const outerFlame = new THREE.Mesh(
         new THREE.ConeGeometry(1.1, 5.0, 32),
-        new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.7 })
+        new THREE.MeshBasicMaterial({ color: flameColorOuter, transparent: true, opacity: 0.7 })
       );
       outerFlame.rotation.x = Math.PI;
       flameGroup.add(outerFlame);

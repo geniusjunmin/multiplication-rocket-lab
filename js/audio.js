@@ -256,7 +256,123 @@ class AudioManager {
       offset += item.d;
     });
   }
+
+  /**
+   * 播放指挥官等级提升升级音乐 (雄壮上行和弦)
+   */
+  playLevelUp() {
+    if (!this.enabled || !this.ctx) return;
+    this.init();
+    const chords = [
+      [261.63, 329.63, 392.00], // C4, E4, G4
+      [329.63, 392.00, 523.25], // E4, G4, C5
+      [392.00, 493.88, 587.33], // G4, B4, D5
+      [523.25, 659.25, 783.99, 1046.50] // C5, E5, G5, C6
+    ];
+
+    chords.forEach((chord, cIdx) => {
+      const startTime = this.ctx.currentTime + cIdx * 0.18;
+      chord.forEach(freq => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.2, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(startTime);
+        osc.stop(startTime + 0.35);
+      });
+    });
+  }
+
+  /**
+   * 播放获得任务之星音效 (晶莹高频音)
+   */
+  playStarEarned() {
+    if (!this.enabled || !this.ctx) return;
+    this.init();
+    const freqs = [880, 1174.66, 1760]; // A5, D6, A6
+    freqs.forEach((f, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = f;
+      const t = this.ctx.currentTime + idx * 0.09;
+      gain.gain.setValueAtTime(0.25, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.4);
+    });
+  }
+
+  /**
+   * 播放太空博物馆新藏品揭晓音效 (神秘华丽发现音)
+   */
+  playRareCollectible() {
+    if (!this.enabled || !this.ctx) return;
+    this.init();
+    const notes = [440, 554.37, 659.25, 830.61, 880, 1108.73, 1318.51];
+    notes.forEach((f, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = f;
+      const t = this.ctx.currentTime + idx * 0.07;
+      gain.gain.setValueAtTime(0.2, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.5);
+    });
+  }
+
+  /**
+   * 播放连击能量进阶音效 (Hyper Boost 能量蜂鸣)
+   */
+  playComboMilestone(level = 1) {
+    if (!this.enabled || !this.ctx) return;
+    this.init();
+    const baseFreq = level === 3 ? 1046.5 : (level === 2 ? 783.99 : 523.25);
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(baseFreq * 0.8, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, this.ctx.currentTime + 0.25);
+    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(this.ctx.currentTime);
+    osc.stop(this.ctx.currentTime + 0.35);
+  }
+
+  /**
+   * 播放突发任务事件警报音
+   */
+  playEventAlert() {
+    if (!this.enabled || !this.ctx) return;
+    this.init();
+    [0, 0.15].forEach(delay => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "square";
+      osc.frequency.value = 880;
+      const t = this.ctx.currentTime + delay;
+      gain.gain.setValueAtTime(0.18, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.1);
+    });
+  }
 }
 
 // 导出全局单例对象
 window.audioManager = new AudioManager();
+

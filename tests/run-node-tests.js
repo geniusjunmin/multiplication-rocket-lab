@@ -176,6 +176,7 @@ const appFiles = [
   'js/i18n.js',
   'js/profiles.js',
   'js/storage.js',
+  'js/progression.js',
   'js/achievements.js',
   'js/missions.js',
   'js/audio.js',
@@ -191,7 +192,8 @@ const appFiles = [
   'tests/test-launch.js',
   'tests/test-game.js',
   'tests/test-ui.js',
-  'tests/test-i18n.js'
+  'tests/test-i18n.js',
+  'tests/test-progression.js'
 ];
 
 appFiles.forEach(f => {
@@ -199,7 +201,7 @@ appFiles.forEach(f => {
   vm.runInThisContext(code);
 });
 
-console.log("\n🚀 === Multiplication Rocket Lab 3.0 Automated CLI Test Suite ===\n");
+console.log("\n🚀 === Multiplication Rocket Lab 4.0 Space Adventure Progression Automated CLI Test Suite ===\n");
 
 testRunner.runAll(
   (progress) => {

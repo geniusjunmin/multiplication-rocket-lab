@@ -1,10 +1,10 @@
 /**
  * Multiplication Rocket Lab - Multi-Player Profile & Storage Manager (js/profiles.js)
- * Schema Version 3.0.0 (Fact Families, Mixed Operations, Interplanetary Destinations & Space Passport)
+ * Schema Version 4.0.0 (Space Adventure Progression, Commander Level, Collectibles, Mission Records & Research Lab)
  */
 class ProfileManager {
   constructor() {
-    this.STORAGE_KEY = "multiplication_rocket_profiles_v3";
+    this.STORAGE_KEY = "multiplication_rocket_profiles_v4";
     this.profiles = [];
     this.activeProfileId = null;
     this.initStorage();
@@ -43,12 +43,14 @@ class ProfileManager {
 
     return {
       id,
-      schemaVersion: CONFIG.SCHEMA_VERSION || 3,
+      schemaVersion: CONFIG.SCHEMA_VERSION || 4,
       name: this.sanitizeText(name),
       yearPreset,
       selectedTables: [...preset.tables],
       selectedMathChallenge: "times12",
       selectedDestination: "moon",
+      selectedMissionId: "moon_crater_survey",
+      selectedPayload: "probe",
       operations: ["multiply"],
       customRange: { factorAMin: 1, factorAMax: 12, factorBMin: 1, factorBMax: 12 },
       
@@ -62,11 +64,25 @@ class ProfileManager {
       score: 0,
       currentRocketModel: "classic",
       currentRocketTheme: "explorer",
+      rocketCosmetics: { trail: "trail_standard", decal: "default", platform: "default" },
       unlockedParts: [],
       installedParts: [],
       unlockedRocketModels: ["classic"],
       unlockedRocketThemes: ["explorer"],
+      unlockedResearch: ["trail_standard"],
       badges: [],
+      collectibles: [],
+
+      progression: {
+        commanderLevel: 1,
+        xp: 0,
+        totalStars: 0,
+        researchPoints: 0
+      },
+
+      missionRecords: {},
+      dailyMissionState: { date: "", completedIds: [] },
+      weeklyExpedition: { weekKey: "", currentStageIdx: 0, stagesCompleted: [] },
 
       destinationsVisited: { earthOrbit: true },
       missionHistory: [],
@@ -74,6 +90,10 @@ class ProfileManager {
       gamesCompleted: 0,
       totalCorrectAnswers: 0,
       totalQuestionsAnswered: 0,
+      totalAttempts: 0,
+      totalWrongAttempts: 0,
+      totalQuestionsCompleted: 0,
+      totalFirstTryCorrect: 0,
       totalMultiplicationAnswered: 0,
       totalMultiplicationCorrect: 0,
       totalDivisionAnswered: 0,
@@ -107,6 +127,7 @@ class ProfileManager {
 
   sanitizeText(str) {
     if (!str) return "Child Player";
+    if (typeof document === "undefined") return str.slice(0, 24);
     const temp = document.createElement("div");
     temp.textContent = str;
     return temp.innerHTML.slice(0, 24);
@@ -114,9 +135,9 @@ class ProfileManager {
 
   initStorage() {
     try {
-      const rawV3 = localStorage.getItem(this.STORAGE_KEY);
-      if (rawV3) {
-        const parsed = JSON.parse(rawV3);
+      const rawV4 = localStorage.getItem(this.STORAGE_KEY);
+      if (rawV4) {
+        const parsed = JSON.parse(rawV4);
         if (parsed && Array.isArray(parsed.profiles) && parsed.profiles.length > 0) {
           this.profiles = parsed.profiles.map(p => this.migrateProfile(p));
           this.activeProfileId = parsed.activeProfileId || this.profiles[0].id;
@@ -124,10 +145,27 @@ class ProfileManager {
         }
       }
     } catch (e) {
-      console.warn("ProfileManager: Failed to parse V3 LocalStorage, checking V2 migration.", e);
+      console.warn("ProfileManager: Failed to parse V4 LocalStorage, checking V3 migration.", e);
     }
 
-    this.migrateV2Data();
+    this.migrateV3Data();
+  }
+
+  migrateV3Data() {
+    let v3Data = null;
+    try {
+      const rawV3 = localStorage.getItem("multiplication_rocket_profiles_v3");
+      if (rawV3) v3Data = JSON.parse(rawV3);
+    } catch (e) {}
+
+    if (v3Data && Array.isArray(v3Data.profiles) && v3Data.profiles.length > 0) {
+      this.profiles = v3Data.profiles.map(p => this.migrateProfile(p));
+      this.activeProfileId = v3Data.activeProfileId || this.profiles[0].id;
+    } else {
+      this.migrateV2Data();
+      return;
+    }
+    this.save();
   }
 
   migrateV2Data() {
@@ -151,7 +189,24 @@ class ProfileManager {
   migrateProfile(profile) {
     const defaultObj = this.createDefaultProfile(profile.name || "Alex", profile.yearPreset || "year2");
     const merged = { ...defaultObj, ...profile };
-    merged.schemaVersion = CONFIG.SCHEMA_VERSION || 3;
+    merged.schemaVersion = CONFIG.SCHEMA_VERSION || 4;
+
+    // Ensure progression container exists
+    if (!merged.progression) {
+      merged.progression = {
+        commanderLevel: Math.max(1, Math.min(8, Math.floor((profile.gamesCompleted || 0) / 2) + 1)),
+        xp: (profile.score || 0),
+        totalStars: (profile.gamesCompleted || 0) * 2,
+        researchPoints: (profile.gamesCompleted || 0) * 10
+      };
+    }
+
+    if (!merged.missionRecords) merged.missionRecords = {};
+    if (!Array.isArray(merged.collectibles)) merged.collectibles = [];
+    if (!Array.isArray(merged.unlockedResearch)) merged.unlockedResearch = ["trail_standard"];
+    if (!merged.rocketCosmetics) merged.rocketCosmetics = { trail: "trail_standard", decal: "default", platform: "default" };
+    if (!merged.dailyMissionState) merged.dailyMissionState = { date: "", completedIds: [] };
+    if (!merged.weeklyExpedition) merged.weeklyExpedition = { weekKey: "", currentStageIdx: 0, stagesCompleted: [] };
 
     // Migrate old keys like "7x8" to "mul:7x8"
     if (profile.facts) {
@@ -293,3 +348,6 @@ class ProfileManager {
 }
 
 window.profileManager = new ProfileManager();
+if (typeof module !== "undefined") {
+  module.exports = { ProfileManager };
+}

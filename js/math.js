@@ -1,11 +1,36 @@
 /**
  * Multiplication Rocket Lab - Universal Math & Fact Family Engine (js/math.js)
- * Supports 1x1~20x20 Multiplication & Exact Division, Fact Families, Adaptive Learning & Smart Hints
+ * Version 4.0.0 Space Adventure Progression Architecture
+ * Supports 1x1~20x20 Multiplication & Exact Division, Fact Families, Adaptive Learning, Smart Hints & Session Analytics
  */
 class MathEngine {
   constructor(options = {}) {
     this.random = options.random || Math.random;
     this.challengeConfig = CONFIG.MATH_CHALLENGE_PRESETS.times12;
+    this.wrongQuestionQueue = [];
+    this.recentFactHistory = [];
+
+    this.sessionStats = {
+      questionsPresented: 0,
+      totalAttempts: 0,
+      firstTryCorrect: 0,
+      wrongAttempts: 0,
+      correctFinalAnswers: 0,
+      averageResponseTimeMs: 0,
+      maxCombo: 0
+    };
+  }
+
+  resetSessionStats() {
+    this.sessionStats = {
+      questionsPresented: 0,
+      totalAttempts: 0,
+      firstTryCorrect: 0,
+      wrongAttempts: 0,
+      correctFinalAnswers: 0,
+      averageResponseTimeMs: 0,
+      maxCombo: 0
+    };
     this.wrongQuestionQueue = [];
     this.recentFactHistory = [];
   }
@@ -97,42 +122,71 @@ class MathEngine {
       for (let b = 1; b <= 12; b++) {
         const key = `mul:${table}x${b}`;
         const fact = (profile && profile.facts) ? profile.facts[key] : null;
-        const score = fact ? fact.masteryScore : 0;
+        const score = fact ? (fact.masteryScore || 0) : 0;
         sum += score;
         count++;
       }
+      const averageMastery = Math.round(sum / count);
       report.push({
         table,
-        averageMastery: Math.round(sum / count)
+        averageMastery,
+        percentage: averageMastery // backward-compatibility alias
       });
     }
     return report;
   }
 
+  getWeakestFactFamilies(count = 5) {
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    if (!profile || !profile.factFamilies) return [];
+
+    const famList = Object.values(profile.factFamilies);
+    famList.sort((a, b) => (a.overallMastery || 0) - (b.overallMastery || 0));
+    return famList.slice(0, count);
+  }
+
+  getRecommendedFocusTables(count = 3) {
+    const report = this.getTableMasteryReport();
+    report.sort((a, b) => a.averageMastery - b.averageMastery);
+    return report.slice(0, count).map(r => r.table);
+  }
+
   /**
-   * Universal Question Generator (Supports Multiply, Divide & Custom 1-20 Range)
+   * Universal Question Generator (Supports Multiply, Divide, Custom Ranges & Adaptive Weak Facts)
    */
-  generateQuestion(mode = "normal") {
+  generateQuestion(mode = "normal", customFilter = null) {
     if (mode === "wrong_review" && this.wrongQuestionQueue.length > 0) {
       const wrongItem = this.wrongQuestionQueue.shift();
       return this.formatQuestionObject(wrongItem.operation, wrongItem.operandA, wrongItem.operandB);
     }
 
     const cfg = this.challengeConfig;
-    const ops = cfg.operations || ["multiply"];
+    const ops = (customFilter && customFilter.operations) ? customFilter.operations : (cfg.operations || ["multiply"]);
     const isDivision = ops.includes("divide") && (ops.length === 1 || this.random() > 0.45);
 
-    const minA = cfg.factorAMin || 1;
-    const maxA = cfg.factorAMax || 12;
-    const minB = cfg.factorBMin || 1;
-    const maxB = cfg.factorBMax || 12;
+    let tablesA = customFilter && customFilter.focusTables ? customFilter.focusTables : null;
+    let minA = cfg.factorAMin || 1;
+    let maxA = cfg.factorAMax || 12;
+    let minB = cfg.factorBMin || 1;
+    let maxB = cfg.factorBMax || 12;
 
-    // Pick (a, b) in range
     const candidatePairs = [];
-    for (let a = minA; a <= maxA; a++) {
-      for (let b = minB; b <= maxB; b++) {
-        candidatePairs.push({ a, b });
+    if (tablesA && Array.isArray(tablesA) && tablesA.length > 0) {
+      tablesA.forEach(a => {
+        for (let b = minB; b <= maxB; b++) {
+          candidatePairs.push({ a, b });
+        }
+      });
+    } else {
+      for (let a = minA; a <= maxA; a++) {
+        for (let b = minB; b <= maxB; b++) {
+          candidatePairs.push({ a, b });
+        }
       }
+    }
+
+    if (candidatePairs.length === 0) {
+      candidatePairs.push({ a: 7, b: 8 });
     }
 
     // Weighted adaptive selection
@@ -302,19 +356,58 @@ class MathEngine {
     }
   }
 
+  /**
+   * Record every single user answer attempt accurately
+   */
   recordResult(question, isCorrect, isFirstTry = true, responseTimeMs = 0) {
     if (!question) return;
     const op = question.operation || "multiply";
     const key = this.getFactKey(op, question.operandA, question.operandB);
 
+    // Update session stats
+    this.sessionStats.totalAttempts++;
+    if (isFirstTry) {
+      this.sessionStats.questionsPresented++;
+      if (isCorrect) {
+        this.sessionStats.firstTryCorrect++;
+      } else {
+        this.sessionStats.wrongAttempts++;
+      }
+      if (this.sessionStats.averageResponseTimeMs === 0) {
+        this.sessionStats.averageResponseTimeMs = responseTimeMs;
+      } else {
+        this.sessionStats.averageResponseTimeMs = Math.round(
+          (this.sessionStats.averageResponseTimeMs * 0.7) + (responseTimeMs * 0.3)
+        );
+      }
+    } else {
+      if (!isCorrect) {
+        this.sessionStats.wrongAttempts++;
+      }
+    }
+
+    if (isCorrect) {
+      this.sessionStats.correctFinalAnswers++;
+    }
+
     const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
     if (!profile) return;
+
+    // Track total attempt counts on profile
+    profile.totalAttempts = (profile.totalAttempts || 0) + 1;
+    if (isFirstTry && isCorrect) {
+      profile.totalFirstTryCorrect = (profile.totalFirstTryCorrect || 0) + 1;
+    }
+    if (!isCorrect) {
+      profile.totalWrongAttempts = (profile.totalWrongAttempts || 0) + 1;
+    }
 
     if (!profile.facts[key]) {
       profile.facts[key] = profileManager.createEmptyFactRecord(key, op, question.operandA, question.operandB, question.answer);
     }
 
     const rec = profile.facts[key];
+    const prevMastery = rec.masteryScore || 0;
     rec.attempts++;
     rec.lastAnsweredAt = Date.now();
 
@@ -338,6 +431,12 @@ class MathEngine {
 
     rec.masteryScore = this.calculateMastery(rec);
 
+    // Track if a weak fact has newly improved
+    let masteryImproved = false;
+    if (prevMastery < 70 && rec.masteryScore >= 70) {
+      masteryImproved = true;
+    }
+
     // Update Fact Family Master Record
     if (question.factFamilyKey && profile.factFamilies[question.factFamilyKey]) {
       const fam = profile.factFamilies[question.factFamilyKey];
@@ -350,6 +449,32 @@ class MathEngine {
     }
 
     if (window.profileManager) window.profileManager.save();
+
+    // Trigger unlock check if mastery improved
+    if (masteryImproved && window.progressionManager) {
+      window.progressionManager.evaluateUnlocks();
+    }
+
+    return {
+      masteryImproved,
+      factKey: key,
+      prevMastery,
+      newMastery: rec.masteryScore
+    };
+  }
+
+  getFirstTryAccuracy() {
+    if (this.sessionStats.questionsPresented === 0) {
+      return 100;
+    }
+    return Math.round((this.sessionStats.firstTryCorrect / this.sessionStats.questionsPresented) * 100);
+  }
+
+  getFinalCompletionRate() {
+    if (this.sessionStats.questionsPresented === 0) {
+      return 100;
+    }
+    return Math.round((this.sessionStats.correctFinalAnswers / this.sessionStats.questionsPresented) * 100);
   }
 
   getVisualArrayData(question) {
@@ -397,3 +522,6 @@ class MathEngine {
 }
 
 window.mathEngine = new MathEngine();
+if (typeof module !== "undefined") {
+  module.exports = { MathEngine };
+}

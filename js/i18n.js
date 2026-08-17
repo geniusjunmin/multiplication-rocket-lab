@@ -1,19 +1,24 @@
 /**
  * Multiplication Rocket Lab - Internationalization (js/i18n.js)
- * Supports English (en - UK default) and Chinese (zh) - Version 3.0.0
+ * Version 4.0.0 Space Adventure Progression Architecture
+ * Supports English (en - UK default) and Chinese (zh)
  */
 class I18nManager {
   constructor() {
     this.currentLanguage = this.detectLanguage();
     this.translations = {
       en: {
-        appTitle: "Multiplication Rocket Lab 3.0 🚀",
+        appTitle: "Multiplication Rocket Lab 4.0 🚀",
         tagline: "Master Times Tables & Division • Build 3D Rockets • Explore the Solar System!",
-          // Navigation & General UI
-        btnStartGame: "🚀 Start Rocket Mission",
+        
+        // Navigation & General UI
+        btnStartGame: "🚀 Mission Board",
+        btnQuickMission: "⚡ Quick Mission",
         btnContinueGame: "▶️ Continue Mission",
-        btnSettings: "⚙️ Math & Mission Setup",
+        btnSettings: "⚙️ Math Setup",
         btnReport: "📊 Parent Dashboard",
+        btnMuseum: "🏛️ Space Museum",
+        btnGarage: "🚀 Rocket Garage",
         btnHome: "🏠 Home",
         btnPause: "⏸️ Pause",
         btnResume: "▶️ Resume",
@@ -27,13 +32,38 @@ class I18nManager {
         devSkipQuiz: "⚡ Quick Complete Quiz (Dev)",
         devFillFuel: "⚡ Instant 100% Fuel (Dev)",
 
-        // Profile Selector
+        // Profile & Progression HUD
         whosPlaying: "Who's playing?",
         addPlayer: "➕ Add Player",
         profileNamePrompt: "Enter Child's Name:",
         selectYearGroup: "Select Year Group:",
+        commanderLevelLabel: "Commander Level",
+        totalStarsLabel: "Mission Stars",
+        researchPointsLabel: "Research Points",
+        todayMissionsLabel: "Today's Missions",
+        recommendedLabel: "RECOMMENDED MISSION",
+        btnStartRecommended: "🚀 Start Mission",
 
-        // Settings Screen - Math Missions
+        // Mission Board & Solar System Map
+        missionBoardTitle: "🪐 Solar System Mission Board",
+        missionBoardSubtitle: "Choose an interplanetary expedition to launch!",
+        planetExplored: "Explored",
+        starsCount: "Stars",
+        samplesCount: "Samples",
+        btnSelectMission: "Launch Briefing",
+        allDestinations: "Solar System Map",
+
+        // Mission Briefing Modal
+        briefingTitle: "🚀 Mission Flight Briefing",
+        storyHeader: "MISSION OBJECTIVE",
+        bonusHeader: "STAR OBJECTIVES",
+        payloadHeader: "RECOMMENDED PAYLOAD",
+        routeChoiceHeader: "ROUTE DECISION",
+        safeRoute: "🟢 Safe Route (Standard Questions)",
+        boostRoute: "⚡ Boost Route (Challenging Math + Bonus Star Chance)",
+        btnLaunchBriefing: "🔥 Launch Mission Prep",
+
+        // Settings Screen
         settingsTitle: "⚙️ Math Challenge & Mission Settings",
         playerNameLabel: "Child's Name:",
         curriculumPresetLabel: "UK Curriculum Presets:",
@@ -51,28 +81,13 @@ class I18nManager {
         timer10s: "10 Seconds (Extended)",
         reducedMotionLabel: "Reduce Motion Effects (Sensory Friendly)",
 
-        // Operations
-        opMultiplyOnly: "Multiplication (×) Only",
-        opDivideOnly: "Division (÷) Only",
-        opBoth: "Multiplication & Division (× & ÷)",
-
-        // Blueprint Screen
+        // Blueprint & Assembly
         blueprintTitle: "📐 Rocket Engineering Blueprint",
         blueprintSubtitle: "Answer math challenges to collect all 10 rocket parts!",
         partsCollected: "Parts Collected:",
         btnStartAnswering: "✏️ Start Quiz to Collect Parts",
         btnGoAssembly: "🔧 3D Assembly Dock",
-
-        // Quiz Screen
-        hudQuestion: "Question",
-        hudStreak: "Streak",
-        hudTime: "Time",
-        hudScore: "Score",
-        submitAnswer: "Submit Answer ↵",
-        easyHintLabel: "💡 Visual Helper:",
-        stratHintTitle: "🧠 Smart Strategy Hint:",
-
-        // Assembly Screen
+        btnQuickPrep: "⚡ Quick Assembly (Owns Rocket)",
         assemblyTitle: "🔧 3D Rocket Assembly Workshop",
         assemblySubtitle: "Click unlocked parts to snap them onto your 3D rocket!",
         btnInstallAll: "⚡ Auto-Assemble All",
@@ -80,269 +95,259 @@ class I18nManager {
         rocketThemeLabel: "Theme Color:",
         btnGoFuel: "⛽ Proceed to Fuel Chamber",
         partsInstalled: "Parts Installed:",
-        lockedModel: "🔒 Complete launches to unlock",
+        lockedModel: "🔒 Complete missions to unlock",
         partInstalledToast: "✅ {part} Installed ({current}/{total})",
         assemblyCompleteCelebration: "🚀 ROCKET ASSEMBLY COMPLETE!",
         modalCompleteTitle: "All Rocket Parts Unlocked & Assembled!",
 
         // Fuel Screen
         fuelTitle: "⛽ Math Fuel Chamber",
-        fuelSubtitle: "Each correct answer adds +10% fuel! Maintain a streak for +5% bonus!",
+        fuelSubtitle: "Correct answers load rocket propulsion fuel! Maintain a streak for bonuses!",
         fuelStatusEmpty: "Fuel low. Waiting for fuel loading...",
         fuelStatusHalf: "Fuel loading in progress...",
-        fuelStatusFull: "🎉 Fuel 100% Full! Rocket Ignition System Ready!",
+        fuelStatusFull: "🎉 Fuel 100% Full! Rocket Propulsion Online!",
         fuelFullAlert: "🎉 Fuel 100% Full! Rocket propulsion online! Click 【🚀 Ready for Launch!】 below!",
         btnReadyLaunch: "🚀 Ready for Launch!",
-        fuelSuccessBoost: "⛽ Fuel Loaded! +{boost}%",
+        fuelSuccessBoost: "⛽ Fuel Loaded! +{boost} Units",
         comboBonusText: "🔥 COMBO BONUS +{bonus}%",
 
-        // Mission Control & Destinations
-        selectDestinationTitle: "🪐 Select Interplanetary Mission Destination:",
-        destEarthOrbit: "🌍 Earth Orbit (400 km)",
-        destMoon: "🌙 Moon Base Mission",
-        destMars: "🔴 Mars Colony Mission",
-        destJupiter: "🪐 Jupiter Flyby Mission",
-        destSaturn: "🪐 Saturn Ring Explorer",
-        destDeepSpace: "🌌 Deep Space Explorer",
-        btnSelectDest: "Select Destination ➔",
-        spacePassportTitle: "🎫 Space Passport Stamps",
-
-        // Launch & Cinematic Stages
-        launchTitle: "🚀 Rocket Launch Control Center",
-        btnSkipCountdown: "⏩ Skip Countdown",
-        btnReplayMission: "▶️ Replay Space Mission",
+        // Launch & Flight
         checklistTitle: "System Pre-flight Checklist",
         sysNav: "⚙️ Guidance & Navigation",
         sysEng: "🔥 Engine Ignition System",
-        sysFuel: "⛽ Math High-Energy Fuel",
+        sysFuel: "⛽ Math Propulsion Fuel",
         sysComp: "🛰️ Math Core Processor",
-        statusChecking: "Checking...",
-        statusReady: "✅ Ready",
-        ignitionText: "IGNITION!",
-        orbitAchievedBanner: "🌍 ORBIT ACHIEVED",
-        transferBurnBanner: "🚀 HYPER-DRIVE TRANSFER BURN",
-        spaceVictoryTitle: "MISSION COMPLETE! ARRIVED AT DESTINATION! 🌌",
-        btnViewResults: "📊 View Mission Summary",
-        btnReplayLanding: "🔄 Replay Landing",
+        btnSkipCountdown: "⏩ Skip Countdown",
+        spaceVictoryTitle: "MISSION SUCCESS! ARRIVED AT DESTINATION! 🌌",
         newPassportStamp: "🎉 New Space Passport Stamp Unlocked!",
+        btnViewResults: "📊 Mission Debrief & Results",
+        btnReplayLanding: "🔄 Replay Arrival Cinematic",
 
-        // Results Screen
-        resultsTitle: "🏆 Interplanetary Mission Summary",
-        resScoreLabel: "Final Score",
-        resAccuracyLabel: "Accuracy",
-        resMaxComboLabel: "Highest Streak",
-        btnRestartGame: "🚀 Launch New Mission",
+        // In-Flight Events
+        eventAlertHeader: "⚡ FLIGHT EVENT ENCOUNTER",
+        btnSolveEvent: "Calculate Response",
+        eventSuccessToast: "✨ Event Resolved! Navigation Stable (+{xp} XP)",
+        eventRetryMsg: "Navigation unstable... Let's calculate again!",
+
+        // Mission Debrief (Results Screen)
+        resultsTitle: "🏆 Mission Flight Debrief",
+        debriefFirstTryAcc: "First-Try Accuracy",
+        debriefCompletedRate: "Final Completion",
+        debriefScore: "Mission Score",
+        debriefMaxStreak: "Highest Streak",
+        debriefObjectivesTitle: "MISSION OBJECTIVES",
+        debriefRewardsTitle: "MISSION REWARDS",
+        debriefNewLevelTitle: "🎉 COMMANDER PROMOTED!",
+        debriefSkillImproved: "🧠 SKILL IMPROVED!",
+        debriefNewDiscovery: "✨ NEW DISCOVERY UNLOCKED!",
+        btnTryAgainForStar: "⭐ Retry to Earn 3rd Star",
+        btnNextRecommended: "🚀 Next Mission",
+        btnRestartGame: "🚀 Launch Another Mission",
         btnRetryWrongs: "📝 Practice Missed Facts",
 
-        // Parent Dashboard
-        parentReportTitle: "📊 Parent Dashboard & Learning Analytics",
-        tabToday: "Today's Summary",
-        tabOverall: "Lifetime Progress",
-        tabHeatmap: "Fact Matrix Heatmap",
-        tabOperations: "× & ÷ Breakdown",
-        todayAnswered: "Questions Answered",
-        todayAccuracy: "First-Try Accuracy",
-        todayAvgSpeed: "Avg Response Time",
-        todayMaxStreak: "Highest Streak",
-        overallTotal: "Total Questions",
-        overallTime: "Total Time",
-        overallLaunches: "Missions Completed",
-        overallAccuracy: "Total Accuracy",
-        multMasteryTitle: "Multiplication Mastery (×)",
-        divMasteryTitle: "Division Mastery (÷)",
-        weakFactsTitle: "🎯 Recommended Practice Facts:",
-        privacyNotice: "🔒 All learning data is stored locally on this device only.",
+        // Space Museum
+        museumTitle: "🏛️ Space Exploration Museum",
+        museumSubtitle: "Discover planetary samples and relics collected across your space expeditions!",
+        museumSetCompleted: "🎉 Full Set Assembled! Special Rocket Theme Unlocked!",
 
-        // Feedback & Hints
-        divThinkHint: "Think: {operandB} × ? = {operandA}",
-        divVisualHelper: "Sharing {operandA} objects into {operandB} equal groups:",
-        correctFeedback: "✨ Excellent! Correct!",
-        wrongFeedback: "Not quite — check the hint and try again!",
-        timeoutFeedback: "⏰ Time's up! Let's try the next one."
+        // Rocket Garage & Research Lab
+        garageTitle: "🚀 Rocket Garage & Research Lab",
+        garageSubtitle: "Equip unlocked rocket models, futuristic trails and payload gear!",
+        researchTrailTitle: "Engine Trail Research",
+        equippedBadge: "EQUIPPED",
+        btnEquip: "Equip",
+        btnUnlockResearch: "Unlock ({cost} RP)",
+
+        // Feedback
+        correctFeedback: "✨ Excellent! Correct Answer!",
+        wrongFeedback: "Not quite, check the strategy hint below and try again!",
+        timeoutFeedback: "⏰ Time expired! Read the smart strategy hint.",
+        comboLevel1: "🔥 Booster Level 1",
+        comboLevel2: "🔥🔥 Booster Level 2",
+        comboLevel3: "⚡ HYPER BOOST!"
       },
-
       zh: {
-        appTitle: "乘法火箭实验室 3.0 🚀",
-        tagline: "掌握乘法与除法口诀 • 组装 3D 火箭 • 探索漫漫太阳系！",
-        
-        // 导航与通用
-        btnStartGame: "🚀 开始星际火箭任务",
-        btnContinueGame: "▶️ 继续已有进度",
-        btnSettings: "⚙️ 数学与任务设置",
-        btnReport: "📊 家长学习分析报告",
+        appTitle: "乘法火箭实验室 4.0 🚀",
+        tagline: "掌握九九乘除法 • 3D 拼装火箭 • 探索太阳系太空冒险！",
+
+        // Navigation & General UI
+        btnStartGame: "🚀 太空任务面板",
+        btnQuickMission: "⚡ 快速出航",
+        btnContinueGame: "▶️ 继续任务",
+        btnSettings: "⚙️ 数学设置",
+        btnReport: "📊 家长学情中心",
+        btnMuseum: "🏛️ 太空博物馆",
+        btnGarage: "🚀 火箭机库",
         btnHome: "🏠 首页",
         btnPause: "⏸️ 暂停",
         btnResume: "▶️ 继续",
         btnSave: "💾 保存设置",
         btnCancel: "取消",
         btnClose: "关闭",
-        btnExportJson: "📥 导出学习存档 (JSON)",
-        btnImportJson: "📤 导入学习存档 (JSON)",
-        btnExportCsv: "📊 导出 CSV 报告",
-        btnClearData: "🗑️ 重置所有学习记录",
+        btnExportJson: "📥 导出学习数据 (JSON)",
+        btnImportJson: "📤 导入学习数据 (JSON)",
+        btnExportCsv: "📊 导出学情报表 (CSV)",
+        btnClearData: "🗑️ 重置当前学员数据",
         devSkipQuiz: "⚡ 快速完成答题 (测试)",
         devFillFuel: "⚡ 快速加满 100% 燃料 (测试)",
 
-        // 多儿童 Profiles
+        // Profile & Progression HUD
         whosPlaying: "谁在探索太空？",
         addPlayer: "➕ 添加小宇航员",
-        profileNamePrompt: "请输入小宇航员的名字：",
-        selectYearGroup: "选择英国小学年级预设：",
+        profileNamePrompt: "请输入小宇航员名字:",
+        selectYearGroup: "选择数学年级课程:",
+        commanderLevelLabel: "指挥官军衔",
+        totalStarsLabel: "任务之星",
+        researchPointsLabel: "科研升级点",
+        todayMissionsLabel: "今日任务",
+        recommendedLabel: "⭐ 今日推荐任务",
+        btnStartRecommended: "🚀 立即执行",
 
-        // 设置页面
-        settingsTitle: "⚙️ 数学挑战与任务设置",
-        playerNameLabel: "小宇航员昵称：",
-        curriculumPresetLabel: "英国 Curriculum 年级预设：",
-        freeChallengeLabel: "自由数学挑战模式：",
-        selectTablesLabel: "选择练习乘法表 (1-12)：",
+        // Mission Board & Solar System Map
+        missionBoardTitle: "🪐 太阳系航天任务面板",
+        missionBoardSubtitle: "选择行星目的地与专属科学探索任务！",
+        planetExplored: "探索进度",
+        starsCount: "星数",
+        samplesCount: "标本",
+        btnSelectMission: "查看任务简报",
+        allDestinations: "太阳系全景图",
+
+        // Mission Briefing Modal
+        briefingTitle: "🚀 航天任务简报",
+        storyHeader: "任务背景与目标",
+        bonusHeader: "任务星级目标",
+        payloadHeader: "推荐搭载载荷",
+        routeChoiceHeader: "航线规划决策",
+        safeRoute: "🟢 稳妥航线 (常规难度数学题)",
+        boostRoute: "⚡ 极速航线 (高阶挑战题 + 额外星级机会)",
+        btnLaunchBriefing: "🔥 开始任务准备",
+
+        // Settings Screen
+        settingsTitle: "⚙️ 数学挑战与课程设置",
+        playerNameLabel: "学员姓名:",
+        curriculumPresetLabel: "英国国家课程预设:",
+        freeChallengeLabel: "自由计算范围预设:",
+        selectTablesLabel: "自定义选择乘法表 (1-12):",
         selectAll: "全选",
-        difficultyLabel: "答题交互难度 (回答方式)：",
-        diffEasy: "简单模式 (3个备选项 + 阵列图与提示)",
-        diffNormal: "普通模式 (数字输入 + 巧算提示)",
-        diffHard: "挑战模式 (单题倒计时 + 速度加分)",
-        timerSelectLabel: "单题限制时间：",
+        difficultyLabel: "答题模式与辅助策略:",
+        diffEasy: "简单模式 (3个选项 + 点阵视觉辅助)",
+        diffNormal: "标准模式 (数字键盘 + 策略提示)",
+        diffHard: "极速挑战 (限时答题 + 速度加分)",
+        timerSelectLabel: "限时挑战时长:",
         timerOff: "无时间限制 (轻松练习)",
-        timer5s: "5 秒 (极速挑战)",
-        timer8s: "8 秒 (标准挑战)",
-        timer10s: "10 秒 (宽松挑战)",
-        reducedMotionLabel: "开启减弱动画模式 (护眼与防眩晕)",
+        timer5s: "5 秒 (极速飞行员)",
+        timer8s: "8 秒 (标准)",
+        timer10s: "10 秒 (充裕思考)",
+        reducedMotionLabel: "减少动态视效 (友好护眼模式)",
 
-        // 运算类型
-        opMultiplyOnly: "仅练习乘法 (×)",
-        opDivideOnly: "仅练习除法 (÷)",
-        opBoth: "乘法与除法混合练习 (× & ÷)",
-
-        // 工程蓝图
-        blueprintTitle: "📐 乘法火箭工程蓝图",
-        blueprintSubtitle: "答对乘除法挑战，收集全部 10 个火箭组件！",
-        partsCollected: "已解锁组件：",
-        btnStartAnswering: "✏️ 开始答题收集零件",
+        // Blueprint & Assembly
+        blueprintTitle: "📐 火箭工程设计蓝图",
+        blueprintSubtitle: "回答数学计算挑战，解锁全部 10 个火箭精密部件！",
+        partsCollected: "已解锁零件:",
+        btnStartAnswering: "✏️ 答题解锁零件",
         btnGoAssembly: "🔧 3D 组装车间",
-
-        // 答题
-        hudQuestion: "题目",
-        hudStreak: "连胜",
-        hudTime: "时间",
-        hudScore: "积分",
-        submitAnswer: "提交答案 ↵",
-        easyHintLabel: "💡 视觉辅助图示：",
-        stratHintTitle: "🧠 智能巧算提示：",
-
-        // 组装车间
+        btnQuickPrep: "⚡ 极速组装 (已拥有型号)",
         assemblyTitle: "🔧 3D 火箭组装车间",
-        assemblySubtitle: "点击已解锁零件，看着它们飞入火箭精准卡扣！",
-        btnInstallAll: "⚡ 一键全自动组装",
-        rocketModelLabel: "3D 火箭型号：",
-        rocketThemeLabel: "火箭涂装配色：",
+        assemblySubtitle: "点击下方已解包零件，看着它们精准卡扣飞入 3D 火箭！",
+        btnInstallAll: "⚡ 一键全自动组装已解锁零件",
+        rocketModelLabel: "3D 火箭型号:",
+        rocketThemeLabel: "火箭涂装配色:",
         btnGoFuel: "⛽ 冲向燃料补充舱",
-        partsInstalled: "已安装零件：",
+        partsInstalled: "已安装零件:",
         lockedModel: "🔒 完成指定任务解锁",
-        partInstalledToast: "✅ 已安装 {part} ({current}/{total})",
+        partInstalledToast: "✅ {part} 已安装 ({current}/{total})",
         assemblyCompleteCelebration: "🚀 火箭全组件组装完成！",
-        modalCompleteTitle: "所有火箭零件已解锁并组装！",
+        modalCompleteTitle: "火箭全组件已完成组装！",
 
-        // 燃料补充舱
-        fuelTitle: "⛽ 乘法燃料补充舱",
-        fuelSubtitle: "每答对 1 道题加注 10% 燃料，连续答对额外奖励 5%！",
+        // Fuel Screen
+        fuelTitle: "⛽ 数学能量燃料舱",
+        fuelSubtitle: "每次正确回答均可注入燃料！保持连击可触发高能加成！",
         fuelStatusEmpty: "燃料不足，等待加注...",
         fuelStatusHalf: "燃料加注中...",
-        fuelStatusFull: "🎉 燃料 100% 加满！火箭发射系统就绪！",
-        fuelFullAlert: "🎉 燃料已 100% 加满！火箭发射系统就绪！点击下方【🚀 准备发射火箭！】点火出航！",
+        fuelStatusFull: "🎉 燃料已加满 100%！推进系统就绪！",
+        fuelFullAlert: "🎉 燃料已加满！火箭发射系统就绪！点击下方【🚀 准备发射火箭！】点火出航！",
         btnReadyLaunch: "🚀 准备发射火箭！",
-        fuelSuccessBoost: "⛽ 燃料加注成功！+{boost}%",
-        comboBonusText: "🔥 连胜加成 +{bonus}%",
+        fuelSuccessBoost: "⛽ 燃料加注成功！+{boost} 能量",
+        comboBonusText: "🔥 连击加成 +{bonus}%",
 
-        // 目的地选择
-        selectDestinationTitle: "🪐 选择本次星际探索目的地：",
-        destEarthOrbit: "🌍 近地轨道 (400 km)",
-        destMoon: "🌙 月球基地号",
-        destMars: "🔴 火星拓荒号",
-        destJupiter: "🪐 木星风暴探险号",
-        destSaturn: "🪐 土星光环探索者",
-        destDeepSpace: "🌌 深空星云开拓号",
-        btnSelectDest: "选择该目的地 ➔",
-        spacePassportTitle: "🎫 航天护照纪念印章",
-
-        // 发射与动画
-        launchTitle: "🚀 火箭发射控制中心",
+        // Launch & Flight
+        checklistTitle: "点火升空前系统自检",
+        sysNav: "⚙️ 航向导航计算机",
+        sysEng: "🔥 推进引擎点火系统",
+        sysFuel: "⛽ 数学高能推进燃料",
+        sysComp: "🛰️ 核心计算处理器",
         btnSkipCountdown: "⏩ 跳过倒计时",
-        btnReplayMission: "▶️ 再次播放星际飞行",
-        checklistTitle: "系统起飞前自检清单",
-        sysNav: "⚙️ 姿态与航向导航",
-        sysEng: "🔥 主发动机点火器",
-        sysFuel: "⛽ 高能乘法燃料",
-        sysComp: "🛰️ 数学核心处理器",
-        statusChecking: "自检中...",
-        statusReady: "✅ 正常待命",
-        ignitionText: "点火升空！",
-        orbitAchievedBanner: "🌍 成功进入地球轨道",
-        transferBurnBanner: "🚀 星际变轨超光速加速",
-        spaceVictoryTitle: "任务成功！火箭已成功抵达目标星球！🌌",
-        btnViewResults: "📊 查看本次任务成绩单",
-        btnReplayLanding: "🔄 再看一次降落",
-        newPassportStamp: "🎉 解锁全新航天护照印章！",
+        spaceVictoryTitle: "任务圆满成功！已顺利抵达目标星球！🌌",
+        newPassportStamp: "🎉 获得一枚新太空护照纪念印章！",
+        btnViewResults: "📊 查看任务详细总结",
+        btnReplayLanding: "🔄 再看一次降落动画",
 
-        // 结算
-        resultsTitle: "🏆 星际探索任务总结",
-        resScoreLabel: "本次得分",
-        resAccuracyLabel: "正确率",
-        resMaxComboLabel: "最高连胜",
+        // In-Flight Events
+        eventAlertHeader: "⚡ 途中突发空情事件",
+        btnSolveEvent: "执行机动计算",
+        eventSuccessToast: "✨ 事件圆满化解！航向已恢复稳定 (+{xp} XP)",
+        eventRetryMsg: "航向轻微漂移... 让我们重新计算一次！",
+
+        // Mission Debrief (Results Screen)
+        resultsTitle: "🏆 航天任务总结与战报",
+        debriefFirstTryAcc: "首答正确率",
+        debriefCompletedRate: "最终完成率",
+        debriefScore: "任务得分",
+        debriefMaxStreak: "最高连续答对",
+        debriefObjectivesTitle: "任务目标完成情况",
+        debriefRewardsTitle: "本次任务探索奖励",
+        debriefNewLevelTitle: "🎉 指挥官军衔晋升！",
+        debriefSkillImproved: "🧠 掌握薄弱知识点！",
+        debriefNewDiscovery: "✨ 获得全新太空馆藏品！",
+        btnTryAgainForStar: "⭐ 再试一次夺得第 3 颗星",
+        btnNextRecommended: "🚀 开启下一阶段任务",
         btnRestartGame: "🚀 开始新任务",
-        btnRetryWrongs: "📝 专门重练本次错题",
+        btnRetryWrongs: "📝 专项练习错题",
 
-        // 家长报告
-        parentReportTitle: "📊 家长 Dashboard 与学习分析报告",
-        tabToday: "今日学习概览",
-        tabOverall: "累计学习数据",
-        tabHeatmap: "乘法/除法掌握度矩阵",
-        tabOperations: "乘法与除法对比分析",
-        todayAnswered: "今日练习题数",
-        todayAccuracy: "首次正确率",
-        todayAvgSpeed: "平均答题速度",
-        todayMaxStreak: "今日最高连胜",
-        overallTotal: "累计总答题数",
-        overallTime: "累计练习时长",
-        overallLaunches: "完成星际任务数",
-        overallAccuracy: "总体正确率",
-        multMasteryTitle: "乘法掌握度 (×)",
-        divMasteryTitle: "除法掌握度 (÷)",
-        weakFactsTitle: "🎯 建议重点复习的数学事实：",
-        privacyNotice: "🔒 本应用所有学习数据仅保存在您的设备本地，保护儿童隐私。",
+        // Space Museum
+        museumTitle: "🏛️ 太空探索标本博物馆",
+        museumSubtitle: "点开行星标本，探索真实的宇宙科学奥秘！",
+        museumSetCompleted: "🎉 该星球藏品全集齐！已解锁限定专属火箭涂装！",
 
-        // 反馈与提示
-        divThinkHint: "逆向思考：{operandB} × ? = {operandA}",
-        divVisualHelper: "将 {operandA} 个物体平均分为 {operandB} 组：",
+        // Rocket Garage & Research Lab
+        garageTitle: "🚀 火箭机库与科研工坊",
+        garageSubtitle: "切换 3D 火箭型号、炫酷离子尾焰与科学载荷！",
+        researchTrailTitle: "引擎推进尾焰研发",
+        equippedBadge: "已装备",
+        btnEquip: "装备",
+        btnUnlockResearch: "解锁 ({cost} RP)",
+
+        // Feedback
         correctFeedback: "✨ 太棒了！回答正确！",
         wrongFeedback: "差一点点，看下方小提示再试一次！",
-        timeoutFeedback: "⏰ 时间到！我们来看下一题。"
+        timeoutFeedback: "⏰ 时间到！阅读思路提示再接再厉！",
+        comboLevel1: "🔥 一级助推激活",
+        comboLevel2: "🔥🔥 二级增压就绪",
+        comboLevel3: "⚡ 超能推进 HYPER BOOST!"
       }
     };
   }
 
   detectLanguage() {
-    try {
-      const saved = localStorage.getItem("multiplication_rocket_lang");
-      if (saved && (saved === "en" || saved === "zh")) return saved;
-      const navLang = navigator.language || navigator.userLanguage || "en";
-      return navLang.toLowerCase().startsWith("zh") ? "zh" : "en";
-    } catch (e) {
-      return "en";
+    if (typeof navigator !== "undefined" && navigator.language) {
+      if (navigator.language.startsWith("zh")) return "zh";
     }
+    return "en";
   }
 
   setLanguage(lang) {
     if (lang === "en" || lang === "zh") {
       this.currentLanguage = lang;
-      try {
-        localStorage.setItem("multiplication_rocket_lang", lang);
-      } catch (e) {}
       this.updateDOM();
+      return true;
     }
+    return false;
   }
 
   t(key, params = {}) {
-    const dict = this.translations[this.currentLanguage] || this.translations["en"];
-    let text = dict[key] || this.translations["en"][key] || key;
+    const dict = this.translations[this.currentLanguage] || this.translations.en;
+    let text = dict[key] || this.translations.en[key] || key;
+
     Object.keys(params).forEach(p => {
       text = text.replace(new RegExp(`\\{${p}\\}`, "g"), params[p]);
     });
@@ -350,24 +355,27 @@ class I18nManager {
   }
 
   updateDOM() {
+    if (typeof document === "undefined") return;
+
     document.querySelectorAll("[data-i18n]").forEach(el => {
       const key = el.getAttribute("data-i18n");
       if (key) {
         el.innerText = this.t(key);
       }
     });
-    document.querySelectorAll("[data-i18n-ph]").forEach(el => {
-      const key = el.getAttribute("data-i18n-ph");
-      if (key) {
-        el.placeholder = this.t(key);
-      }
-    });
 
-    const langToggleBtn = document.getElementById("btn-lang-toggle");
-    if (langToggleBtn) {
-      langToggleBtn.innerText = this.currentLanguage === "en" ? "🇬🇧 EN" : "🇨🇳 中文";
+    const langBtn = document.getElementById("btn-lang-toggle");
+    if (langBtn) {
+      langBtn.innerText = this.currentLanguage === "en" ? "🇬🇧 EN" : "🇨🇳 中文";
+    }
+
+    if (window.uiManager && window.uiManager.updateDOM) {
+      window.uiManager.updateDOM();
     }
   }
 }
 
 window.i18n = new I18nManager();
+if (typeof module !== "undefined") {
+  module.exports = { I18nManager };
+}

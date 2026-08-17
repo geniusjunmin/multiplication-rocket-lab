@@ -1,5 +1,6 @@
 /**
  * Multiplication Rocket Lab - Storage & Persistence Interface (js/storage.js)
+ * Version 4.0.0 Space Adventure Progression Architecture
  */
 class StorageManager {
   constructor() {
@@ -7,22 +8,27 @@ class StorageManager {
   }
 
   get(key) {
-    const profile = window.profileManager.getActiveProfile();
-    return profile[key];
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    return profile ? profile[key] : undefined;
   }
 
   set(key, value) {
     const update = {};
     update[key] = value;
-    window.profileManager.updateActiveProfile(update);
+    if (window.profileManager) {
+      window.profileManager.updateActiveProfile(update);
+    }
   }
 
   update(partialObj) {
-    window.profileManager.updateActiveProfile(partialObj);
+    if (window.profileManager) {
+      window.profileManager.updateActiveProfile(partialObj);
+    }
   }
 
   unlockPart(partId) {
-    const profile = window.profileManager.getActiveProfile();
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    if (!profile) return;
     if (!profile.unlockedParts.includes(partId)) {
       profile.unlockedParts.push(partId);
       window.profileManager.save();
@@ -30,7 +36,8 @@ class StorageManager {
   }
 
   installPart(partId) {
-    const profile = window.profileManager.getActiveProfile();
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    if (!profile) return;
     if (!profile.installedParts.includes(partId)) {
       profile.installedParts.push(partId);
       window.profileManager.save();
@@ -38,7 +45,8 @@ class StorageManager {
   }
 
   awardBadge(badgeId) {
-    const profile = window.profileManager.getActiveProfile();
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    if (!profile) return false;
     if (!profile.badges.includes(badgeId)) {
       profile.badges.push(badgeId);
       window.profileManager.save();
@@ -48,7 +56,8 @@ class StorageManager {
   }
 
   clearAll() {
-    const active = window.profileManager.getActiveProfile();
+    const active = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    if (!active) return false;
     const fresh = window.profileManager.createDefaultProfile(active.name, active.yearPreset);
     fresh.id = active.id;
     
@@ -61,9 +70,16 @@ class StorageManager {
   }
 
   hasSaveGame() {
-    const profile = window.profileManager.getActiveProfile();
-    return (profile.unlockedParts && profile.unlockedParts.length > 0) || (profile.score && profile.score > 0) || (profile.gamesCompleted && profile.gamesCompleted > 0);
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    if (!profile) return false;
+    return (profile.unlockedParts && profile.unlockedParts.length > 0) ||
+           (profile.score && profile.score > 0) ||
+           (profile.gamesCompleted && profile.gamesCompleted > 0) ||
+           (profile.progression && profile.progression.xp > 0);
   }
 }
 
 window.storageManager = new StorageManager();
+if (typeof module !== "undefined") {
+  module.exports = { StorageManager };
+}

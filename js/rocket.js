@@ -43,7 +43,9 @@ class RocketBuilder {
       fire: { body: 0x1e293b, nose: 0xef4444, fin: 0xf97316, engine: 0xd97706, accent: 0xfacc15, dark: 0x0f172a },
       forest: { body: 0xf1f5f9, nose: 0x059669, fin: 0x10b981, engine: 0x047857, accent: 0x34d399, dark: 0x064e3b },
       lightning: { body: 0x0f172a, nose: 0xeab308, fin: 0xa855f7, engine: 0xec4899, accent: 0x38bdf8, dark: 0x1e1b4b },
-      galaxy: { body: 0x1e1b4b, nose: 0x818cf8, fin: 0xc084fc, engine: 0x4f46e5, accent: 0x38bdf8, dark: 0x0f172a }
+      galaxy: { body: 0x1e1b4b, nose: 0x818cf8, fin: 0xc084fc, engine: 0x4f46e5, accent: 0x38bdf8, dark: 0x0f172a },
+      lunar_white: { body: 0xffffff, nose: 0xe2e8f0, fin: 0x94a3b8, engine: 0x64748b, accent: 0x38bdf8, dark: 0x334155 },
+      mars_rover_red: { body: 0x7c2d12, nose: 0xef4444, fin: 0xf97316, engine: 0xb45309, accent: 0xfde047, dark: 0x451a03 }
     };
 
     // True 3D Assembly Platform Framework
@@ -1056,6 +1058,154 @@ class RocketBuilder {
 
     this.isSequentialAssembling = false;
     if (onAllFinished) onAllFinished();
+  }
+
+  /**
+   * Instantly fit all parts (Quick Prep mode)
+   */
+  quickAssemble(partIds = null) {
+    const list = partIds || this.partDefinitions.map(p => p.id);
+    this.updateInstalledParts(list);
+    if (window.storageManager) {
+      list.forEach(id => window.storageManager.installPart(id));
+    }
+  }
+
+  /**
+   * Pulse rocket lights on correct answer / streak boost
+   */
+  pulseRocketLights(colorHex = 0x10b981) {
+    if (!this.parts) return;
+    const targets = [this.parts.window, this.parts.noseCone, this.parts.controlModule];
+    targets.forEach(p => {
+      if (p && p.material && p.material.emissive && p.material.emissive.setHex) {
+        p.material.emissive.setHex(colorHex);
+        p.material.emissiveIntensity = 1.8;
+      }
+    });
+    this.setTrackedTimeout(() => {
+      targets.forEach(p => {
+        if (p && p.material && p.material.emissive && p.material.emissive.setHex) {
+          p.material.emissiveIntensity = 0.2;
+        }
+      });
+    }, 450);
+  }
+
+  /**
+   * Set Navigation light status (Green for normal, Amber for temporary mistake warning)
+   */
+  setNavWarning(isWarning = false) {
+    if (!this.parts || !this.parts.controlModule) return;
+    const ctrl = this.parts.controlModule;
+    if (ctrl.material && ctrl.material.emissive && ctrl.material.emissive.setHex) {
+      ctrl.material.emissive.setHex(isWarning ? 0xf59e0b : 0x10b981);
+      ctrl.material.emissiveIntensity = isWarning ? 1.5 : 0.4;
+    }
+  }
+
+  /**
+   * Create 3D Payload Module (Satellite, Rover, Cargo, Probe)
+   */
+  static createPayloadMesh(payloadType = "probe") {
+    if (typeof THREE === "undefined") return null;
+    const group = new THREE.Group();
+
+    switch (payloadType) {
+      case "rover": {
+        // Rover chassis
+        const bodyGeo = new THREE.BoxGeometry(0.8, 0.35, 1.2);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3, metalness: 0.5 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        group.add(body);
+
+        // Mast & Camera eyes
+        const mastGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.6, 8);
+        const mastMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
+        const mast = new THREE.Mesh(mastGeo, mastMat);
+        mast.position.set(0, 0.4, 0.4);
+        group.add(mast);
+
+        const eyeGeo = new THREE.BoxGeometry(0.2, 0.1, 0.1);
+        const eyeMat = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
+        const eye = new THREE.Mesh(eyeGeo, eyeMat);
+        eye.position.set(0, 0.7, 0.4);
+        group.add(eye);
+
+        // 6 Titanium wire mesh wheels
+        const wheelGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.12, 12);
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.2 });
+        const wheelOffsets = [
+          [-0.55, -0.2, -0.4], [0.55, -0.2, -0.4],
+          [-0.55, -0.2, 0.0], [0.55, -0.2, 0.0],
+          [-0.55, -0.2, 0.4], [0.55, -0.2, 0.4]
+        ];
+        wheelOffsets.forEach(([x, y, z]) => {
+          const w = new THREE.Mesh(wheelGeo, wheelMat);
+          w.rotation.z = Math.PI / 2;
+          w.position.set(x, y, z);
+          group.add(w);
+        });
+        break;
+      }
+      case "satellite": {
+        // Satellite core
+        const coreGeo = new THREE.BoxGeometry(0.6, 0.7, 0.6);
+        const coreMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.1 });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        group.add(core);
+
+        // Folding Solar Panels (Left & Right)
+        const panelGeo = new THREE.BoxGeometry(1.2, 0.5, 0.04);
+        const panelMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.2, metalness: 0.6 });
+        const panelL = new THREE.Mesh(panelGeo, panelMat);
+        panelL.position.set(-0.95, 0, 0);
+        group.add(panelL);
+
+        const panelR = new THREE.Mesh(panelGeo, panelMat);
+        panelR.position.set(0.95, 0, 0);
+        group.add(panelR);
+
+        // Dish antenna
+        if (THREE.ConeGeometry) {
+          const dishGeo = new THREE.ConeGeometry(0.35, 0.2, 16);
+          const dishMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.5 });
+          const dish = new THREE.Mesh(dishGeo, dishMat);
+          dish.rotation.x = Math.PI;
+          dish.position.set(0, 0.55, 0);
+          group.add(dish);
+        }
+        break;
+      }
+      case "cargo": {
+        const crateGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+        const crateMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.4 });
+        const crate = new THREE.Mesh(crateGeo, crateMat);
+        group.add(crate);
+
+        const stripGeo = new THREE.BoxGeometry(0.92, 0.1, 0.92);
+        const stripMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.1 });
+        const strip = new THREE.Mesh(stripGeo, stripMat);
+        group.add(strip);
+        break;
+      }
+      case "probe":
+      default: {
+        const probeCoreGeo = new THREE.OctahedronGeometry(0.45, 1);
+        const probeMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.85, roughness: 0.15 });
+        const core = new THREE.Mesh(probeCoreGeo, probeMat);
+        group.add(core);
+
+        const boomGeo = new THREE.CylinderGeometry(0.02, 0.02, 1.4, 6);
+        const boomMat = new THREE.MeshStandardMaterial({ color: 0x64748b });
+        const boom = new THREE.Mesh(boomGeo, boomMat);
+        boom.rotation.z = Math.PI / 4;
+        group.add(boom);
+        break;
+      }
+    }
+
+    return group;
   }
 
   /**

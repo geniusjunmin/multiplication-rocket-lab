@@ -1,12 +1,19 @@
 /**
- * Multiplication Rocket Lab - UI & DOM Rendering Manager (js/ui.js)
- * Version 3.0.0 Universal Math Formulas, Prominent Wrong-Answer Hints, Pre-Launch 3D Assembly Dashboard & Extended Cinematic Journey
+ * Multiplication Rocket Lab - UI & Screen Rendering Engine (js/ui.js)
+ * Version 4.0.0 Space Adventure Progression Architecture
+ * Coordinates Home Progression HUD, Mission Board, Space Museum, Rocket Garage,
+ * Mascot Nova Telemetry, Flight Events, and Mission Debrief Results.
  */
 class UIManager {
   constructor() {
     this.currentAnswerInput = "";
     this.selectedHeatmapOperation = "multiply";
     this.installingParts = new Set();
+    this.selectedBriefingMissionId = null;
+    this.selectedBriefingPayload = "probe";
+    this.selectedBriefingRoute = "safe";
+    this.activeEventData = null;
+    this.activeEventQuestion = null;
   }
 
   showScreen(screenId) {
@@ -43,13 +50,582 @@ class UIManager {
       const preset = CONFIG.CURRICULUM_PRESETS[profile.yearPreset];
       presetEl.innerText = window.i18n && window.i18n.currentLanguage === "zh" ? (preset ? preset.nameZh : "Year 2") : (preset ? preset.nameEn : "Year 2");
     }
+
+    // Header Stars and Level Badges
+    const lvlInfo = window.progressionManager ? window.progressionManager.getLevelInfo(profile.progression ? profile.progression.xp : 0) : { level: 1 };
+    const stars = profile.progression ? (profile.progression.totalStars || 0) : 0;
+
+    const headerLevelBadge = document.getElementById("hud-level-badge");
+    if (headerLevelBadge) headerLevelBadge.innerText = `Lv.${lvlInfo.level}`;
+
+    const headerStarsBadge = document.getElementById("hud-stars-badge");
+    if (headerStarsBadge) headerStarsBadge.innerText = `⭐ ${stars}`;
   }
 
+  /**
+   * Home Screen Progression Overhaul
+   */
+  updateHomeProgressHUD() {
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    if (!profile || !window.progressionManager) return;
+
+    const xp = profile.progression ? (profile.progression.xp || 0) : 0;
+    const lvlInfo = window.progressionManager.getLevelInfo(xp);
+    const stars = profile.progression ? (profile.progression.totalStars || 0) : 0;
+    const rp = profile.progression ? (profile.progression.researchPoints || 0) : 0;
+    const collectibles = profile.collectibles ? profile.collectibles.length : 0;
+
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+
+    // Level HUD
+    const titleEl = document.getElementById("home-rank-title");
+    if (titleEl) titleEl.innerText = `${lvlInfo.rankIcon} Lv.${lvlInfo.level} ${isZh ? lvlInfo.rankTitleZh : lvlInfo.rankTitleEn}`;
+
+    const xpTextEl = document.getElementById("home-xp-text");
+    if (xpTextEl) xpTextEl.innerText = `${lvlInfo.xpInLevel} / ${lvlInfo.xpNeededForLevel} XP`;
+
+    const xpFillEl = document.getElementById("home-xp-fill");
+    if (xpFillEl) xpFillEl.style.width = `${lvlInfo.progressPercent}%`;
+
+    const starsValEl = document.getElementById("home-stars-val");
+    if (starsValEl) starsValEl.innerText = stars;
+
+    const rpValEl = document.getElementById("home-rp-val");
+    if (rpValEl) rpValEl.innerText = rp;
+
+    const museumValEl = document.getElementById("home-museum-count");
+    if (museumValEl) museumValEl.innerText = `${collectibles} / 18`;
+
+    // Recommended Mission Card
+    const recMission = window.progressionManager.getRecommendedMission();
+    const recTitleEl = document.getElementById("rec-mission-title");
+    const recStoryEl = document.getElementById("rec-mission-story");
+    const recFocusEl = document.getElementById("rec-mission-focus");
+    const recDestIcon = document.getElementById("rec-mission-icon");
+
+    if (recMission && recTitleEl) {
+      const destDef = CONFIG.DESTINATIONS[recMission.destination] || {};
+      if (recDestIcon) recDestIcon.innerText = destDef.icon || "🚀";
+      recTitleEl.innerText = isZh ? recMission.titleZh : recMission.titleEn;
+      if (recStoryEl) recStoryEl.innerText = isZh ? recMission.storyZh : recMission.storyEn;
+      if (recFocusEl) {
+        const focusStr = recMission.mathFocus ? recMission.mathFocus.map(t => `×${t}`).join(", ") : "×7, ×8";
+        recFocusEl.innerText = `${isZh ? "重点强化" : "Math Focus"}: ${focusStr}`;
+      }
+
+      const recBtn = document.getElementById("btn-start-recommended");
+      if (recBtn) {
+        recBtn.onclick = () => {
+          this.showMissionBriefingModal(recMission.id);
+        };
+      }
+    }
+
+    // Daily Missions List
+    const dailyMissions = window.progressionManager.getDailyMissions();
+    const dailyContainer = document.getElementById("home-daily-list");
+    if (dailyContainer) {
+      dailyContainer.innerHTML = dailyMissions.map(m => {
+        const dest = CONFIG.DESTINATIONS[m.destination] || {};
+        const isDone = m.isCompleted;
+        return `
+          <div class="daily-item-card ${isDone ? 'completed' : ''}" data-mission="${m.id}">
+            <span class="daily-icon">${dest.icon || '🚀'}</span>
+            <div class="daily-info">
+              <span class="daily-title">${isZh ? m.titleZh : m.titleEn}</span>
+              <span class="daily-sub">${m.questionTarget} ${isZh ? '道题' : 'Questions'} • +${m.reward.xp + m.dailyBonusXP} XP</span>
+            </div>
+            <button class="btn btn-sm ${isDone ? 'btn-outline' : 'btn-primary'} btn-daily-launch" data-mission="${m.id}">
+              ${isDone ? (isZh ? '已完成' : 'Done') : (isZh ? '出航' : 'Launch')}
+            </button>
+          </div>
+        `;
+      }).join("");
+
+      dailyContainer.querySelectorAll(".btn-daily-launch").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const mId = btn.getAttribute("data-mission");
+          if (mId) this.showMissionBriefingModal(mId);
+        });
+      });
+    }
+
+    // 3D Rocket Preview in Home Viewport
+    if (window.rocketBuilder) {
+      window.rocketBuilder.initScene("canvas-container-home");
+    }
+  }
+
+  /**
+   * Render Mission Board & Solar System Map
+   */
+  renderMissionBoard(selectedDest = "moon") {
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+    const mapNav = document.getElementById("mission-dest-tabs");
+    const gridContainer = document.getElementById("mission-cards-grid");
+    if (!mapNav || !gridContainer || !window.progressionManager) return;
+
+    // 1. Destination Navigation Tabs
+    mapNav.innerHTML = Object.keys(CONFIG.DESTINATIONS).map(destId => {
+      const dest = CONFIG.DESTINATIONS[destId];
+      const prog = window.progressionManager.getPlanetProgress(destId);
+      const isSelected = (destId === selectedDest);
+      return `
+        <button class="dest-tab-btn ${isSelected ? 'active' : ''}" data-dest="${destId}">
+          <span class="dest-tab-icon">${dest.icon}</span>
+          <span class="dest-tab-name">${isZh ? dest.nameZh : dest.nameEn}</span>
+          <span class="dest-tab-progress">${prog.completedMissions}/${prog.totalMissions}</span>
+        </button>
+      `;
+    }).join("");
+
+    mapNav.querySelectorAll(".dest-tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const destId = btn.getAttribute("data-dest");
+        this.renderMissionBoard(destId);
+      });
+    });
+
+    // 2. Mission Cards for Selected Destination
+    const missions = Object.values(CONFIG.MISSION_DEFINITIONS).filter(m => m.destination === selectedDest);
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    const records = profile ? (profile.missionRecords || {}) : {};
+
+    gridContainer.innerHTML = missions.map(m => {
+      const rec = records[m.id] || { completedCount: 0, bestStars: 0, bestFirstTryAccuracy: 0, bestGrade: "C" };
+      const starsStr = "⭐".repeat(rec.bestStars) + "☆".repeat(3 - rec.bestStars);
+      const isCleared = rec.completedCount > 0;
+      const coll = CONFIG.COLLECTIBLES_DEFINITIONS[m.reward.collectible];
+      const collIcon = coll ? coll.icon : "🪨";
+
+      return `
+        <div class="mission-board-card card ${isCleared ? 'cleared' : ''}" data-mission="${m.id}">
+          <div class="card-top-row">
+            <span class="mission-star-badge">${starsStr}</span>
+            <span class="mission-grade-badge grade-${rec.bestGrade}">${isCleared ? rec.bestGrade : 'NEW'}</span>
+          </div>
+          <h3 class="mission-title">${isZh ? m.titleZh : m.titleEn}</h3>
+          <p class="mission-story-desc">${isZh ? m.storyZh : m.storyEn}</p>
+          <div class="mission-card-meta">
+            <span class="meta-tag">🎯 ${m.questionTarget} ${isZh ? '题' : 'Questions'}</span>
+            <span class="meta-tag">🎁 +${m.reward.xp} XP</span>
+            <span class="meta-tag">${collIcon} ${isZh ? '标本' : 'Sample'}</span>
+          </div>
+          <button class="btn btn-primary btn-launch-card" data-mission="${m.id}">
+            ${isCleared ? (isZh ? '重新挑战' : 'Replay Mission') : (isZh ? '查看简报' : 'Briefing')} ➔
+          </button>
+        </div>
+      `;
+    }).join("");
+
+    gridContainer.querySelectorAll(".btn-launch-card").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const mId = btn.getAttribute("data-mission");
+        this.showMissionBriefingModal(mId);
+      });
+    });
+  }
+
+  /**
+   * Show Mission Flight Briefing Modal
+   */
+  showMissionBriefingModal(missionId) {
+    const mission = CONFIG.MISSION_DEFINITIONS[missionId] || CONFIG.MISSION_DEFINITIONS.moon_crater_survey;
+    this.selectedBriefingMissionId = mission.id;
+    this.selectedBriefingPayload = mission.recommendedPayload || "probe";
+    this.selectedBriefingRoute = "safe";
+
+    const modal = document.getElementById("modal-mission-briefing");
+    if (!modal) return;
+
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+
+    const titleEl = document.getElementById("briefing-modal-title");
+    if (titleEl) titleEl.innerText = isZh ? mission.titleZh : mission.titleEn;
+
+    const storyEl = document.getElementById("briefing-modal-story");
+    if (storyEl) storyEl.innerText = isZh ? mission.storyZh : mission.storyEn;
+
+    // Objectives Checklist
+    const objListEl = document.getElementById("briefing-objectives-list");
+    if (objListEl) {
+      objListEl.innerHTML = mission.objectives.map(obj => `
+        <li class="objective-item">
+          <span class="obj-star">⭐</span>
+          <span class="obj-desc">${isZh ? obj.descZh : obj.descEn}</span>
+        </li>
+      `).join("");
+    }
+
+    // Payload Selection
+    const payloadContainer = document.getElementById("briefing-payload-options");
+    if (payloadContainer) {
+      const payloads = [
+        { id: "probe", nameEn: "📡 Science Probe", nameZh: "📡 深空探测器" },
+        { id: "rover", nameEn: "🚙 Surface Rover", nameZh: "🚙 行星漫游车" },
+        { id: "cargo", nameEn: "📦 Cargo Module", nameZh: "📦 补给物资舱" },
+        { id: "satellite", nameEn: "🛰️ Solar Satellite", nameZh: "🛰️ 太阳能卫星" }
+      ];
+
+      payloadContainer.innerHTML = payloads.map(p => `
+        <button class="payload-select-btn ${p.id === this.selectedBriefingPayload ? 'selected' : ''}" data-payload="${p.id}">
+          ${isZh ? p.nameZh : p.nameEn}
+        </button>
+      `).join("");
+
+      payloadContainer.querySelectorAll(".payload-select-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          this.selectedBriefingPayload = btn.getAttribute("data-payload");
+          payloadContainer.querySelectorAll(".payload-select-btn").forEach(b => b.classList.remove("selected"));
+          btn.classList.add("selected");
+        });
+      });
+    }
+
+    // Route Options
+    const routeSafe = document.getElementById("route-opt-safe");
+    const routeBoost = document.getElementById("route-opt-boost");
+    if (routeSafe && routeBoost) {
+      routeSafe.onclick = () => {
+        this.selectedBriefingRoute = "safe";
+        routeSafe.classList.add("active");
+        routeBoost.classList.remove("active");
+      };
+      routeBoost.onclick = () => {
+        this.selectedBriefingRoute = "boost";
+        routeBoost.classList.add("active");
+        routeSafe.classList.remove("active");
+      };
+    }
+
+    const launchBtn = document.getElementById("btn-confirm-launch-mission");
+    if (launchBtn) {
+      launchBtn.onclick = () => {
+        modal.classList.add("hidden");
+        if (window.game) {
+          window.game.startMission(this.selectedBriefingMissionId, {
+            payload: this.selectedBriefingPayload,
+            route: this.selectedBriefingRoute
+          });
+        }
+      };
+    }
+
+    modal.classList.remove("hidden");
+  }
+
+  /**
+   * In-Flight Dynamic Event Modal
+   */
+  triggerFlightEventModal(eventDef) {
+    this.activeEventData = eventDef;
+    this.activeEventMistakes = 0;
+
+    const modal = document.getElementById("modal-flight-event");
+    if (!modal || !eventDef) return;
+
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+
+    const titleEl = document.getElementById("event-modal-title");
+    if (titleEl) titleEl.innerText = isZh ? eventDef.titleZh : eventDef.titleEn;
+
+    const descEl = document.getElementById("event-modal-desc");
+    if (descEl) descEl.innerText = isZh ? eventDef.descZh : eventDef.descEn;
+
+    if (window.audioManager) window.audioManager.playEventAlert();
+
+    this.renderNextEventQuestion();
+    modal.classList.remove("hidden");
+  }
+
+  renderNextEventQuestion() {
+    if (!window.mathEngine || !this.activeEventData) return;
+
+    this.activeEventQuestion = window.mathEngine.generateQuestion("normal");
+    const formulaEl = document.getElementById("event-formula-display");
+    const symbol = this.activeEventQuestion.operation === "divide" ? "÷" : "×";
+
+    if (formulaEl) {
+      formulaEl.innerHTML = `
+        <span>${this.activeEventQuestion.operandA}</span>
+        <span class="operator">${symbol}</span>
+        <span>${this.activeEventQuestion.operandB}</span>
+        <span class="operator">=</span>
+        <span id="event-ans-box" class="answer-box-placeholder">?</span>
+      `;
+    }
+
+    const choicesGrid = document.getElementById("event-choices-grid");
+    if (choicesGrid) {
+      choicesGrid.innerHTML = this.activeEventQuestion.options.map(val => `
+        <button class="choice-btn event-choice-btn" data-val="${val}">${val}</button>
+      `).join("");
+
+      choicesGrid.querySelectorAll(".event-choice-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const val = Number(btn.getAttribute("data-val"));
+          if (val === this.activeEventQuestion.answer) {
+            if (window.audioManager) window.audioManager.playCorrect();
+            const feedbackEl = document.getElementById("event-feedback-msg");
+            if (feedbackEl) {
+              const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+              feedbackEl.className = "quiz-feedback success";
+              feedbackEl.innerText = isZh ? "✨ 计算修正成功！航向已锁定！" : "✨ Trajectory corrected! Vector locked!";
+            }
+
+            if (window.progressionManager) {
+              window.progressionManager.addXP(this.activeEventData.bonusXP || 20, "Event Resolved");
+            }
+
+            setTimeout(() => {
+              document.getElementById("modal-flight-event")?.classList.add("hidden");
+              if (window.game) window.game.nextQuestion();
+            }, 800);
+          } else {
+            if (window.audioManager) window.audioManager.playWrong();
+            const feedbackEl = document.getElementById("event-feedback-msg");
+            if (feedbackEl) {
+              const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+              feedbackEl.className = "quiz-feedback error animate-shake";
+              feedbackEl.innerText = isZh ? "航向轻微漂移，再计算一次！" : "Course drifted slightly, recalculate!";
+            }
+          }
+        });
+      });
+    }
+  }
+
+  /**
+   * Space Museum Screen
+   */
+  renderSpaceMuseum() {
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+    const container = document.getElementById("museum-display-grid");
+    if (!container) return;
+
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    const userCollectibles = profile ? (profile.collectibles || []) : [];
+
+    const allItems = Object.values(CONFIG.COLLECTIBLES_DEFINITIONS);
+
+    container.innerHTML = allItems.map(item => {
+      const isOwned = userCollectibles.includes(item.id);
+      return `
+        <div class="museum-item-card card ${isOwned ? 'owned' : 'locked'}" data-item="${item.id}">
+          <div class="item-icon-frame">
+            <span class="item-icon">${isOwned ? item.icon : '🔒'}</span>
+          </div>
+          <h4 class="item-name">${isOwned ? (isZh ? item.nameZh : item.nameEn) : (isZh ? '未知宇宙标本' : 'Unknown Specimen')}</h4>
+          <p class="item-fact">${isOwned ? (isZh ? item.factZh : item.factEn) : (isZh ? '完成对应行星航天任务即可探索发现' : 'Unlock by completing planetary missions')}</p>
+        </div>
+      `;
+    }).join("");
+  }
+
+  /**
+   * Rocket Garage & Research Lab Screen
+   */
+  renderRocketGarage() {
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    if (!profile) return;
+
+    const activeModel = profile.currentRocketModel || "classic";
+    const activeTheme = profile.currentRocketTheme || "explorer";
+    const activeTrail = (profile.rocketCosmetics && profile.rocketCosmetics.trail) || "trail_standard";
+
+    // 1. Model Selector
+    const modelContainer = document.getElementById("garage-models-list");
+    if (modelContainer) {
+      const models = [
+        { id: "classic", nameEn: "Classic Explorer", nameZh: "经典探险家号" },
+        { id: "starship", nameEn: "SpaceX Starship", nameZh: "星舰重型航天器" },
+        { id: "falconHeavy", nameEn: "Falcon Heavy", nameZh: "重型猎鹰号" },
+        { id: "longMarch", nameEn: "Long March 5", nameZh: "长征五号火箭" },
+        { id: "cyber", nameEn: "Cyber Starship", nameZh: "赛博量子星舰" }
+      ];
+
+      modelContainer.innerHTML = models.map(m => {
+        const isUnlocked = profile.unlockedRocketModels && profile.unlockedRocketModels.includes(m.id);
+        const isCurrent = (m.id === activeModel);
+        return `
+          <button class="garage-chip ${isCurrent ? 'selected' : ''} ${!isUnlocked ? 'locked' : ''}" data-model="${m.id}">
+            ${isUnlocked ? '🚀' : '🔒'} ${isZh ? m.nameZh : m.nameEn}
+          </button>
+        `;
+      }).join("");
+
+      modelContainer.querySelectorAll(".garage-chip").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const mId = btn.getAttribute("data-model");
+          if (profile.unlockedRocketModels && profile.unlockedRocketModels.includes(mId)) {
+            profile.currentRocketModel = mId;
+            if (window.profileManager) window.profileManager.save();
+            if (window.rocketBuilder) window.rocketBuilder.setModel(mId);
+            this.renderRocketGarage();
+          }
+        });
+      });
+    }
+
+    // 2. Engine Trail Research Upgrades
+    const trailContainer = document.getElementById("garage-trails-list");
+    if (trailContainer && window.progressionManager) {
+      const trails = CONFIG.RESEARCH_TREE_DEFINITIONS.trails;
+      const userTrails = profile.unlockedResearch || ["trail_standard"];
+
+      trailContainer.innerHTML = trails.map(t => {
+        const isOwned = userTrails.includes(t.id);
+        const isEquipped = (t.id === activeTrail);
+        return `
+          <div class="trail-upgrade-card card ${isEquipped ? 'equipped' : ''}" data-trail="${t.id}">
+            <div class="trail-header">
+              <span class="trail-icon">${t.icon}</span>
+              <h4 class="trail-name">${isZh ? t.nameZh : t.nameEn}</h4>
+            </div>
+            <p class="trail-req">${isOwned ? (isEquipped ? (isZh ? '当前装备中' : 'Equipped') : (isZh ? '已解锁可用' : 'Available')) : (isZh ? t.reqZh : t.reqEn)}</p>
+            <button class="btn btn-sm ${isEquipped ? 'btn-outline' : 'btn-primary'} btn-trail-action" data-trail="${t.id}">
+              ${isOwned ? (isEquipped ? (isZh ? '已装备' : 'Equipped') : (isZh ? '装备' : 'Equip')) : `${isZh ? '研发' : 'Research'} (${t.cost} RP)`}
+            </button>
+          </div>
+        `;
+      }).join("");
+
+      trailContainer.querySelectorAll(".btn-trail-action").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const tId = btn.getAttribute("data-trail");
+          const isOwned = (profile.unlockedResearch || []).includes(tId);
+          if (isOwned) {
+            if (!profile.rocketCosmetics) profile.rocketCosmetics = {};
+            profile.rocketCosmetics.trail = tId;
+            if (window.profileManager) window.profileManager.save();
+            this.renderRocketGarage();
+          } else {
+            const res = window.progressionManager.unlockResearch(tId);
+            if (res.success) {
+              if (window.audioManager) window.audioManager.playUnlock();
+              if (!profile.rocketCosmetics) profile.rocketCosmetics = {};
+              profile.rocketCosmetics.trail = tId;
+              if (window.profileManager) window.profileManager.save();
+              this.renderRocketGarage();
+            } else {
+              alert(isZh ? `🔒 科研点数不足 (需 ${CONFIG.RESEARCH_TREE_DEFINITIONS.trails.find(t=>t.id===tId)?.cost || 0} RP)` : `Not enough Research Points`);
+            }
+          }
+        });
+      });
+    }
+
+    // 3D Viewport in Garage
+    if (window.rocketBuilder) {
+      window.rocketBuilder.initScene("canvas-container-garage");
+    }
+  }
+
+  /**
+   * Mascot Nova Speech Display
+   */
+  showMascotDialogue(msg) {
+    const box = document.getElementById("mascot-nova-box");
+    if (!box) return;
+    box.classList.remove("hidden");
+    const textEl = document.getElementById("mascot-nova-text");
+    if (textEl) textEl.innerText = msg;
+
+    setTimeout(() => {
+      box.classList.add("hidden");
+    }, 4500);
+  }
+
+  /**
+   * Overhauled Mission Debrief Results Screen
+   */
+  renderMissionDebrief(debriefData) {
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+    const session = window.mathEngine ? window.mathEngine.sessionStats : {};
+    const firstTryAcc = window.mathEngine ? window.mathEngine.getFirstTryAccuracy() : 100;
+    const finalCompletion = window.mathEngine ? window.mathEngine.getFinalCompletionRate() : 100;
+    const mission = debriefData.mission;
+
+    // Header & Stars
+    const titleEl = document.getElementById("debrief-mission-title");
+    if (titleEl) titleEl.innerText = isZh ? mission.titleZh : mission.titleEn;
+
+    const star1 = document.getElementById("star-1");
+    const star2 = document.getElementById("star-2");
+    const star3 = document.getElementById("star-3");
+
+    if (star1) star1.className = debriefData.starsEarned >= 1 ? "star active" : "star";
+    if (star2) star2.className = debriefData.starsEarned >= 2 ? "star active" : "star";
+    if (star3) star3.className = debriefData.starsEarned >= 3 ? "star active" : "star";
+
+    // Numbers & Metrics
+    const accEl = document.getElementById("res-accuracy");
+    if (accEl) accEl.innerText = `${firstTryAcc}%`;
+
+    const scoreEl = document.getElementById("res-score");
+    if (scoreEl) scoreEl.innerText = window.game ? window.game.score : 0;
+
+    const comboEl = document.getElementById("res-max-combo");
+    if (comboEl) comboEl.innerText = window.game ? window.game.maxCombo : 0;
+
+    // Objectives Breakdown
+    const objContainer = document.getElementById("debrief-objectives-list");
+    if (objContainer && window.game) {
+      objContainer.innerHTML = window.game.objectivesStatus.map(obj => `
+        <li class="debrief-obj-item ${obj.completed ? 'met' : 'unmet'}">
+          <span class="status-icon">${obj.completed ? '✅' : '❌'}</span>
+          <span class="obj-text">${isZh ? obj.descZh : obj.descEn}</span>
+        </li>
+      `).join("");
+    }
+
+    // Rewards List
+    const rewardsContainer = document.getElementById("debrief-rewards-list");
+    if (rewardsContainer) {
+      const coll = CONFIG.COLLECTIBLES_DEFINITIONS[debriefData.collectibleId];
+      rewardsContainer.innerHTML = `
+        <div class="reward-pill">+${debriefData.xpEarned} XP</div>
+        <div class="reward-pill">+${debriefData.starsEarned} ${isZh ? '任务之星' : 'Stars'}</div>
+        <div class="reward-pill">+${debriefData.rpEarned} ${isZh ? '科研点' : 'RP'}</div>
+        ${debriefData.collectibleUnlocked && coll ? `<div class="reward-pill rare">${coll.icon} ${isZh ? coll.nameZh : coll.nameEn}</div>` : ''}
+      `;
+    }
+
+    // Level Progress Animation
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    if (profile && window.progressionManager) {
+      const lvlInfo = window.progressionManager.getLevelInfo(profile.progression ? profile.progression.xp : 0);
+      const lvlBar = document.getElementById("debrief-level-fill");
+      if (lvlBar) lvlBar.style.width = `${lvlInfo.progressPercent}%`;
+
+      const lvlText = document.getElementById("debrief-level-text");
+      if (lvlText) lvlText.innerText = `Lv.${lvlInfo.level} ${isZh ? lvlInfo.rankTitleZh : lvlInfo.rankTitleEn} (${lvlInfo.xpInLevel}/${lvlInfo.xpNeededForLevel} XP)`;
+    }
+
+    // Next Step Recommendation Button
+    const nextBtn = document.getElementById("btn-next-action");
+    if (nextBtn && window.progressionManager) {
+      if (debriefData.starsEarned < 3) {
+        nextBtn.innerText = isZh ? "⭐ 再试一次夺得第 3 颗星" : "⭐ Retry for 3rd Star";
+        nextBtn.onclick = () => {
+          if (window.game) window.game.startMission(mission.id);
+        };
+      } else {
+        const nextRec = window.progressionManager.getRecommendedMission();
+        nextBtn.innerText = isZh ? `🚀 下一任务: ${nextRec.titleZh}` : `🚀 Next: ${nextRec.titleEn}`;
+        nextBtn.onclick = () => {
+          if (window.game) window.game.startMission(nextRec.id);
+        };
+      }
+    }
+  }
+
+  // Quiz rendering and inputs (backward compatible)
   renderQuestion(question, mode = "normal") {
     this.currentAnswerInput = "";
     this.updateAnswerDisplay("?");
 
-    // Formula Display
     const formulaContainer = document.getElementById("formula-display-box");
     const isDiv = question.operation === "divide";
     const symbol = isDiv ? "÷" : "×";
@@ -77,17 +653,10 @@ class UIManager {
     const fuelFeedback = document.getElementById("fuel-feedback");
     if (fuelFeedback) { fuelFeedback.className = "quiz-feedback hidden"; fuelFeedback.innerText = ""; }
 
-    // HIDE Strategy Hints initially (Only show after wrong answer!)
     const hintBox = document.getElementById("strat-hint-box");
-    if (hintBox) {
-      hintBox.classList.add("hidden");
-      hintBox.innerText = "";
-    }
+    if (hintBox) { hintBox.classList.add("hidden"); hintBox.innerText = ""; }
     const fuelHintBox = document.getElementById("fuel-strat-hint-box");
-    if (fuelHintBox) {
-      fuelHintBox.classList.add("hidden");
-      fuelHintBox.innerText = "";
-    }
+    if (fuelHintBox) { fuelHintBox.classList.add("hidden"); fuelHintBox.innerText = ""; }
 
     const choicesContainer = document.getElementById("quiz-choices-container");
     const keypadContainer = document.getElementById("quiz-keypad-container");
@@ -128,7 +697,6 @@ class UIManager {
 
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
 
-    // Dynamic Level 1 vs Level 2 hint text
     let hintObj = isLevel2 ? question.hintL2 : question.hintL1;
     if (!hintObj && window.mathEngine) {
       hintObj = window.mathEngine.getSmartHint(question.operation, question.operandA, question.operandB, question.answer, isLevel2 ? 2 : 1);
@@ -151,15 +719,9 @@ class UIManager {
 
   hideAllWrongAnswerHints() {
     const qHint = document.getElementById("strat-hint-box");
-    if (qHint) {
-      qHint.classList.add("hidden");
-      qHint.innerHTML = "";
-    }
+    if (qHint) { qHint.classList.add("hidden"); qHint.innerHTML = ""; }
     const fHint = document.getElementById("fuel-strat-hint-box");
-    if (fHint) {
-      fHint.classList.add("hidden");
-      fHint.innerHTML = "";
-    }
+    if (fHint) { fHint.classList.add("hidden"); fHint.innerHTML = ""; }
   }
 
   updateAnswerDisplay(val) {
@@ -202,526 +764,277 @@ class UIManager {
     feedback.innerText = msg;
   }
 
-  renderVisualHelper(visualData) {
-    const container = document.getElementById("easy-visual-helper");
-    if (!container) return;
+  updateQuizHUD(current, total, combo, score, powerLevel = null) {
+    const curEl = document.getElementById("quiz-current-num");
+    const totEl = document.getElementById("quiz-total-num");
+    const streakEl = document.getElementById("quiz-combo-count");
+    const scoreEl = document.getElementById("display-score");
+    const powerEl = document.getElementById("quiz-power-meter");
 
-    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
-
-    if (visualData.type === "divide") {
-      let dotsHtml = "";
-      const groupCount = Math.min(visualData.groups, 10);
-      const perGroup = Math.min(visualData.perGroup, 10);
-
-      for (let g = 0; g < groupCount; g++) {
-        dotsHtml += `<div class="array-row group-border">`;
-        for (let i = 0; i < perGroup; i++) {
-          dotsHtml += `<span class="array-dot">⭐</span>`;
-        }
-        dotsHtml += `</div>`;
-      }
-
-      container.innerHTML = `
-        <div class="visual-array-grid">${dotsHtml}</div>
-        <div class="addition-formula">${isZh ? `将 ${visualData.total} 个星光平均分成 ${visualData.groups} 组` : `Sharing ${visualData.total} items into ${visualData.groups} groups`}</div>
-      `;
-    } else {
-      let dotsHtml = "";
-      for (let r = 0; r < Math.min(visualData.rows, 12); r++) {
-        dotsHtml += `<div class="array-row">`;
-        for (let c = 0; c < Math.min(visualData.cols, 12); c++) {
-          dotsHtml += `<span class="array-dot">🚀</span>`;
-        }
-        dotsHtml += `</div>`;
-      }
-
-      container.innerHTML = `
-        <div class="visual-array-grid">${dotsHtml}</div>
-        <div class="addition-formula">${visualData.additionFormula}</div>
-      `;
+    if (curEl) curEl.innerText = current;
+    if (totEl) totEl.innerText = total;
+    if (streakEl) streakEl.innerText = `🔥 ${combo}`;
+    if (scoreEl) scoreEl.innerText = score;
+    if (powerEl && powerLevel) {
+      powerEl.innerText = powerLevel.label;
+      powerEl.style.color = powerLevel.color;
     }
   }
 
-  updateQuizHUD(currentNum, totalNum, combo, score) {
-    const curEl = document.getElementById("quiz-current-num");
-    const totEl = document.getElementById("quiz-total-num");
-    const comboEl = document.getElementById("quiz-combo-count");
-    const scoreEl = document.getElementById("display-score");
-
-    if (curEl) curEl.innerText = currentNum;
-    if (totEl) totEl.innerText = totalNum;
-    if (comboEl) comboEl.innerText = `🔥 ${combo}`;
-    if (scoreEl) scoreEl.innerText = score;
-  }
-
-  showQuizTimer(maxSeconds) {
-    const box = document.getElementById("quiz-timer-container");
-    if (box) box.classList.remove("hidden");
+  showQuizTimer(seconds) {
+    const timerContainer = document.getElementById("quiz-timer-container");
+    if (timerContainer) timerContainer.classList.remove("hidden");
+    const timerVal = document.getElementById("quiz-timer-val");
+    if (timerVal) timerVal.innerText = `${seconds}s`;
+    const fill = document.getElementById("quiz-timer-fill");
+    if (fill) fill.style.width = "100%";
   }
 
   hideQuizTimer() {
-    const box = document.getElementById("quiz-timer-container");
-    if (box) box.classList.add("hidden");
+    const timerContainer = document.getElementById("quiz-timer-container");
+    if (timerContainer) timerContainer.classList.add("hidden");
   }
 
-  updateQuizTimerDisplay(secLeft, ratio) {
-    const valEl = document.getElementById("quiz-timer-val");
-    if (valEl) valEl.innerText = `${secLeft}s`;
-
+  updateQuizTimerDisplay(secondsLeft, ratio) {
+    const timerVal = document.getElementById("quiz-timer-val");
+    if (timerVal) timerVal.innerText = `${secondsLeft}s`;
     const fill = document.getElementById("quiz-timer-fill");
-    if (fill) fill.style.width = `${Math.max(0, ratio * 100)}%`;
+    if (fill) {
+      fill.style.width = `${Math.max(0, Math.min(100, ratio * 100))}%`;
+      if (ratio < 0.3) fill.style.backgroundColor = "#ef4444";
+      else if (ratio < 0.6) fill.style.backgroundColor = "#f59e0b";
+      else fill.style.backgroundColor = "#10b981";
+    }
+  }
+
+  renderVisualHelper(data) {
+    const container = document.getElementById("easy-visual-helper");
+    if (!container) return;
+
+    if (data.type === "divide") {
+      container.innerHTML = `
+        <div class="helper-content">
+          <div class="helper-formula">${data.formula}</div>
+          <div class="helper-desc">Share ${data.total} into ${data.groups} groups of ${data.perGroup}</div>
+        </div>
+      `;
+    } else {
+      let dotsHtml = "";
+      for (let r = 0; r < Math.min(data.rows, 12); r++) {
+        dotsHtml += '<div class="dot-row">';
+        for (let c = 0; c < Math.min(data.cols, 12); c++) {
+          dotsHtml += '<span class="helper-dot"></span>';
+        }
+        dotsHtml += '</div>';
+      }
+      container.innerHTML = `
+        <div class="helper-content">
+          <div class="dots-grid">${dotsHtml}</div>
+          <div class="helper-formula">${data.additionFormula}</div>
+        </div>
+      `;
+    }
   }
 
   updateBlueprintView() {
-    const unlocked = window.storageManager ? (window.storageManager.get("unlockedParts") || []) : [];
-    const countEl = document.getElementById("blueprint-progress-text");
-    if (countEl) countEl.innerText = `${unlocked.length} / ${CONFIG.PART_COUNT}`;
-
-    const fill = document.getElementById("blueprint-progress-fill");
-    if (fill) fill.style.width = `${(unlocked.length / CONFIG.PART_COUNT) * 100}%`;
-
     const grid = document.getElementById("blueprint-grid");
-    if (!grid || !window.rocketBuilder) return;
+    if (!grid || !window.storageManager || !window.rocketBuilder) return;
 
-    grid.innerHTML = "";
-    window.rocketBuilder.partDefinitions.forEach((part) => {
-      const isUnlocked = unlocked.includes(part.id);
-      const isZh = window.i18n && window.i18n.currentLanguage === "zh";
-      const name = isZh ? part.nameZh : part.nameEn;
-
-      const item = document.createElement("div");
-      item.className = `blueprint-card-item ${isUnlocked ? "unlocked" : "locked"}`;
-      item.innerHTML = `
-        <div class="part-icon">${part.icon}</div>
-        <div class="part-name">${name}</div>
-        <div class="part-status">${isUnlocked ? "✅ Unlocked" : "🔒 Locked"}</div>
-      `;
-      grid.appendChild(item);
-    });
-  }
-
-  showPartRewardModal(part) {
+    const unlocked = window.storageManager.get("unlockedParts") || [];
+    const parts = window.rocketBuilder.partDefinitions;
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
-    const modal = document.getElementById("modal-part-reward");
-    if (!modal) return;
 
-    const icon = modal.querySelector(".reward-icon");
-    const name = modal.querySelector(".reward-name");
+    grid.innerHTML = parts.map(part => {
+      const isUnlocked = unlocked.includes(part.id);
+      return `
+        <div class="blueprint-slot ${isUnlocked ? 'unlocked' : 'locked'}">
+          <div class="blueprint-icon">${part.icon}</div>
+          <div class="blueprint-name">${isZh ? part.nameZh : part.nameEn}</div>
+          <div class="blueprint-status">${isUnlocked ? '✓' : '🔒'}</div>
+        </div>
+      `;
+    }).join("");
 
-    if (icon) icon.innerText = part.icon;
-    if (name) name.innerText = isZh ? part.nameZh : part.nameEn;
-
-    modal.classList.remove("hidden");
+    const progressText = document.getElementById("blueprint-progress-text");
+    const progressFill = document.getElementById("blueprint-progress-fill");
+    if (progressText) progressText.innerText = `${unlocked.length} / ${parts.length}`;
+    if (progressFill) progressFill.style.width = `${(unlocked.length / parts.length) * 100}%`;
   }
 
   renderAssemblyDock() {
-    const container = document.getElementById("assembly-parts-list");
-    if (!container || !window.rocketBuilder || !window.storageManager) return;
+    const listContainer = document.getElementById("assembly-parts-list");
+    if (!listContainer || !window.storageManager || !window.rocketBuilder) return;
 
     const unlocked = window.storageManager.get("unlockedParts") || [];
     const installed = window.storageManager.get("installedParts") || [];
-    container.innerHTML = "";
-
-    const totalCount = CONFIG.PART_COUNT;
-    const installedCount = installed.length;
+    const allParts = window.rocketBuilder.partDefinitions;
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
 
-    // 1. Sync Model & Theme Selects with Active Profile and Unlock State
-    const currentModel = window.storageManager.get("currentRocketModel") || "classic";
-    const currentTheme = window.storageManager.get("currentRocketTheme") || "explorer";
-    const activeProfile = window.profileManager ? window.profileManager.getActiveProfile() : null;
-
-    const modelSelect = document.getElementById("select-rocket-model");
-    if (modelSelect) {
-      const unlockedModels = activeProfile ? (activeProfile.unlockedRocketModels || ["classic"]) : ["classic"];
-      Array.from(modelSelect.options).forEach(opt => {
-        const isOptUnlocked = unlockedModels.includes(opt.value);
-        opt.disabled = !isOptUnlocked;
-        opt.text = (isOptUnlocked ? "" : "🔒 ") + opt.text.replace(/^🔒\s*/, '');
-      });
-      modelSelect.value = currentModel;
-    }
-
-    const themeSelect = document.getElementById("select-rocket-theme");
-    if (themeSelect) {
-      const unlockedThemes = activeProfile ? (activeProfile.unlockedRocketThemes || ["explorer"]) : ["explorer"];
-      Array.from(themeSelect.options).forEach(opt => {
-        const isOptUnlocked = unlockedThemes.includes(opt.value);
-        opt.disabled = !isOptUnlocked;
-        opt.text = (isOptUnlocked ? "" : "🔒 ") + opt.text.replace(/^🔒\s*/, '');
-      });
-      themeSelect.value = currentTheme;
-    }
-
-    // 2. Update Left Dashboard Stats Dynamically
-    const ratio = installedCount / totalCount;
-    const thrust = Math.round(ratio * 95);
-    const stability = Math.round(ratio * 92);
-    const payload = Math.round(ratio * 90);
-    const efficiency = Math.round(ratio * 88);
-
-    const thrustVal = document.getElementById("stat-thrust-val");
-    if (thrustVal) thrustVal.innerText = `${thrust}%`;
-    const barThrust = document.getElementById("stat-bar-thrust");
-    if (barThrust) barThrust.style.width = `${thrust}%`;
-
-    const stabVal = document.getElementById("stat-stability-val");
-    if (stabVal) stabVal.innerText = `${stability}%`;
-    const barStab = document.getElementById("stat-bar-stability");
-    if (barStab) barStab.style.width = `${stability}%`;
-
-    const payVal = document.getElementById("stat-payload-val");
-    if (payVal) payVal.innerText = `${payload}%`;
-    const barPay = document.getElementById("stat-bar-payload");
-    if (barPay) barPay.style.width = `${payload}%`;
-
-    const effVal = document.getElementById("stat-efficiency-val");
-    if (effVal) effVal.innerText = `${efficiency}%`;
-    const barEff = document.getElementById("stat-bar-efficiency");
-    if (barEff) barEff.style.width = `${efficiency}%`;
-
-    // 3. Update Progress Circular Ring
-    const percent = Math.round(ratio * 100);
-    const pctText = document.getElementById("assembly-percent-text");
-    if (pctText) pctText.innerText = `${percent}%`;
-    const ringCircle = document.getElementById("assembly-ring-circle");
-    if (ringCircle) {
-      const circumference = 251.2;
-      const offset = circumference * (1 - ratio);
-      ringCircle.style.strokeDashoffset = `${offset}`;
-    }
-
-    const subtextEl = document.getElementById("assembly-status-subtext");
-    if (subtextEl) {
-      if (installedCount >= totalCount) {
-        subtextEl.innerText = isZh ? "已解锁零件全部安装完成！" : "All unlocked parts assembled!";
-        subtextEl.style.color = "#34d399";
-      } else {
-        subtextEl.innerText = isZh ? `零件卡扣组装中 (${installedCount}/${totalCount})` : `Assembling Parts (${installedCount}/${totalCount})`;
-        subtextEl.style.color = "#f59e0b";
-      }
-    }
-
-    // 4. Render 10 Part Cards Grid
-    window.rocketBuilder.partDefinitions.forEach(part => {
-      const isUnlocked = unlocked.includes(part.id);
-      const isInstalled = installed.includes(part.id);
-      const isCurrentlyInstalling = this.installingParts.has(part.id);
-
-      let statusText = "LOCKED";
-      if (isInstalled) statusText = "✓ FITTED";
-      else if (isCurrentlyInstalling) statusText = "INSTALLING...";
-      else if (isUnlocked) statusText = "READY";
-
-      const btn = document.createElement("button");
-      btn.className = `assembly-dock-item ${isInstalled ? "installed" : (isCurrentlyInstalling ? "installing" : (isUnlocked ? "unlocked glow-pulse" : "locked"))}`;
-      btn.innerHTML = `
-        ${isInstalled ? '<span class="part-badge-fitted">✓</span>' : ''}
-        <span class="dock-icon">${part.icon}</span>
-        <span class="dock-title">${isZh ? part.nameZh : part.nameEn}</span>
-        <span class="dock-status-label">${statusText}</span>
+    listContainer.innerHTML = allParts.map(p => {
+      const isUnlocked = unlocked.includes(p.id);
+      const isInstalled = installed.includes(p.id);
+      return `
+        <button class="part-item ${isInstalled ? 'installed' : (isUnlocked ? 'unlocked' : 'locked')}" data-part="${p.id}">
+          <span class="part-icon">${p.icon}</span>
+          <span class="part-label">${isZh ? p.nameZh : p.nameEn}</span>
+          <span class="part-state-tag">${isInstalled ? '✓' : (isUnlocked ? 'FITTING' : '🔒')}</span>
+        </button>
       `;
+    }).join("");
 
-      if (isUnlocked && !isInstalled && !isCurrentlyInstalling) {
-        btn.addEventListener("click", () => {
-          if (this.installingParts.has(part.id)) return;
-          this.installingParts.add(part.id);
-          this.renderAssemblyDock();
+    listContainer.querySelectorAll(".part-item").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const partId = btn.getAttribute("data-part");
+        if (unlocked.includes(partId) && !installed.includes(partId)) {
+          if (this.installingParts.has(partId)) return;
+          this.installingParts.add(partId);
 
-          // Animate first, write to storage ONLY after animation successfully completes!
-          window.rocketBuilder.animateInstallPart(part.id, () => {
-            window.storageManager.installPart(part.id);
-            this.installingParts.delete(part.id);
-            this.renderAssemblyDock();
-
-            const newlyInstalled = window.storageManager.get("installedParts") || [];
-            if (newlyInstalled.length >= totalCount) {
-              this.triggerAssemblyCelebration();
-            }
-          });
-        });
-      } else {
-        btn.disabled = true;
-      }
-      container.appendChild(btn);
+          if (window.rocketBuilder) {
+            window.rocketBuilder.animateInstallPart(partId, () => {
+              this.installingParts.delete(partId);
+              window.storageManager.installPart(partId);
+              this.renderAssemblyDock();
+              if ((window.storageManager.get("installedParts") || []).length >= CONFIG.PART_COUNT) {
+                this.triggerAssemblyCelebration();
+              }
+            });
+          }
+        }
+      });
     });
 
-    // 5. Update Launch Gateway Button
     const goFuelBtn = document.getElementById("btn-go-fuel");
-    const lockTipEl = document.getElementById("assembly-lock-tip");
-
+    const lockTip = document.getElementById("assembly-lock-tip");
     if (goFuelBtn) {
-      if (installedCount >= totalCount) {
-        goFuelBtn.disabled = false;
-        goFuelBtn.removeAttribute("disabled");
+      if (installed.length >= CONFIG.PART_COUNT) {
         goFuelBtn.classList.remove("disabled");
-        goFuelBtn.classList.add("unlocked", "btn-pulse");
-
-        if (lockTipEl) {
-          lockTipEl.className = "assembly-lock-tip unlocked-tip";
-          lockTipEl.innerText = isZh ? "🎉 所有火箭零件组装完成！即可前往燃料舱点火升空！" : "🎉 Assembly Complete! Ready to proceed to Fuel Chamber!";
-        }
+        goFuelBtn.removeAttribute("disabled");
+        if (lockTip) lockTip.classList.add("hidden");
       } else {
-        goFuelBtn.disabled = true;
-        goFuelBtn.setAttribute("disabled", "true");
         goFuelBtn.classList.add("disabled");
-        goFuelBtn.classList.remove("unlocked", "btn-pulse");
-
-        if (lockTipEl) {
-          lockTipEl.className = "assembly-lock-tip";
-          lockTipEl.innerText = isZh ? `🔒 需卡扣安装完成所有 10 个零件后才能发射 (已安装 ${installedCount}/${totalCount})` : `🔒 Assemble all 10 parts before launching (${installedCount}/${totalCount})`;
+        goFuelBtn.setAttribute("disabled", "true");
+        if (lockTip) {
+          lockTip.classList.remove("hidden");
+          lockTip.innerText = isZh ? `🔒 需安装完成所有 10 个零件后才能发射 (已安装 ${installed.length}/10)` : `🔒 Please fit all 10 parts before proceeding to Fuel Chamber! (${installed.length}/10)`;
         }
       }
     }
   }
 
-  /**
-   * Hero 360-degree celebration when assembly is complete.
-   * NOTE: Does NOT auto-navigate to Fuel screen! Let child admire rocket and click.
-   */
   triggerAssemblyCelebration() {
     const banner = document.getElementById("assembly-celebration-banner");
     if (banner) banner.classList.remove("hidden");
-    if (window.audioManager) window.audioManager.playVictory();
-
-    if (window.rocketBuilder) {
-      window.rocketBuilder.triggerCelebrationSpin(2000, () => {
-        setTimeout(() => {
-          if (banner) banner.classList.add("hidden");
-        }, 800);
-      });
-    }
+    if (window.rocketBuilder) window.rocketBuilder.triggerCelebrationSpin(1800, () => {
+      if (banner) banner.classList.add("hidden");
+    });
   }
 
   updateFuelMissionTarget(destId, loaded, required) {
-    const dest = CONFIG.DESTINATIONS[destId] || CONFIG.DESTINATIONS.moon;
+    const dest = CONFIG.DESTINATIONS[destId] || {};
+    const badge = document.getElementById("fuel-dest-badge");
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
 
-    const badgeEl = document.getElementById("fuel-dest-badge");
+    if (badge) badge.innerText = `${dest.icon || '🪐'} ${isZh ? (dest.nameZh || destId) : (dest.nameEn || destId)}`;
     const reqEl = document.getElementById("fuel-required-val");
-    const loadedEl = document.getElementById("fuel-loaded-val");
-    const pctEl = document.getElementById("fuel-pct-val");
-    const estEl = document.getElementById("fuel-estimate-msg");
-
-    const pct = Math.min(100, Math.round((loaded / required) * 100));
-    const remainingQuestions = Math.max(0, Math.ceil((required - loaded) / 10));
-
-    if (badgeEl) badgeEl.innerText = `${dest.icon} ${isZh ? dest.nameZh : dest.nameEn}`;
     if (reqEl) reqEl.innerText = required;
+    const loadedEl = document.getElementById("fuel-loaded-val");
     if (loadedEl) loadedEl.innerText = `${loaded} / ${required}`;
-    if (pctEl) pctEl.innerText = `${pct}%`;
-
-    if (estEl) {
-      if (loaded >= required) {
-        estEl.innerText = isZh ? "🎉 目标达成！可随时点火升空！" : "🎉 Target Reached! Ready for Launch!";
-        estEl.style.color = "#34d399";
-      } else {
-        estEl.innerText = isZh ? `⚡ 约还需要 ${remainingQuestions} 道正确答案` : `⚡ Estimated ~${remainingQuestions} correct answers needed`;
-        estEl.style.color = "#f59e0b";
-      }
-    }
-  }
-
-  animateFuelIncrease(fromPercent, toPercent, comboBonus = 0) {
-    this.spawnEnergyParticles();
-
-    // Floating Bonus Badge
-    const bonusBox = document.getElementById("fuel-floating-bonus");
-    if (bonusBox) {
-      const isZh = window.i18n && window.i18n.currentLanguage === "zh";
-      if (comboBonus > 0) {
-        bonusBox.innerText = isZh ? `🔥 连胜加成 +${comboBonus} 能量` : `🔥 COMBO BONUS +${comboBonus} Fuel`;
-      } else {
-        bonusBox.innerText = `⛽ +10 Fuel`;
-      }
-      bonusBox.classList.remove("hidden");
-      setTimeout(() => bonusBox.classList.add("hidden"), 900);
-    }
-
-    const duration = 600;
-    const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-
-    const step = () => {
-      const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-      const elapsed = now - startTime;
-      const progress = Math.min(1, elapsed / duration);
-      const ease = 1 - Math.pow(1 - progress, 3);
-      const current = Math.round(fromPercent + (toPercent - fromPercent) * ease);
-
-      this.updateFuelGauge(current);
-
-      if (progress < 1) {
-        requestAnimationFrame(step);
-      } else {
-        this.updateFuelGauge(toPercent);
-      }
-    };
-    step();
-  }
-
-  spawnEnergyParticles() {
-    const container = document.querySelector(".fuel-layout-container") || document.getElementById("screen-fuel");
-    if (!container) return;
-
-    for (let i = 0; i < 6; i++) {
-      const p = document.createElement("div");
-      p.className = "energy-particle";
-      p.style.top = `${40 + (Math.random() - 0.5) * 10}%`;
-      p.style.right = `${25 + (Math.random() - 0.5) * 10}%`;
-      const tx = `${-180 - Math.random() * 80}px`;
-      const ty = `${-30 + (Math.random() - 0.5) * 50}px`;
-      if (p.style.setProperty) {
-        p.style.setProperty("--target-x", tx);
-        p.style.setProperty("--target-y", ty);
-      } else {
-        p.style["--target-x"] = tx;
-        p.style["--target-y"] = ty;
-      }
-      container.appendChild(p);
-
-      setTimeout(() => {
-        if (p && p.parentNode) p.parentNode.removeChild(p);
-      }, 650);
-    }
+    const pctEl = document.getElementById("fuel-pct-val");
+    if (pctEl) pctEl.innerText = `${Math.min(100, Math.round((loaded / required) * 100))}%`;
   }
 
   updateFuelGauge(percentage) {
     const fill = document.getElementById("fuel-fill-level");
-    const text = document.getElementById("fuel-percentage");
-    const label = document.getElementById("fuel-status-label");
-    const launchBtn = document.getElementById("btn-ready-to-launch");
-    const alertBanner = document.getElementById("fuel-full-alert-banner");
-
     if (fill) fill.style.height = `${percentage}%`;
-    if (text) text.innerText = `${percentage}%`;
+    const pctText = document.getElementById("fuel-percentage");
+    if (pctText) pctText.innerText = `${percentage}%`;
 
-    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
-
-    if (label) {
-      if (percentage >= 100) {
-        label.innerText = isZh ? "🎉 目标燃料已加满！火箭发射准备就绪！" : "🎉 Mission Fuel Full! Rocket System Ready!";
-      } else if (percentage >= 50) {
-        label.innerText = isZh ? "燃料加注中..." : "Fuel loading in progress...";
-      } else {
-        label.innerText = isZh ? "燃料不足，等待加注..." : "Fuel low. Waiting for fuel loading...";
-      }
-    }
+    const launchBtn = document.getElementById("btn-ready-to-launch");
+    const fullBanner = document.getElementById("fuel-full-alert-banner");
 
     if (percentage >= 100) {
-      if (alertBanner) alertBanner.classList.remove("hidden");
       if (launchBtn) {
-        launchBtn.disabled = false;
-        launchBtn.removeAttribute("disabled");
         launchBtn.classList.remove("disabled");
-        launchBtn.style.opacity = "1";
-        launchBtn.style.cursor = "pointer";
+        launchBtn.removeAttribute("disabled");
+        launchBtn.classList.add("btn-pulse");
       }
+      if (fullBanner) fullBanner.classList.remove("hidden");
     } else {
-      if (alertBanner) alertBanner.classList.add("hidden");
       if (launchBtn) {
-        launchBtn.disabled = true;
-        launchBtn.setAttribute("disabled", "true");
         launchBtn.classList.add("disabled");
+        launchBtn.setAttribute("disabled", "true");
+        launchBtn.classList.remove("btn-pulse");
       }
+      if (fullBanner) fullBanner.classList.add("hidden");
     }
+  }
+
+  animateFuelIncrease(prevPct, nextPct, bonusUnits) {
+    this.updateFuelGauge(nextPct);
+    const bonusEl = document.getElementById("fuel-floating-bonus");
+    if (bonusEl && bonusUnits > 0) {
+      const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+      bonusEl.innerText = isZh ? `🔥 连击加成 +${bonusUnits}` : `🔥 Streak Bonus +${bonusUnits}`;
+      bonusEl.classList.remove("hidden", "animate-float-up");
+      void bonusEl.offsetWidth;
+      bonusEl.classList.add("animate-float-up");
+      setTimeout(() => bonusEl.classList.add("hidden"), 1200);
+    }
+  }
+
+  showPartRewardModal(part) {
+    const modal = document.getElementById("modal-part-reward");
+    if (!modal) return;
+    const nameEl = modal.querySelector(".reward-name");
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+    if (nameEl) nameEl.innerText = isZh ? part.nameZh : part.nameEn;
+    modal.classList.remove("hidden");
   }
 
   renderParentReport() {
     const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
     if (!profile) return;
 
-    // Today Stats
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+    const sum = window.mathEngine ? window.mathEngine.getOperationMasterySummary() : { multiplication: 0, division: 0 };
+    const firstTryAcc = window.mathEngine ? window.mathEngine.getFirstTryAccuracy() : 100;
+
     const repAns = document.getElementById("rep-today-answered");
     if (repAns) repAns.innerText = profile.totalQuestionsAnswered || 0;
-    const acc = profile.totalQuestionsAnswered > 0 ? Math.round((profile.totalCorrectAnswers / profile.totalQuestionsAnswered) * 100) : 100;
+
     const repAcc = document.getElementById("rep-today-accuracy");
-    if (repAcc) repAcc.innerText = `${acc}%`;
+    if (repAcc) repAcc.innerText = `${firstTryAcc}%`;
 
-    // Operation Mastery Summary (Multiplication vs Division)
-    if (window.mathEngine) {
-      const summary = window.mathEngine.getOperationMasterySummary();
-      const mulEl = document.getElementById("rep-mult-mastery");
-      const divEl = document.getElementById("rep-div-mastery");
-      if (mulEl) mulEl.innerText = `${summary.multiplication}%`;
-      if (divEl) divEl.innerText = `${summary.division}%`;
+    const repMul = document.getElementById("rep-mult-mastery");
+    if (repMul) repMul.innerText = `${sum.multiplication}%`;
+
+    const repDiv = document.getElementById("rep-div-mastery");
+    if (repDiv) repDiv.innerText = `${sum.division}%`;
+
+    // Space Passport Stamps
+    const stampsContainer = document.getElementById("space-passport-stamps-grid");
+    if (stampsContainer) {
+      stampsContainer.innerHTML = Object.keys(CONFIG.DESTINATIONS).map(destId => {
+        const dest = CONFIG.DESTINATIONS[destId];
+        const isVisited = profile.destinationsVisited && profile.destinationsVisited[destId];
+        return `
+          <div class="passport-stamp-card ${isVisited ? 'stamped' : 'unvisited'}">
+            <span class="stamp-icon">${dest.icon}</span>
+            <span class="stamp-name">${isZh ? dest.nameZh : dest.nameEn}</span>
+            <span class="stamp-status">${isVisited ? '★ VISITED ★' : 'LOCKED'}</span>
+          </div>
+        `;
+      }).join("");
     }
-
-    this.renderHeatmapMatrix(profile, this.selectedHeatmapOperation);
-    this.renderSpacePassportStamps(profile);
   }
 
-  renderHeatmapMatrix(profile, operation = "multiply") {
-    const container = document.getElementById("mastery-heatmap-container");
-    if (!container) return;
-
-    const isDiv = operation === "divide";
-    let html = `<div class="heatmap-grid">`;
-    html += `<div class="hm-cell header">${isDiv ? "÷" : "×"}</div>`;
-    for (let c = 1; c <= 12; c++) html += `<div class="hm-cell header">${c}</div>`;
-
-    for (let r = 1; r <= 12; r++) {
-      html += `<div class="hm-cell header">${r}</div>`;
-      for (let c = 1; c <= 12; c++) {
-        const prod = r * c;
-        const key = isDiv ? `div:${prod}/${r}` : `mul:${r}x${c}`;
-        const fact = profile.facts[key] || { masteryScore: 0 };
-        const score = fact.masteryScore || 0;
-
-        let bg = "#1e293b";
-        if (score >= 90) bg = "#059669";
-        else if (score >= 70) bg = "#2563eb";
-        else if (score >= 40) bg = "#d97706";
-        else if (score > 0) bg = "#dc2626";
-
-        html += `<div class="hm-cell fact-cell" style="background-color: ${bg}" data-fact="${key}" title="${isDiv ? `${prod}÷${r}=${c}` : `${r}×${c}=${prod}`} (Mastery: ${score}%)">${score > 0 ? score : ""}</div>`;
-      }
-    }
-    html += `</div>`;
-    container.innerHTML = html;
-
-    container.querySelectorAll(".fact-cell").forEach(cell => {
-      cell.addEventListener("click", () => {
-        const key = cell.getAttribute("data-fact");
-        const fact = profile.facts[key];
-        if (fact) this.showFactInspectorModal(fact);
-      });
-    });
-  }
-
-  renderSpacePassportStamps(profile) {
-    const container = document.getElementById("space-passport-stamps-grid");
-    if (!container) return;
-
-    const visited = profile.destinationsVisited || { earthOrbit: true };
-    container.innerHTML = "";
-
-    Object.values(CONFIG.DESTINATIONS).forEach(dest => {
-      const isStamped = !!visited[dest.id];
-      const stamp = document.createElement("div");
-      stamp.className = `passport-stamp ${isStamped ? "stamped" : "unvisited"}`;
-      stamp.innerHTML = `
-        <div class="stamp-icon">${dest.icon}</div>
-        <div class="stamp-name">${dest.nameEn}</div>
-        <div class="stamp-status">${isStamped ? "✓ VISITED" : "🔒 UNVISITED"}</div>
-      `;
-      container.appendChild(stamp);
-    });
-  }
-
-  showFactInspectorModal(fact) {
-    const modal = document.getElementById("modal-fact-inspector");
-    if (!modal) return;
-
-    const displayStr = fact.operation === "divide" ? `${fact.operandA} ÷ ${fact.operandB} = ${fact.answer}` : `${fact.operandA} × ${fact.operandB} = ${fact.answer}`;
-    document.getElementById("fact-title").innerText = displayStr;
-    document.getElementById("fact-mastery-score").innerText = `${fact.masteryScore}%`;
-    document.getElementById("fact-attempts").innerText = fact.attempts;
-    document.getElementById("fact-first-try").innerText = fact.firstTryCorrect;
-    document.getElementById("fact-wrong-count").innerText = fact.wrongCount;
-    document.getElementById("fact-avg-speed").innerText = `${fact.averageResponseTime ? (fact.averageResponseTime / 1000).toFixed(1) : "0"}s`;
-
-    modal.classList.remove("hidden");
+  updateDOM() {
+    this.updateProfileHUD();
+    this.updateHomeProgressHUD();
   }
 }
 
 window.uiManager = new UIManager();
+if (typeof module !== "undefined") {
+  module.exports = { UIManager };
+}

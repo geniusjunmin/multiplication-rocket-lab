@@ -1,9 +1,9 @@
 /**
  * Multiplication Rocket Lab - Application Main Entry & Event Dispatcher (js/main.js)
- * Version 3.0.0 Product-Grade Architecture
+ * Version 4.0.0 Space Adventure Progression Architecture
  */
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("Multiplication Rocket Lab v3.0.0 Product-Grade Initialized!");
+  console.log("Multiplication Rocket Lab v4.0.0 Space Adventure Progression Initialized!");
 
   initDevMode();
   if (window.i18n) window.i18n.updateDOM();
@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   bindGlobalNavEvents();
+  bindHomeProgressionEvents();
   bindSettingsEvents();
   bindDestinationEvents();
   bindBlueprintEvents();
@@ -46,6 +47,21 @@ function bindGlobalNavEvents() {
   document.getElementById("btn-home")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playClick();
     if (window.game) window.game.setGameState(GAME_STATES.HOME);
+  });
+
+  document.getElementById("btn-nav-mission-board")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playClick();
+    if (window.game) window.game.setGameState(GAME_STATES.MISSION_BOARD);
+  });
+
+  document.getElementById("btn-nav-museum")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playClick();
+    if (window.game) window.game.setGameState(GAME_STATES.MUSEUM);
+  });
+
+  document.getElementById("btn-nav-garage")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playClick();
+    if (window.game) window.game.setGameState(GAME_STATES.GARAGE);
   });
 
   // Developer Testing Shortcut: Instantly skip all quiz questions and unlock all 10 rocket parts!
@@ -100,7 +116,8 @@ function bindGlobalNavEvents() {
   document.getElementById("btn-sound-toggle")?.addEventListener("click", () => {
     if (window.audioManager) {
       const enabled = window.audioManager.toggleSound();
-      document.getElementById("sound-icon").innerText = enabled ? "🔊" : "🔇";
+      const soundIcon = document.getElementById("sound-icon");
+      if (soundIcon) soundIcon.innerText = enabled ? "🔊" : "🔇";
       if (window.storageManager) window.storageManager.set("soundEnabled", enabled);
     }
   });
@@ -115,7 +132,15 @@ function bindGlobalNavEvents() {
 
   document.getElementById("btn-start-game")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playClick();
-    if (window.game) window.game.startNewGameRound(GAME_MODES.NORMAL);
+    if (window.game) window.game.setGameState(GAME_STATES.MISSION_BOARD);
+  });
+
+  document.getElementById("btn-quick-mission")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playClick();
+    if (window.progressionManager && window.uiManager) {
+      const rec = window.progressionManager.getRecommendedMission();
+      window.uiManager.showMissionBriefingModal(rec.id);
+    }
   });
 
   document.getElementById("btn-continue-game")?.addEventListener("click", () => {
@@ -129,6 +154,16 @@ function bindGlobalNavEvents() {
     if (window.game) window.game.setGameState(GAME_STATES.SETTINGS);
   });
 
+  document.getElementById("btn-open-museum")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playClick();
+    if (window.game) window.game.setGameState(GAME_STATES.MUSEUM);
+  });
+
+  document.getElementById("btn-open-garage")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playClick();
+    if (window.game) window.game.setGameState(GAME_STATES.GARAGE);
+  });
+
   document.getElementById("btn-open-report")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playClick();
     if (window.uiManager) window.uiManager.renderParentReport();
@@ -137,6 +172,22 @@ function bindGlobalNavEvents() {
 
   document.getElementById("btn-close-report")?.addEventListener("click", () => {
     document.getElementById("modal-report")?.classList.add("hidden");
+  });
+
+  document.getElementById("btn-close-briefing")?.addEventListener("click", () => {
+    document.getElementById("modal-mission-briefing")?.classList.add("hidden");
+  });
+}
+
+function bindHomeProgressionEvents() {
+  document.getElementById("btn-home-museum")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playClick();
+    if (window.game) window.game.setGameState(GAME_STATES.MUSEUM);
+  });
+
+  document.getElementById("btn-home-garage")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playClick();
+    if (window.game) window.game.setGameState(GAME_STATES.GARAGE);
   });
 }
 
@@ -156,7 +207,10 @@ function bindProfileEvents() {
     if (window.profileManager) {
       window.profileManager.addProfile(name, preset);
       document.getElementById("modal-add-profile")?.classList.add("hidden");
-      if (window.uiManager) window.uiManager.updateProfileHUD();
+      if (window.uiManager) {
+        window.uiManager.updateProfileHUD();
+        window.uiManager.updateHomeProgressHUD();
+      }
     }
   });
 }
@@ -231,7 +285,7 @@ function bindSettingsEvents() {
       });
     }
 
-    if (window.game) window.game.startNewGameRound(GAME_MODES.NORMAL);
+    if (window.game) window.game.setGameState(GAME_STATES.HOME);
   });
 }
 
@@ -273,6 +327,13 @@ function bindBlueprintEvents() {
 
   document.getElementById("btn-go-assembly")?.addEventListener("click", () => {
     if (window.game) window.game.setGameState(GAME_STATES.ASSEMBLY);
+  });
+
+  document.getElementById("btn-quick-assembly-blueprint")?.addEventListener("click", () => {
+    if (window.rocketBuilder) {
+      window.rocketBuilder.quickAssemble();
+      if (window.game) window.game.setGameState(GAME_STATES.FUEL_CHALLENGE);
+    }
   });
 }
 
@@ -369,6 +430,8 @@ function bindQuizInputEvents() {
       modalReward?.classList.add("hidden");
       modalComplete?.classList.add("hidden");
       modalReport?.classList.add("hidden");
+      document.getElementById("modal-mission-briefing")?.classList.add("hidden");
+      document.getElementById("modal-flight-event")?.classList.add("hidden");
       return;
     }
 
@@ -514,7 +577,7 @@ function bindLaunchEvents() {
   });
 
   document.getElementById("btn-view-results")?.addEventListener("click", () => {
-    showResultsScreen();
+    showMissionDebriefResults();
   });
 
   document.getElementById("btn-replay-landing")?.addEventListener("click", () => {
@@ -527,7 +590,11 @@ function bindLaunchEvents() {
 
 function bindResultsAndReportEvents() {
   document.getElementById("btn-restart-game")?.addEventListener("click", () => {
-    if (window.game) window.game.startNewGameRound(GAME_MODES.NORMAL);
+    if (window.game) window.game.setGameState(GAME_STATES.MISSION_BOARD);
+  });
+
+  document.getElementById("btn-results-home")?.addEventListener("click", () => {
+    if (window.game) window.game.setGameState(GAME_STATES.HOME);
   });
 
   document.getElementById("btn-retry-wrongs")?.addEventListener("click", () => {
@@ -572,27 +639,32 @@ function bindResultsAndReportEvents() {
   });
 }
 
-function showResultsScreen() {
-  if (!window.game) return;
+function showMissionDebriefResults() {
+  if (!window.game || !window.progressionManager) return;
 
-  const score = window.game.score;
-  const total = window.game.totalQuestionsCount;
-  const correct = window.game.correctAnswersCount;
-  const accuracy = total > 0 ? Math.round((correct / total) * 100) : 100;
+  const missionId = window.game.activeMission ? window.game.activeMission.id : (window.storageManager ? window.storageManager.get("selectedMissionId") : "moon_crater_survey");
+  const firstTryAcc = window.mathEngine ? window.mathEngine.getFirstTryAccuracy() : 100;
+  const sessionStats = {
+    firstTryAccuracy: firstTryAcc,
+    score: window.game.score,
+    maxCombo: window.game.maxCombo,
+    questionsPresented: window.game.totalQuestionsCount,
+    wrongAttempts: window.mathEngine ? window.mathEngine.sessionStats.wrongAttempts : 0
+  };
 
-  document.getElementById("res-score").innerText = score;
-  document.getElementById("res-accuracy").innerText = `${accuracy}%`;
-  document.getElementById("res-max-combo").innerText = `${window.game.maxCombo}`;
+  const debriefData = window.progressionManager.recordMissionComplete(
+    missionId,
+    sessionStats,
+    window.game.objectivesStatus || []
+  );
 
-  const star1 = document.getElementById("star-1");
-  const star2 = document.getElementById("star-2");
-  const star3 = document.getElementById("star-3");
+  if (window.uiManager) {
+    window.uiManager.renderMissionDebrief(debriefData);
+  }
 
-  if (star1) star1.classList.add("active");
-  if (accuracy >= 70 && star2) star2.classList.add("active");
-  if (accuracy >= 90 && star3) star3.classList.add("active");
-
-  if (window.game) window.game.setGameState(GAME_STATES.RESULTS);
+  if (window.game) {
+    window.game.setGameState(GAME_STATES.RESULTS);
+  }
 }
 
 function bindAudioInitListener() {

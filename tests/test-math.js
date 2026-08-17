@@ -78,4 +78,50 @@ describe("1. Universal Math & Fact Family Engine (MathEngine 3.0)", () => {
     Assert.isTrue(divL2.textZh.includes("= 8"), "Division Level 2 hint must contain solution '= 8'");
   });
 
+  it("1.7 First-try accuracy must calculate (firstTryCorrect / questionsPresented) and track all attempt counters", () => {
+    const math = new MathEngine();
+    math.resetSessionStats();
+
+    // 10 questions presented:
+    // 8 answered correctly on 1st try
+    // 2 failed on 1st try, retry failed once more, then succeeded on 3rd attempt
+    for (let i = 0; i < 8; i++) {
+      const q = math.formatQuestionObject("multiply", 2, i + 1);
+      math.recordResult(q, true, true, 1200); // 1st try correct
+    }
+
+    for (let i = 0; i < 2; i++) {
+      const q = math.formatQuestionObject("multiply", 7, i + 1);
+      math.recordResult(q, false, true, 2000);  // 1st try wrong
+      math.recordResult(q, false, false, 1800); // 2nd try wrong
+      math.recordResult(q, true, false, 1500);  // 3rd try correct
+    }
+
+    const stats = math.sessionStats;
+    Assert.equal(stats.questionsPresented, 10, "Total questions presented should be 10");
+    Assert.equal(stats.firstTryCorrect, 8, "First try correct should be 8");
+    Assert.equal(stats.wrongAttempts, 4, "Total wrong attempts should be 4 (2 questions × 2 wrong tries)");
+    Assert.equal(stats.totalAttempts, 14, "Total attempts should be 14 (8 + 2*3)");
+    Assert.equal(stats.correctFinalAnswers, 10, "Correct final answers should be 10");
+
+    const firstTryAcc = math.getFirstTryAccuracy();
+    Assert.equal(firstTryAcc, 80, "First-try accuracy MUST be 80% (8/10), never inflated to 100%");
+
+    const completionRate = math.getFinalCompletionRate();
+    Assert.equal(completionRate, 100, "Final completion rate should be 100% (10/10 completed)");
+  });
+
+  it("1.8 getTableMasteryReport should return averageMastery and percentage for achievement check compatibility", () => {
+    const math = new MathEngine();
+    const rep = math.getTableMasteryReport();
+    Assert.equal(rep.length, 12, "Should report on 12 times tables");
+    rep.forEach(r => {
+      Assert.isTrue(typeof r.table === "number", "table should be number");
+      Assert.isTrue(typeof r.averageMastery === "number", "averageMastery should be number");
+      Assert.isTrue(typeof r.percentage === "number", "percentage should be number");
+      Assert.equal(r.percentage, r.averageMastery, "percentage should equal averageMastery");
+    });
+  });
+
 });
+
