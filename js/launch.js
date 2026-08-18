@@ -545,6 +545,35 @@ class LaunchSequence {
       if (options.destinationId) this.destinationId = options.destinationId;
     }
 
+    // Reset all scene rigs strictly to Earth Launch Pad state
+    this.hasRecordedVisit = false;
+    this.hasShownTowerClear = false;
+    this.hasTriggeredFlightEvent = false;
+    this.timelineElapsed = 0;
+
+    if (this.launchPadGroup) this.launchPadGroup.visible = true;
+    if (this.cloudsGroup) this.cloudsGroup.visible = true;
+    if (this.earthGroup) {
+      this.earthGroup.visible = false;
+      this.earthGroup.position.set(0, -32, -45);
+    }
+    if (this.surfaceGroup) this.surfaceGroup.visible = false;
+    if (this.destinationGroup) {
+      this.destinationGroup.visible = false;
+      this.destinationGroup.position.set(0, 0, -140);
+    }
+    if (this.rocket) {
+      this.rocket.position.set(0, 0, 0);
+      this.rocket.rotation.set(0, 0, 0);
+    }
+    if (this.engineVfx) {
+      this.engineVfx.setVisible(false);
+      this.engineVfx.setThrottle(0);
+    }
+    if (this.warpVfx) {
+      this.warpVfx.setWarpIntensity(0, true);
+    }
+
     this.enterCinematicMode();
     document.getElementById("launch-checklist")?.classList.add("hidden");
     const box = document.getElementById("launch-countdown-box");
@@ -1405,51 +1434,211 @@ class LaunchSequence {
     this.initScene(containerId, destId);
     document.getElementById("launch-checklist")?.classList.add("hidden");
     document.getElementById("launch-countdown-box")?.classList.add("hidden");
+    document.getElementById("space-victory-banner")?.classList.add("hidden");
+    document.getElementById("launch-stage-banner")?.classList.add("hidden");
 
-    if (stageName === "liftoff") {
+    this.hasRecordedVisit = false;
+    this.hasShownTowerClear = false;
+    this.hasTriggeredFlightEvent = false;
+    this.timelineElapsed = 0;
+
+    if (stageName === "pad" || stageName === "idle") {
+      this.currentStage = "idle";
+      if (this.launchPadGroup) this.launchPadGroup.visible = true;
+      if (this.cloudsGroup) this.cloudsGroup.visible = true;
+      if (this.destinationGroup) this.destinationGroup.visible = false;
+      if (this.earthGroup) this.earthGroup.visible = false;
+      if (this.surfaceGroup) this.surfaceGroup.visible = false;
+      if (this.rocket) {
+        this.rocket.position.set(0, 0, 0);
+        this.rocket.rotation.set(0, 0, 0);
+      }
+      if (this.engineVfx) this.engineVfx.setVisible(false);
+      if (this.warpVfx) this.warpVfx.setWarpIntensity(0, true);
+      this.cameraDirector.playShot({
+        id: "shot1_hero_pad",
+        fromPosition: { x: 4.5, y: 1.2, z: 9.5 },
+        toPosition: { x: 3.5, y: 1.8, z: 8.5 },
+        fromTarget: { x: 0, y: 2.5, z: 0 },
+        toTarget: { x: 0, y: 3.0, z: 0 },
+        duration: 2.0,
+        easing: "easeInOutCubic"
+      });
+    } else if (stageName === "countdown") {
+      this.startLaunch({ destinationId: destId });
+    } else if (stageName === "ignition") {
+      this.currentStage = "ignition";
+      if (this.launchPadGroup) this.launchPadGroup.visible = true;
+      if (this.cloudsGroup) this.cloudsGroup.visible = true;
+      if (this.destinationGroup) this.destinationGroup.visible = false;
+      if (this.earthGroup) this.earthGroup.visible = false;
+      if (this.surfaceGroup) this.surfaceGroup.visible = false;
+      if (this.rocket) {
+        this.rocket.position.set(0, 0, 0);
+        this.rocket.rotation.set(0, 0, 0);
+      }
+      if (this.warpVfx) this.warpVfx.setWarpIntensity(0, true);
+      this.triggerIgnition();
+    } else if (stageName === "liftoff") {
       this.currentStage = "liftoff";
       this.timelineElapsed = 0;
-      if (this.engineVfx) {
-        this.engineVfx.setVisible(true);
-        this.engineVfx.setThrottle(1.0);
+      if (this.launchPadGroup) this.launchPadGroup.visible = true;
+      if (this.cloudsGroup) this.cloudsGroup.visible = true;
+      if (this.destinationGroup) this.destinationGroup.visible = false;
+      if (this.earthGroup) this.earthGroup.visible = false;
+      if (this.surfaceGroup) this.surfaceGroup.visible = false;
+      if (this.rocket) {
+        this.rocket.position.set(0, 0, 0);
+        this.rocket.rotation.set(0, 0, 0);
       }
+      if (this.warpVfx) this.warpVfx.setWarpIntensity(0, true);
+      this.liftoff();
     } else if (stageName === "atmospheric") {
       this.currentStage = "atmospheric";
       this.timelineElapsed = 0;
-      this.rocket.position.y = 50;
-      if (this.engineVfx) this.engineVfx.setVisible(true);
       if (this.launchPadGroup) this.launchPadGroup.visible = false;
+      if (this.cloudsGroup) this.cloudsGroup.visible = true;
+      if (this.destinationGroup) this.destinationGroup.visible = false;
+      if (this.earthGroup) this.earthGroup.visible = false;
+      if (this.surfaceGroup) this.surfaceGroup.visible = false;
+      if (this.rocket) {
+        this.rocket.position.set(0, 50, 0);
+        this.rocket.rotation.set(0, 0, -0.15);
+      }
+      if (this.engineVfx) {
+        this.engineVfx.setVisible(true);
+        this.engineVfx.setEnvironmentMode("atmosphere", 0.5);
+        this.engineVfx.setThrottle(1.0);
+      }
+      if (this.warpVfx) this.warpVfx.setWarpIntensity(0, true);
+      this.cameraDirector.playShot({
+        id: "shot5_cloud_tracking",
+        fromPosition: { x: 12.0, y: 65, z: 12.0 },
+        toPosition: { x: 8.0, y: 95, z: 8.0 },
+        fromTarget: { x: 0, y: 65, z: 0 },
+        toTarget: { x: 0, y: 110, z: 0 },
+        duration: 4.5,
+        easing: "easeOutQuart",
+        shake: 0.15
+      });
     } else if (stageName === "earthOrbit") {
       this.currentStage = "earthOrbit";
       this.timelineElapsed = 0;
-      this.rocket.position.set(0, 0, 0);
       if (this.launchPadGroup) this.launchPadGroup.visible = false;
       if (this.cloudsGroup) this.cloudsGroup.visible = false;
-      if (this.earthGroup) this.earthGroup.visible = true;
+      if (this.destinationGroup) this.destinationGroup.visible = false;
+      if (this.earthGroup) {
+        this.earthGroup.visible = true;
+        this.earthGroup.position.set(0, -32, -45);
+      }
+      if (this.surfaceGroup) this.surfaceGroup.visible = false;
+      if (this.rocket) {
+        this.rocket.position.set(0, 0, 0);
+        this.rocket.rotation.set(0, 0, 0);
+      }
+      if (this.engineVfx) {
+        this.engineVfx.setVisible(true);
+        this.engineVfx.setEnvironmentMode("vacuum", 0.8);
+        this.engineVfx.setThrottle(0.2);
+      }
+      if (this.warpVfx) this.warpVfx.setWarpIntensity(0, true);
+      this.cameraDirector.playShot({
+        id: "shot7_orbital_reveal",
+        fromPosition: { x: -4.0, y: 1.0, z: 7.5 },
+        toPosition: { x: 5.5, y: 0.5, z: 8.0 },
+        fromTarget: { x: 0, y: 0, z: 0 },
+        toTarget: { x: 0, y: -0.5, z: 0 },
+        duration: 3.5,
+        easing: "easeInOutCubic"
+      });
     } else if (stageName === "transfer") {
       this.currentStage = "transfer";
       this.timelineElapsed = 0;
-      this.rocket.position.set(0, 0, 0);
       if (this.launchPadGroup) this.launchPadGroup.visible = false;
       if (this.cloudsGroup) this.cloudsGroup.visible = false;
-      if (this.destinationGroup) this.destinationGroup.visible = true;
+      if (this.earthGroup) {
+        this.earthGroup.visible = true;
+        this.earthGroup.position.set(0, -32, -45);
+      }
+      if (this.destinationGroup) {
+        this.destinationGroup.visible = true;
+        this.destinationGroup.position.set(0, 0, -140);
+      }
+      if (this.surfaceGroup) this.surfaceGroup.visible = false;
+      if (this.rocket) {
+        this.rocket.position.set(0, 0, 0);
+        this.rocket.rotation.set(0, 0, 0);
+      }
       this.startTransferBurn();
     } else if (stageName === "destinationApproach" || stageName === "approach") {
       this.currentStage = "destinationApproach";
       this.timelineElapsed = 0;
-      this.rocket.position.set(0, 0, 0);
       if (this.launchPadGroup) this.launchPadGroup.visible = false;
       if (this.cloudsGroup) this.cloudsGroup.visible = false;
-      if (this.destinationGroup) this.destinationGroup.visible = true;
+      if (this.earthGroup) this.earthGroup.visible = false;
+      if (this.destinationGroup) {
+        this.destinationGroup.visible = true;
+        this.destinationGroup.position.set(0, 0, -100);
+      }
+      if (this.surfaceGroup) this.surfaceGroup.visible = false;
+      if (this.rocket) {
+        this.rocket.position.set(0, 0, 0);
+        this.rocket.rotation.set(0, 0, 0);
+      }
+      if (this.engineVfx) {
+        this.engineVfx.setVisible(true);
+        this.engineVfx.setEnvironmentMode("vacuum", 0.6);
+        this.engineVfx.setThrottle(0.6);
+      }
+      if (this.warpVfx) this.warpVfx.setWarpIntensity(0, true);
+      this.cameraDirector.playShot({
+        id: "shot_approach",
+        fromPosition: { x: 3.5, y: 1.2, z: 8.0 },
+        toPosition: { x: -3.0, y: 0.8, z: 7.0 },
+        fromTarget: { x: 0, y: 0, z: 0 },
+        toTarget: { x: 0, y: 0, z: 0 },
+        duration: 4.5,
+        easing: "easeInOutCubic"
+      });
     } else if (stageName === "destinationAction" || stageName === "landing") {
-      const isLanding = CONFIG.DESTINATIONS[destId]?.type === "landing";
-      if (isLanding) {
+      if (this.launchPadGroup) this.launchPadGroup.visible = false;
+      if (this.cloudsGroup) this.cloudsGroup.visible = false;
+      if (this.earthGroup) this.earthGroup.visible = (destId === "earthOrbit");
+      if (this.warpVfx) this.warpVfx.setWarpIntensity(0, true);
+
+      const isLandingTarget = (stageName === "landing" || destId === "moon" || destId === "mars");
+      if (isLandingTarget) {
+        if (destId !== "moon" && destId !== "mars") {
+          destId = "mars";
+          this.destinationId = "mars";
+        }
         this.transitionToSurfaceScene();
       } else {
         this.currentStage = "destinationAction";
         this.timelineElapsed = 0;
-        this.rocket.position.set(0, 0, 0);
-        if (this.destinationGroup) this.destinationGroup.visible = true;
+        if (this.destinationGroup) {
+          this.destinationGroup.visible = true;
+          this.destinationGroup.position.set(0, 0, -38);
+        }
+        if (this.surfaceGroup) this.surfaceGroup.visible = false;
+        if (this.rocket) {
+          this.rocket.position.set(0, 0, 0);
+          this.rocket.rotation.set(0, 0, 0);
+        }
+        if (this.engineVfx) {
+          this.engineVfx.setVisible(true);
+          this.engineVfx.setEnvironmentMode("vacuum", 0.4);
+          this.engineVfx.setThrottle(0.4);
+        }
+        this.cameraDirector.playShot({
+          id: "shot_dest_hero",
+          fromPosition: { x: -4.5, y: 1.5, z: 8.0 },
+          toPosition: { x: 4.5, y: -0.5, z: 7.5 },
+          fromTarget: { x: 0, y: 0, z: 0 },
+          toTarget: { x: 0, y: 0, z: 0 },
+          duration: 8.0,
+          easing: "easeInOutCubic"
+        });
       }
     } else if (stageName === "missionComplete") {
       this.finishMissionSuccess();

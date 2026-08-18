@@ -51,6 +51,7 @@ class AnimationLab {
         quality: this.vfxQuality
       });
       window.launchSequence.speedMultiplier = this.speedMultiplier;
+      window.launchSequence.jumpToStage("pad", destId, "canvas-container-anim-lab");
     }
     this.syncHUD();
   }
