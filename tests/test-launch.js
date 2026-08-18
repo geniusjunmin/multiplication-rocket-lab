@@ -158,4 +158,105 @@ describe("4. Interplanetary Launch Engine & Planet Arrival Scenes (LaunchSequenc
     Assert.equal(animLab.speedMultiplier, 4.0, "Animation lab speed should be 4x");
   });
 
+  it("4.12 CinematicCameraDirector should execute storyboard shots with smooth interpolation", () => {
+    const cam = new THREE.PerspectiveCamera(50, 1.0, 0.1, 1000);
+    const director = new CinematicCameraDirector(cam);
+
+    director.playShot({
+      id: "shot1_pad_hero",
+      fromPosition: { x: 4.5, y: 0.5, z: 7.5 },
+      toPosition: { x: 3.5, y: 0.2, z: 6.0 },
+      fromTarget: { x: 0, y: 1.0, z: 0 },
+      toTarget: { x: 0, y: 1.8, z: 0 },
+      duration: 3.0,
+      easing: "easeInOutCubic"
+    });
+
+    Assert.equal(director.currentShot.id, "shot1_pad_hero", "Active shot must be shot1_pad_hero");
+    Assert.equal(director.isTransitioning, true, "Camera transition should be active");
+
+    // Advance 1.5s (50% progress)
+    director.update(1.5);
+    Assert.equal(director.shotElapsed, 1.5, "Shot elapsed should be 1.5s");
+    Assert.isTrue(cam.position.x < 4.5 && cam.position.x > 3.5, "Camera X position should interpolate between start and end");
+
+    // Advance to end
+    director.update(2.0);
+    Assert.equal(director.isTransitioning, false, "Camera transition should complete after duration");
+  });
+
+  it("4.13 EngineVFXSystem should manage single-source-of-truth throttle, vacuum mode, and shock diamonds", () => {
+    const scene = new THREE.Scene();
+    const engine = new EngineVFXSystem(scene, { plumeLength: 3.0, plumeWidth: 0.8 });
+
+    engine.setVisible(true);
+    Assert.equal(engine.group.visible, true, "Engine group must be visible");
+
+    engine.setThrottle(0.85);
+    Assert.equal(engine.engineVfxState.throttle, 0.85, "Engine VFX state throttle must update");
+
+    engine.setVacuumExpansion(1.0);
+    Assert.equal(engine.engineVfxState.vacuumExpansion, 1.0, "Vacuum expansion state must update");
+
+    engine.update(0.016, 1.0);
+    Assert.isTrue(engine.shockDiamonds.length === 4, "Shock diamonds array must contain 4 supersonic disks");
+    engine.dispose();
+  });
+
+  it("4.14 ParticleSystem should update smoke and radial dust using deltaTime", () => {
+    const scene = new THREE.Scene();
+    const ps = new ParticleSystem(scene, "high");
+
+    // Horizontal launch trench smoke blast
+    ps.emitLaunchTrenchSmoke({ x: 0, y: 0, z: 0 }, 12);
+    const activeSmoke = ps.smokePool.filter(p => p.active);
+    Assert.isTrue(activeSmoke.length >= 10, "Launch pad smoke trench blast must activate smoke particles");
+
+    // DeltaTime physics update
+    const initialLife = activeSmoke[0].life;
+    ps.update(0.1);
+    Assert.isTrue(activeSmoke[0].life < initialLife, "Particle life must decrease by deltaTime");
+
+    ps.dispose();
+  });
+
+  it("4.15 WarpVFXSystem should render 280 speed streak lines and handle intensity modulation", () => {
+    const scene = new THREE.Scene();
+    const warp = new WarpVFXSystem(scene, 280);
+
+    Assert.equal(warp.streakCount, 280, "Streak count must be 280");
+    warp.setWarpIntensity(0.95);
+    Assert.equal(warp.targetWarpIntensity, 0.95, "Target warp intensity must be 0.95");
+
+    warp.update(0.05, { x: 0, y: 0, z: 0 });
+    Assert.isTrue(warp.warpIntensity > 0, "Warp intensity should smoothly ramp up");
+    warp.dispose();
+  });
+
+  it("4.16 PlanetVisualFactory should generate procedural geometry for all 6 worlds", () => {
+    const earth = PlanetVisualFactory.createEarth(18.0);
+    const moon = PlanetVisualFactory.createMoon(12.0);
+    const mars = PlanetVisualFactory.createMars(14.0);
+    const jupiter = PlanetVisualFactory.createJupiter(24.0);
+    const saturn = PlanetVisualFactory.createSaturn(18.0);
+    const deepSpace = PlanetVisualFactory.createDeepSpace(20.0);
+
+    Assert.isTrue(earth !== null && earth.userData.radius === 18.0, "Earth procedural group must be created");
+    Assert.isTrue(moon !== null && moon.userData.radius === 12.0, "Moon procedural group must be created");
+    Assert.isTrue(mars !== null && mars.userData.radius === 14.0, "Mars procedural group must be created");
+    Assert.isTrue(jupiter !== null && jupiter.userData.radius === 24.0, "Jupiter procedural group must be created");
+    Assert.isTrue(saturn !== null && saturn.userData.ringMesh !== null, "Saturn ring mesh must be created");
+    Assert.isTrue(deepSpace !== null && deepSpace.userData.radius === 20.0, "Deep Space procedural group must be created");
+  });
+
+  it("4.17 AnimationLab should isolate labOverrides and NEVER mutate player storage or profile", () => {
+    const animLab = new AnimationLab();
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : { currentRocketModel: "classic" };
+    const originalModel = profile.currentRocketModel;
+
+    animLab.applyCustomization("starship", "neon", "rover", "trail_rainbow");
+    Assert.equal(animLab.labOverrides.model, "starship", "Lab override model must be starship");
+    Assert.equal(profile.currentRocketModel, originalModel, "Real player profile model must NOT be mutated by Animation Lab");
+  });
+
 });

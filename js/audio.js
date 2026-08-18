@@ -288,6 +288,13 @@ class AudioManager {
   }
 
   /**
+   * 播放胜利号角与任务通关乐段 (Fanfare)
+   */
+  playVictoryFanfare() {
+    this.playVictory();
+  }
+
+  /**
    * 播放获得任务之星音效 (晶莹高频音)
    */
   playStarEarned() {
@@ -370,6 +377,186 @@ class AudioManager {
       osc.start(t);
       osc.stop(t + 0.1);
     });
+  }
+
+  /**
+   * 启动持续发动机轰鸣循环 (Web Audio 合成噪声 + 低通滤波 + 次低频振荡器)
+   */
+  startEngineLoop() {
+    if (!this.enabled || !this.ctx) return;
+    this.init();
+    if (this.engineLoopActive) return;
+
+    try {
+      // 1. White Noise Buffer
+      const bufferSize = this.ctx.sampleRate * 2;
+      const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      this.noiseSource = this.ctx.createBufferSource();
+      this.noiseSource.buffer = noiseBuffer;
+      this.noiseSource.loop = true;
+
+      // 2. Resonant Lowpass Filter for exhaust rumble
+      this.engineFilter = this.ctx.createBiquadFilter();
+      this.engineFilter.type = "lowpass";
+      this.engineFilter.frequency.value = 220;
+      this.engineFilter.Q.value = 3.0;
+
+      // 3. Sub-Bass Oscillator for physical engine power
+      this.subOsc = this.ctx.createOscillator();
+      this.subOsc.type = "triangle";
+      this.subOsc.frequency.value = 55; // 55Hz Low A
+
+      this.engineGain = this.ctx.createGain();
+      this.engineGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+      this.engineGain.gain.exponentialRampToValueAtTime(0.4, this.ctx.currentTime + 0.4);
+
+      this.noiseSource.connect(this.engineFilter);
+      this.engineFilter.connect(this.engineGain);
+      this.subOsc.connect(this.engineGain);
+      this.engineGain.connect(this.masterGain);
+
+      this.noiseSource.start();
+      this.subOsc.start();
+      this.engineLoopActive = true;
+    } catch (e) {
+      console.warn("startEngineLoop audio error:", e);
+    }
+  }
+
+  /**
+   * 平滑调节发动机节流阀音量与频率
+   * @param {number} throttle 0.0 ~ 1.0 (Ignition 0.8, Liftoff 1.0, Atmosphere 0.9, Orbit 0.15, Transfer 1.0, Landing Burn 0.8, Touchdown 0)
+   */
+  setEngineThrottle(throttle = 1.0) {
+    if (!this.engineLoopActive || !this.engineGain || !this.ctx) return;
+    const th = Math.max(0, Math.min(1.0, throttle));
+    const now = this.ctx.currentTime;
+
+    if (th <= 0.01) {
+      this.engineGain.gain.setTargetAtTime(0.001, now, 0.15);
+    } else {
+      this.engineGain.gain.setTargetAtTime(0.45 * th, now, 0.1);
+      if (this.engineFilter) {
+        this.engineFilter.frequency.setTargetAtTime(140 + th * 280, now, 0.1);
+      }
+      if (this.subOsc) {
+        this.subOsc.frequency.setTargetAtTime(45 + th * 35, now, 0.1);
+      }
+    }
+  }
+
+  /**
+   * 停止发动机轰鸣循环
+   */
+  stopEngineLoop() {
+    if (!this.engineLoopActive || !this.engineGain || !this.ctx) return;
+    try {
+      this.engineGain.gain.setTargetAtTime(0.001, this.ctx.currentTime, 0.2);
+      setTimeout(() => {
+        if (this.noiseSource) {
+          try { this.noiseSource.stop(); } catch (_) {}
+          this.noiseSource = null;
+        }
+        if (this.subOsc) {
+          try { this.subOsc.stop(); } catch (_) {}
+          this.subOsc = null;
+        }
+        this.engineLoopActive = false;
+      }, 250);
+    } catch (e) {
+      this.engineLoopActive = false;
+    }
+  }
+
+  /**
+   * 播放航天阶段里程碑跃迁音效
+   */
+  playStageStinger(stage = "orbit") {
+    if (!this.enabled || !this.ctx) return;
+    this.init();
+    const chords = {
+      orbit: [523.25, 659.25, 783.99, 1046.5],     // C Major
+      transfer: [440.0, 554.37, 659.25, 880.0],    // A Major
+      approach: [392.0, 493.88, 587.33, 783.99],   // G Major
+      touchdown: [523.25, 659.25, 783.99, 1046.5, 1318.51] // Fanfare
+    };
+    const freqs = chords[stage] || chords.orbit;
+    freqs.forEach((f, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = f;
+      const t = this.ctx.currentTime + idx * 0.06;
+      gain.gain.setValueAtTime(0.2, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.6);
+    });
+  }
+
+  /**
+   * 播放曲率跃迁超高速呼啸音
+   */
+  playWarpWhoosh() {
+    if (!this.enabled || !this.ctx) return;
+    this.init();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(80, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(650, this.ctx.currentTime + 0.8);
+    gain.gain.setValueAtTime(0.01, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.3, this.ctx.currentTime + 0.4);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.9);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(this.ctx.currentTime);
+    osc.stop(this.ctx.currentTime + 0.9);
+  }
+
+  /**
+   * 播放大气层高速气流呼啸音
+   */
+  playAtmosphereRush() {
+    if (!this.enabled || !this.ctx) return;
+    this.init();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(160, this.ctx.currentTime + 1.2);
+    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.2);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(this.ctx.currentTime);
+    osc.stop(this.ctx.currentTime + 1.2);
+  }
+
+  /**
+   * 播放着陆触地重力冲击音
+   */
+  playTouchdownThump() {
+    if (!this.enabled || !this.ctx) return;
+    this.init();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(90, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.4);
+    gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.45);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(this.ctx.currentTime);
+    osc.stop(this.ctx.currentTime + 0.45);
   }
 }
 

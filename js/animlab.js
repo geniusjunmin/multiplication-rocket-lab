@@ -1,8 +1,10 @@
 /**
  * Multiplication Rocket Lab - Animation Test Lab (js/animlab.js)
- * Dedicated playground for instant testing, previewing, and debugging of all
- * 3D flight sequences, orbital insertions, surface landings, payload deployments,
- * sequential assembly VFX, and UI reward ceremonies without requiring quiz completion.
+ * Version 4.2.0 Cinematic VFX & Animation Overhaul
+ * 
+ * Dedicated visual sandbox for testing and previewing 3D flight sequences,
+ * multi-shot launch cinematography, procedural planets, and VFX systems.
+ * Uses isolated `labOverrides` without polluting player profiles or storage.
  */
 class AnimationLab {
   constructor() {
@@ -10,22 +12,31 @@ class AnimationLab {
     this.currentStage = "idle";
     this.speedMultiplier = 1.0;
     this.isPaused = false;
-    this.activeModel = "classic";
-    this.activeTheme = "explorer";
-    this.activePayload = "satellite";
-    this.activeTrail = "trail_standard";
+    this.vfxQuality = "high"; // "high" | "medium" | "low"
+
+    // Isolated Visual Overrides (Never pollutes player save data)
+    this.labOverrides = {
+      model: "classic",
+      theme: "explorer",
+      payload: "satellite",
+      trail: "trail_standard"
+    };
+
+    this.telemetryTimer = null;
+    this.lastFrameTime = 0;
+    this.fps = 60;
   }
 
   init() {
     this.bindEvents();
     this.syncHUD();
+    this.startTelemetryLoop();
   }
 
   openScreen() {
     if (window.game) {
       window.game.setGameState(GAME_STATES.ANIM_LAB);
     }
-    // Initialize scene inside Anim Lab viewport
     setTimeout(() => {
       this.initViewport(this.currentDest);
     }, 80);
@@ -36,6 +47,7 @@ class AnimationLab {
     if (window.launchSequence) {
       window.launchSequence.initScene("canvas-container-anim-lab", destId);
       window.launchSequence.speedMultiplier = this.speedMultiplier;
+      this.applyLabOverridesToScene();
     }
     this.syncHUD();
   }
@@ -45,7 +57,8 @@ class AnimationLab {
     if (window.launchSequence) {
       window.launchSequence.initScene("canvas-container-anim-lab", destId);
       window.launchSequence.speedMultiplier = this.speedMultiplier;
-      window.launchSequence.startLaunchSequence();
+      this.applyLabOverridesToScene();
+      window.launchSequence.startLaunch();
     }
     this.syncHUD();
   }
@@ -55,6 +68,7 @@ class AnimationLab {
     if (window.launchSequence) {
       window.launchSequence.jumpToStage(stageName, destId, "canvas-container-anim-lab");
       window.launchSequence.speedMultiplier = this.speedMultiplier;
+      this.applyLabOverridesToScene();
     }
     this.syncHUD();
   }
@@ -72,17 +86,21 @@ class AnimationLab {
   playFuelTest() {
     let fuel = 0;
     this.updateHUDStage("⛽ 燃料加注中: 0%");
-    if (window.audioManager) window.audioManager.playIgnition();
+    if (window.audioManager) window.audioManager.startEngineLoop();
 
     const interval = setInterval(() => {
       fuel += 10;
       this.updateHUDStage(`⛽ 燃料加注中: ${fuel}%`);
+      if (window.audioManager) window.audioManager.setEngineThrottle(fuel / 100);
       if (fuel >= 100) {
         clearInterval(interval);
         this.updateHUDStage("⛽ 燃料加注完毕 100% (READY FOR LAUNCH)!");
-        if (window.audioManager) window.audioManager.playVictory();
+        if (window.audioManager) {
+          window.audioManager.stopEngineLoop();
+          window.audioManager.playVictory();
+        }
       }
-    }, 180);
+    }, 150);
   }
 
   playUnlockCeremony(type = "rocket", id = "starship") {
@@ -97,60 +115,70 @@ class AnimationLab {
       nameEn: "Dense Asteroid Field Alert",
       storyZh: "探测到密集微陨石群！请迅速计算引力偏转角度以避开撞击！",
       storyEn: "Micrometeorite storm detected! Calculate gravity deflection immediately!",
-      icon: "☄️",
-      bonusXP: 25
+      icon: "☄️"
     };
 
+    if (window.launchSequence) {
+      window.launchSequence.isEventPaused = true;
+    }
     if (window.uiManager) {
-      window.uiManager.triggerFlightEventModal(eventDef, (bonusXP) => {
-        if (window.audioManager) window.audioManager.playVictory();
+      window.uiManager.showFlightEventModal(eventDef, (selectedOpt) => {
+        if (window.launchSequence) {
+          window.launchSequence.isEventPaused = false;
+        }
       });
     }
   }
 
-  setSpeed(speed) {
-    this.speedMultiplier = speed;
+  setSpeed(mult) {
+    this.speedMultiplier = mult;
     if (window.launchSequence) {
-      window.launchSequence.speedMultiplier = speed;
+      window.launchSequence.speedMultiplier = mult;
     }
     document.querySelectorAll(".speed-btn").forEach(btn => btn.classList.remove("active"));
-    const key = speed.toString().replace(".", "");
-    const activeBtn = document.getElementById(`btn-anim-speed-${key}`);
-    if (activeBtn) activeBtn.classList.add("active");
+    const idMap = { 0.25: "btn-anim-speed-025", 0.5: "btn-anim-speed-05", 1.0: "btn-anim-speed-1", 2.0: "btn-anim-speed-2", 4.0: "btn-anim-speed-4" };
+    if (idMap[mult]) {
+      document.getElementById(idMap[mult])?.classList.add("active");
+    }
   }
 
   togglePause() {
-    if (!window.launchSequence) return;
-    window.launchSequence.isEventPaused = !window.launchSequence.isEventPaused;
-    this.isPaused = window.launchSequence.isEventPaused;
-    const btn = document.getElementById("btn-anim-pause-resume");
-    if (btn) {
-      btn.innerText = this.isPaused ? "▶️ 继续播放" : "⏸️ 暂停";
+    this.isPaused = !this.isPaused;
+    if (window.launchSequence) {
+      window.launchSequence.isEventPaused = this.isPaused;
     }
+    const btn = document.getElementById("btn-anim-pause-resume");
+    if (btn) btn.innerText = this.isPaused ? "▶️ 继续播放" : "⏸️ 暂停/继续";
   }
 
+  /**
+   * Apply overrides strictly in isolated sandbox memory without mutating user profile
+   */
   applyCustomization(model, theme, payload, trail) {
-    this.activeModel = model;
-    this.activeTheme = theme;
-    this.activePayload = payload;
-    this.activeTrail = trail;
-
-    if (window.storageManager) {
-      window.storageManager.set("currentRocketModel", model);
-      window.storageManager.set("currentRocketTheme", theme);
-      window.storageManager.set("selectedPayload", payload);
-    }
-
-    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
-    if (profile) {
-      profile.currentRocketModel = model;
-      profile.currentRocketTheme = theme;
-      profile.selectedPayload = payload;
-      profile.rocketCosmetics = profile.rocketCosmetics || {};
-      profile.rocketCosmetics.trail = trail;
-    }
-
+    this.labOverrides.model = model;
+    this.labOverrides.theme = theme;
+    this.labOverrides.payload = payload;
+    this.labOverrides.trail = trail;
     this.initViewport(this.currentDest);
+  }
+
+  applyLabOverridesToScene() {
+    if (!window.launchSequence || !window.launchSequence.rocket) return;
+    const ov = this.labOverrides;
+
+    // Apply color theme
+    if (CONFIG.THEMES && CONFIG.THEMES[ov.theme]) {
+      const themeColors = CONFIG.THEMES[ov.theme].colors;
+      window.launchSequence.rocket.traverse(child => {
+        if (child.isMesh && child.material) {
+          if (child.name.includes("body") && themeColors.primary) {
+            child.material.color.setHex(themeColors.primary);
+          } else if (child.name.includes("fin") && themeColors.secondary) {
+            child.material.color.setHex(themeColors.secondary);
+          }
+        }
+      });
+    }
   }
 
   syncHUD() {
@@ -173,8 +201,8 @@ class AnimationLab {
       const stage = (window.launchSequence && window.launchSequence.currentStage) || "待命中 (Idle)";
       stageEl.innerText = `🚀 阶段: ${stage}`;
     }
-    if (modelEl) modelEl.innerText = `🛸 型号: ${this.activeModel}`;
-    if (payloadEl) payloadEl.innerText = `📦 载荷: ${this.activePayload}`;
+    if (modelEl) modelEl.innerText = `🛸 型号: ${this.labOverrides.model}`;
+    if (payloadEl) payloadEl.innerText = `📦 载荷: ${this.labOverrides.payload}`;
   }
 
   updateHUDStage(text) {
@@ -182,8 +210,40 @@ class AnimationLab {
     if (stageEl) stageEl.innerText = `🚀 阶段: ${text}`;
   }
 
+  startTelemetryLoop() {
+    if (this.telemetryTimer) clearInterval(this.telemetryTimer);
+    this.telemetryTimer = setInterval(() => {
+      this.updateTelemetryHUD();
+    }, 200);
+  }
+
+  updateTelemetryHUD() {
+    const telemEl = document.getElementById("anim-telemetry-info");
+    if (!telemEl || !window.launchSequence) return;
+
+    const seq = window.launchSequence;
+    const renderer = seq.renderer;
+    const rInfo = renderer ? renderer.info : null;
+
+    const drawCalls = rInfo ? rInfo.render.calls : 0;
+    const triangles = rInfo ? rInfo.render.triangles : 0;
+    const stage = seq.currentStage || "idle";
+    const cam = seq.camera;
+    const camPos = cam ? `(${cam.position.x.toFixed(1)}, ${cam.position.y.toFixed(1)}, ${cam.position.z.toFixed(1)})` : "(0,0,0)";
+    const rocketPos = seq.rocket ? `(${seq.rocket.position.x.toFixed(1)}, ${seq.rocket.position.y.toFixed(1)}, ${seq.rocket.position.z.toFixed(1)})` : "(0,0,0)";
+
+    let activeSmoke = 0;
+    if (seq.smokePool) {
+      activeSmoke = seq.smokePool.filter(p => p.active || (p.mesh && p.mesh.visible)).length;
+    }
+
+    telemEl.innerHTML = `
+      <div class="telem-row"><strong>Stage:</strong> ${stage} | <strong>Calls:</strong> ${drawCalls} | <strong>Triangles:</strong> ${triangles}</div>
+      <div class="telem-row"><strong>Rocket:</strong> ${rocketPos} | <strong>Cam:</strong> ${camPos} | <strong>VFX Particles:</strong> ${activeSmoke}</div>
+    `;
+  }
+
   bindEvents() {
-    // Planet Flight Buttons
     document.querySelectorAll(".btn-anim-action").forEach(btn => {
       btn.addEventListener("click", () => {
         const dest = btn.getAttribute("data-dest");
@@ -191,7 +251,6 @@ class AnimationLab {
       });
     });
 
-    // Stage Jump Buttons
     document.querySelectorAll(".btn-anim-chip").forEach(btn => {
       btn.addEventListener("click", () => {
         const action = btn.getAttribute("data-action");
@@ -204,24 +263,21 @@ class AnimationLab {
       });
     });
 
-    // Speed Controls
+    document.getElementById("btn-anim-speed-025")?.addEventListener("click", () => this.setSpeed(0.25));
     document.getElementById("btn-anim-speed-05")?.addEventListener("click", () => this.setSpeed(0.5));
     document.getElementById("btn-anim-speed-1")?.addEventListener("click", () => this.setSpeed(1.0));
     document.getElementById("btn-anim-speed-2")?.addEventListener("click", () => this.setSpeed(2.0));
     document.getElementById("btn-anim-speed-4")?.addEventListener("click", () => this.setSpeed(4.0));
 
-    // Toolbar
     document.getElementById("btn-anim-play-all")?.addEventListener("click", () => this.playFullFlight(this.currentDest));
     document.getElementById("btn-anim-pause-resume")?.addEventListener("click", () => this.togglePause());
     document.getElementById("btn-anim-reset")?.addEventListener("click", () => this.initViewport(this.currentDest));
 
-    // Assembly & Fuel & Unlock
     document.getElementById("btn-anim-test-assembly")?.addEventListener("click", () => this.playAssemblyTest());
     document.getElementById("btn-anim-test-fuel")?.addEventListener("click", () => this.playFuelTest());
     document.getElementById("btn-anim-test-unlock-starship")?.addEventListener("click", () => this.playUnlockCeremony("rocket", "starship"));
     document.getElementById("btn-anim-test-unlock-cyber")?.addEventListener("click", () => this.playUnlockCeremony("rocket", "cyber"));
 
-    // Selectors
     const syncSelectors = () => {
       const model = document.getElementById("anim-select-model")?.value || "classic";
       const theme = document.getElementById("anim-select-theme")?.value || "explorer";
@@ -237,4 +293,8 @@ class AnimationLab {
   }
 }
 
+// Export for browser and node
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = AnimationLab;
+}
 window.animationLab = new AnimationLab();

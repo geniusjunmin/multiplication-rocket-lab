@@ -5,6 +5,24 @@ const vm = require('vm');
 const fs = require('fs');
 const path = require('path');
 
+function createMockCanvasContext() {
+  const gradient = { addColorStop() {} };
+  return {
+    createRadialGradient() { return gradient; },
+    createLinearGradient() { return gradient; },
+    fillRect() {},
+    beginPath() {},
+    ellipse() {},
+    arc() {},
+    fill() {},
+    stroke() {},
+    lineTo() {},
+    fillStyle: "",
+    strokeStyle: "",
+    lineWidth: 1
+  };
+}
+
 // Helper to create mock DOM Element
 function createMockElement(id = "") {
   return {
@@ -27,7 +45,7 @@ function createMockElement(id = "") {
     removeEventListener() {},
     querySelectorAll() { return [createMockElement(), createMockElement(), createMockElement()]; },
     querySelector() { return createMockElement(); },
-    getContext() { return {}; }
+    getContext() { return createMockCanvasContext(); }
   };
 }
 
@@ -40,6 +58,7 @@ global.requestAnimationFrame = (fn) => setTimeout(fn, 16);
 global.cancelAnimationFrame = (id) => clearTimeout(id);
 
 global.document = {
+  body: createMockElement("body"),
   querySelectorAll() { return [createMockElement(), createMockElement(), createMockElement()]; },
   querySelector() { return createMockElement(); },
   getElementById(id) { return createMockElement(id); },
@@ -122,9 +141,20 @@ global.THREE = {
       fn(this);
       this.children.forEach(c => { if (c && c.traverse) c.traverse(fn); else fn(c); });
     }
+    getObjectByName(name) {
+      if (this.name === name) return this;
+      for (let c of this.children) {
+        if (c.name === name) return c;
+        if (c.getObjectByName) {
+          const found = c.getObjectByName(name);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
   },
-  MeshStandardMaterial: class { constructor(opts = {}) { Object.assign(this, opts); this.emissive = { setHex() {} }; } dispose() {} },
-  MeshBasicMaterial: class { constructor(opts = {}) { Object.assign(this, opts); } dispose() {} },
+  MeshStandardMaterial: class { constructor(opts = {}) { Object.assign(this, opts); this.color = { setHex() {}, r: 1, g: 1, b: 1 }; this.emissive = { setHex() {} }; } dispose() {} },
+  MeshBasicMaterial: class { constructor(opts = {}) { Object.assign(this, opts); this.color = { setHex() {}, r: 1, g: 1, b: 1 }; } dispose() {} },
   Mesh: class {
     constructor(geo, mat) {
       this.geometry = geo;
@@ -151,23 +181,42 @@ global.THREE = {
       fn(this);
       this.children.forEach(c => { if (c && c.traverse) c.traverse(fn); else fn(c); });
     }
+    getObjectByName(name) {
+      if (this.name === name) return this;
+      for (let c of this.children) {
+        if (c.name === name) return c;
+        if (c.getObjectByName) {
+          const found = c.getObjectByName(name);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
   },
-  CylinderGeometry: class { rotateX() {} dispose() {} },
-  ConeGeometry: class { rotateX() {} dispose() {} },
-  BoxGeometry: class { rotateX() {} dispose() {} },
-  TorusGeometry: class { rotateX() {} dispose() {} },
-  SphereGeometry: class { rotateX() {} dispose() {} },
-  CircleGeometry: class { rotateX() {} dispose() {} },
-  RingGeometry: class { rotateX() {} dispose() {} },
-  OctahedronGeometry: class { rotateX() {} dispose() {} },
-  DodecahedronGeometry: class { rotateX() {} dispose() {} },
-  BufferGeometry: class { setAttribute() {} rotateX() {} dispose() {} },
+  CylinderGeometry: class { rotateX() {} translate() {} dispose() {} },
+  ConeGeometry: class { rotateX() {} translate() {} dispose() {} },
+  BoxGeometry: class { rotateX() {} translate() {} dispose() {} },
+  TorusGeometry: class { rotateX() {} translate() {} dispose() {} },
+  SphereGeometry: class { rotateX() {} translate() {} dispose() {} },
+  CircleGeometry: class { rotateX() {} translate() {} dispose() {} },
+  RingGeometry: class { rotateX() {} translate() {} dispose() {} },
+  OctahedronGeometry: class { rotateX() {} translate() {} dispose() {} },
+  DodecahedronGeometry: class { rotateX() {} translate() {} dispose() {} },
+  BufferGeometry: class { constructor() { this.attributes = {}; } setAttribute(name, attr) { this.attributes[name] = attr; } rotateX() {} translate() {} dispose() {} },
   BufferAttribute: class {},
   PointsMaterial: class { dispose() {} },
   Points: class { constructor() { this.visible = true; } },
+  SpriteMaterial: class { constructor(opts = {}) { Object.assign(this, opts); this.color = { setHex() {} }; } clone() { return new global.THREE.SpriteMaterial(this); } dispose() {} },
+  Sprite: class { constructor(mat) { this.material = mat; this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }; this.scale = { x: 1, y: 1, z: 1, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }; this.visible = true; } },
+  LineBasicMaterial: class { constructor(opts = {}) { Object.assign(this, opts); } dispose() {} },
+  LineSegments: class { constructor(geo, mat) { this.geometry = geo; this.material = mat; } },
+  CanvasTexture: class { constructor() { this.wrapS = 0; this.wrapT = 0; } dispose() {} },
   FogExp2: class {},
   BackSide: 2,
-  DoubleSide: 2
+  DoubleSide: 2,
+  AdditiveBlending: 2,
+  RepeatWrapping: 1000,
+  ClampToEdgeWrapping: 1001
 };
 
 // Load modular scripts
@@ -182,6 +231,11 @@ const appFiles = [
   'js/audio.js',
   'js/math.js',
   'js/rocket.js',
+  'js/vfx/camera-director.js',
+  'js/vfx/engine-vfx.js',
+  'js/vfx/particle-system.js',
+  'js/vfx/warp-vfx.js',
+  'js/vfx/planet-vfx.js',
   'js/launch.js',
   'js/ui.js',
   'js/game.js',

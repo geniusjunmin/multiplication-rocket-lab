@@ -175,6 +175,34 @@ const CONFIG = {
     earthOrbit: 3.0
   },
 
+  // Dynamic Visual Effects & Quality Settings
+  VFX_QUALITY: {
+    high: {
+      smoke: 120,
+      stars: 3500,
+      streaks: 350,
+      dust: 100,
+      ringParticles: 600,
+      bloom: true
+    },
+    medium: {
+      smoke: 70,
+      stars: 2200,
+      streaks: 180,
+      dust: 60,
+      ringParticles: 300,
+      bloom: true
+    },
+    low: {
+      smoke: 35,
+      stars: 1200,
+      streaks: 80,
+      dust: 30,
+      ringParticles: 120,
+      bloom: false
+    }
+  },
+
   // 6 Interplanetary Destinations with Sub-Destinations
   DESTINATIONS: {
     earthOrbit: {
