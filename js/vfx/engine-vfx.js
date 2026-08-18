@@ -1,22 +1,24 @@
 /**
  * Multiplication Rocket Lab - Advanced Engine VFX System (js/vfx/engine-vfx.js)
- * Version 4.2.0 Cinematic VFX & Animation Overhaul
+ * Version 4.2.1 Cinematic Integration & Spectacle Pass
  * 
- * Implements additive white-hot core, gradient plume, 3-5 shock diamonds,
- * soft bloom glow sprite, dynamic trailing ribbon, and atmospheric vs vacuum transitions.
+ * Implements additive white-hot core, multi-tone gradient plume, supersonic shock diamonds,
+ * soft bloom glow sprite, custom cosmetic trail styles (Standard, Plasma Blue, Ion Green,
+ * Solar Flare, Starlight), and atmospheric vs vacuum transitions.
  */
 class EngineVFXSystem {
-  constructor(scene) {
+  constructor(scene, options = {}) {
     this.scene = scene;
     this.group = (typeof THREE !== "undefined" && THREE.Group) ? new THREE.Group() : { add() {}, remove() {}, position: { set() {} }, visible: true };
     this.state = {
       throttle: 1.0,
       targetThrottle: 1.0,
-      plumeLength: 1.0,
-      plumeWidth: 1.0,
+      plumeLength: options.plumeLength || 1.0,
+      plumeWidth: options.plumeWidth || 1.0,
       flicker: 1.0,
       vacuumExpansion: 0.0, // 0 = Atmosphere, 1 = Vacuum Deep Space
       colorMode: "atmosphere", // "atmosphere" | "vacuum" | "hyper"
+      trailStyle: options.trailStyle || "trail_standard",
       visible: false
     };
 
@@ -25,12 +27,20 @@ class EngineVFXSystem {
     this.outerPlumeMesh = null;
     this.shockDiamonds = [];
     this.glowSprite = null;
-    this.trailRibbon = null;
-    this.trailPositions = [];
-    this.maxTrailPoints = 30;
-    this.trailGeometry = null;
+
+    // Trail Styles Definition
+    this.trailPalettes = {
+      trail_standard: { plume: 0xff7722, core: 0xffffff, glow: 0xffaa44, outer: 0x38bdf8, name: "Standard Flame" },
+      trail_plasma_blue: { plume: 0x06b6d4, core: 0xe0f2fe, glow: 0x38bdf8, outer: 0x60a5fa, name: "Plasma Blue" },
+      trail_ion_green: { plume: 0x10b981, core: 0xd1fae5, glow: 0x34d399, outer: 0x059669, name: "Ion Green" },
+      trail_solar_flare: { plume: 0xef4444, core: 0xfef08a, glow: 0xf59e0b, outer: 0xd97706, name: "Solar Flare" },
+      trail_starlight: { plume: 0xa855f7, core: 0xfdf4ff, glow: 0xec4899, outer: 0x6366f1, name: "Starlight" }
+    };
 
     this.initMeshes();
+    if (options.trailStyle) {
+      this.setTrailStyle(options.trailStyle);
+    }
   }
 
   get engineVfxState() {
@@ -145,7 +155,33 @@ class EngineVFXSystem {
   }
 
   /**
-   * Set engine throttle smoothly (0.0 to 1.0)
+   * Set cosmetic trail style from Garage / Progression unlocks
+   */
+  setTrailStyle(trailId) {
+    this.state.trailStyle = trailId || "trail_standard";
+    const palette = this.trailPalettes[this.state.trailStyle] || this.trailPalettes.trail_standard;
+
+    if (this.plumeMesh && this.plumeMesh.material) {
+      this.plumeMesh.material.color.setHex(palette.plume);
+    }
+    if (this.coreMesh && this.coreMesh.material) {
+      this.coreMesh.material.color.setHex(palette.core);
+    }
+    if (this.outerPlumeMesh && this.outerPlumeMesh.material) {
+      this.outerPlumeMesh.material.color.setHex(palette.outer);
+    }
+    if (this.glowSprite && this.glowSprite.material) {
+      this.glowSprite.material.color.setHex(palette.glow);
+    }
+    this.shockDiamonds.forEach(dia => {
+      if (dia && dia.material) {
+        dia.material.color.setHex(palette.glow);
+      }
+    });
+  }
+
+  /**
+   * Set engine throttle (0.0 to 1.5)
    */
   setThrottle(val, immediate = true) {
     this.state.targetThrottle = Math.max(0, Math.min(1.5, val));
@@ -157,22 +193,24 @@ class EngineVFXSystem {
   }
 
   /**
-   * Set mode: atmosphere (orange/white, narrow) vs vacuum (blue/white, wide)
+   * Set mode: atmosphere vs vacuum vs hyper
    */
   setEnvironmentMode(mode = "atmosphere", vacuumProgress = 0) {
     this.state.colorMode = mode;
     this.setVacuumExpansion(vacuumProgress);
 
+    const palette = this.trailPalettes[this.state.trailStyle] || this.trailPalettes.trail_standard;
+
     if (this.plumeMesh && this.plumeMesh.material) {
       if (mode === "vacuum") {
-        this.plumeMesh.material.color.setHex(0x38bdf8); // Cyan-blue vacuum plasma
-        if (this.glowSprite) this.glowSprite.material.color.setHex(0x60a5fa);
+        this.plumeMesh.material.color.setHex(palette.outer);
+        if (this.glowSprite) this.glowSprite.material.color.setHex(palette.glow);
       } else if (mode === "hyper") {
-        this.plumeMesh.material.color.setHex(0xa855f7); // Deep space purple warp
+        this.plumeMesh.material.color.setHex(0xa855f7); // Deep space hyper warp
         if (this.glowSprite) this.glowSprite.material.color.setHex(0xc084fc);
       } else {
-        this.plumeMesh.material.color.setHex(0xff7722); // Atmospheric orange-gold
-        if (this.glowSprite) this.glowSprite.material.color.setHex(0xffaa44);
+        this.plumeMesh.material.color.setHex(palette.plume);
+        if (this.glowSprite) this.glowSprite.material.color.setHex(palette.glow);
       }
     }
   }

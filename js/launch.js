@@ -1,29 +1,41 @@
 /**
  * Multiplication Rocket Lab - Cinematic Interplanetary Launch & Landing Engine (js/launch.js)
- * Version 4.2.0 Cinematic VFX & Animation Overhaul
+ * Version 4.2.1 Cinematic Integration & Spectacle Pass
  * 
  * Features:
- * - Local Flight Rig Coordinate System (Zero coordinate snapping, continuous camera paths)
- * - Multi-Shot Cinematic Camera Director (Pad Hero, Engine Close-up, 2.0s Ignition, Tower Clear, Chase Cam, Orbital Reveal)
- * - Advanced Engine VFX (Additive white-hot core, gradient plume, supersonic shock diamonds, bloom glow sprite, vacuum expansion)
- * - Soft Particle Smoke (Procedural canvas radial gradient sprites, horizontal launch pad trench blast)
- * - Procedural Multi-Layered Planets (Earth with continents/clouds, Moon with craters, Mars with polar caps, Jupiter with bands/Red Spot, Saturn rings & ice field, Deep Space nebula)
- * - DeltaTime Physics (Frame-rate independent smoke, dust, sparks, and ring ice particles)
- * - World Space Payload Detachment Lifecycle (State machine: attached -> deploying -> deployed)
- * - Continuous WebAudio Engine Loops & Soundscapes
- * - Fullscreen Cinematic Mode (Clean HUD, fading distracting page cards, graceful fade-in at debrief)
+ * - Local Flight Rig Scene Graph (environmentRig, flightRig, planetRig, fxRig)
+ * - Canonical startLaunch(options) & startLaunchSequence backwards compatibility
+ * - Unified DOM IDs (countdown-num, check-item-1..4, launch-stage-banner, space-victory-banner)
+ * - Single-fire skipCountdown() with immediate ignition trigger
+ * - Centralized Timer & Interval Lifecycle Management (scheduleTimeout, scheduleInterval, clearScheduledWork)
+ * - Clean destroy() completely resetting page state & WebAudio loops
+ * - Dynamic In-Flight Events with 3D Asteroids, Solar Storms, Overheat Alerts & "SYSTEM STABILIZED"
+ * - High-Climax Destination Scenes:
+ *     * Earth Orbit: 7-9s orbital coast, station pass, satellite separation, solar panel unfold
+ *     * Jupiter Flyby: 8-11s giant banded planet, Io/Europa moon parallax, Great Red Spot skim, probe scan
+ *     * Saturn Ring Dive: 9-12s ring plane dive, 30° roll, Cassini division cross, ice streaks, wide hero
+ *     * Deep Space Discovery: 9-12s warp collapse, silence beat, glowing nebula reveal, beacon relic scan
+ * - Procedural Displaced Planetary Terrain (PlaneGeometry) for Moon & Mars landings
+ * - Multi-Shot 4-Phase Landing Storyboard with 3.8s Touchdown Hold
+ * - DeltaTime Frame-Based PayloadAnimator (Rover, Satellite, Probe, Cargo)
+ * - Research Rocket Trail Integration (Standard, Plasma Blue, Ion Green, Solar Flare, Starlight)
  */
 class LaunchSequence {
-  constructor() {
+  constructor(options = {}) {
+    this.quality = options.quality || "high";
     this.scene = null;
     this.camera = null;
     this.renderer = null;
     this.container = null;
 
-    // Rigs & VFX Subsystems
+    // Rigs Hierarchy
+    this.environmentRig = null;
     this.flightRig = null;
     this.rocketRig = null;
     this.planetRig = null;
+    this.fxRig = null;
+
+    // Subsystems
     this.cameraDirector = null;
     this.engineVfx = null;
     this.particleSystem = null;
@@ -31,29 +43,30 @@ class LaunchSequence {
 
     // Meshes & Lights
     this.rocket = null;
-    this.flameMesh = null; // Compatibility bridge to engineVfx
-    this.flameBaseScale = (typeof THREE !== "undefined" && THREE.Vector3) ? new THREE.Vector3(1, 1, 1) : { x: 1, y: 1, z: 1 };
-    this.flameThrottle = 1.0;
+    this.flameMesh = null;
     this.engineLight = null;
-    this.landingGearGroup = null;
     this.contactShadow = null;
+    this.terrainMesh = null;
 
+    // Procedural Destination Elements
     this.earthGroup = null;
-    this.earthMesh = null;
     this.destinationGroup = null;
     this.destinationMesh = null;
-    this.saturnRingsGroup = null;
     this.saturnRingMesh = null;
-    this.surfaceGroup = null;
-    this.cloudsGroup = null;
     this.launchPadGroup = null;
+    this.cloudsGroup = null;
     this.starsGroup = null;
 
+    // Payload Management
     this.payloadMesh = null;
     this.payloadState = {
       attached: true,
+      doorOpening: false,
+      separating: false,
       deploying: false,
-      deployed: false
+      operating: false,
+      deployed: false,
+      elapsed: 0
     };
 
     // Timeline & Pacing
@@ -61,52 +74,82 @@ class LaunchSequence {
     this.lastTime = 0;
     this.timelineElapsed = 0;
     this.currentStage = "idle";
-    this.landingPhase = "idle"; // Phase A (highDescent), Phase B (retroBurn), Phase C (finalDescent), Phase D (touchdownHold)
+    this.landingPhase = "idle"; // "highDescent" | "retroBurn" | "finalDescent" | "touchdownHold"
     this.landingPhaseElapsed = 0;
 
+    // Countdown & Timers
     this.countdownValue = 5;
     this.countdownTimer = null;
-    this.timeouts = [];
+    this.hasSkippedCountdown = false;
+    this.activeTimeouts = [];
+    this.activeIntervals = [];
     this.activeRafs = new Set();
-    
-    this.cameraShakeIntensity = 0;
+
+    // Event & Mission States
     this.destinationId = "moon";
     this.hasRecordedVisit = false;
     this.onCompleteCallback = null;
     this.hasShownTowerClear = false;
+    this.isEventPaused = false;
+    this.hasTriggeredFlightEvent = false;
+    this.event3DMeshes = [];
 
     // Local Landing Coordinate Framework
     this.GROUND_Y = 0;
-    this.LANDING_CENTER = (typeof THREE !== "undefined" && THREE.Vector3) ? new THREE.Vector3(0, 0, 0) : { x: 0, y: 0, z: 0 };
-    this.CONTACT_EPSILON = 0.02;
-
     this.rocketLocalMinY = -2.5;
     this.rocketLocalMaxY = 3.5;
     this.rocketHeight = 6.0;
-    this.rocketCenterY = 0.5;
     this.touchdownRocketY = 2.5;
     this.currentVerticalSpeed = 0;
 
+    // Debug & Lab Settings
     this.isDebugMode = false;
     this.isLandingDebug = false;
-    this.isEventPaused = false;
-    this.hasTriggeredFlightEvent = false;
-    this.isPayloadDeployed = false;
     this.speedMultiplier = 1.0;
+    this.labOverrides = null;
 
-    // Compatibility Pools for unit tests
+    // Compatibility Pools
     this.smokePool = [];
     this.dustPool = [];
-    this.iceParticlesPool = [];
 
     this.boundVisibilityHandler = null;
     this.boundResizeHandler = null;
   }
 
+  /* =========================================================================
+   * 1. TIMERS & LIFECYCLE MANAGEMENT
+   * ========================================================================= */
+
+  scheduleTimeout(fn, delayMs) {
+    const t = setTimeout(() => {
+      const idx = this.activeTimeouts.indexOf(t);
+      if (idx !== -1) this.activeTimeouts.splice(idx, 1);
+      fn();
+    }, delayMs);
+    this.activeTimeouts.push(t);
+    return t;
+  }
+
+  scheduleInterval(fn, intervalMs) {
+    const i = setInterval(fn, intervalMs);
+    this.activeIntervals.push(i);
+    return i;
+  }
+
+  clearScheduledWork() {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+    this.activeTimeouts.forEach(t => clearTimeout(t));
+    this.activeTimeouts = [];
+    this.activeIntervals.forEach(i => clearInterval(i));
+    this.activeIntervals = [];
+  }
+
   requestTrackedRaf(callback) {
     if (typeof requestAnimationFrame === "undefined") {
-      const id = setTimeout(callback, 16);
-      this.activeRafs.add(id);
+      const id = this.scheduleTimeout(callback, 16);
       return id;
     }
     const rafId = requestAnimationFrame((timestamp) => {
@@ -127,16 +170,29 @@ class LaunchSequence {
     }
   }
 
-  /**
-   * Initialize 3D Scene, VFX Subsystems, and Procedural Celestial Bodies
-   */
-  initScene(containerId, destId = "moon") {
+  /* =========================================================================
+   * 2. SCENE INITIALIZATION & RIGS SETUP
+   * ========================================================================= */
+
+  initScene(containerId, destId = "moon", overrides = {}) {
     this.destroy();
     this.destinationId = destId;
+    this.labOverrides = (overrides && overrides.sandbox) ? overrides : null;
     this.hasRecordedVisit = false;
     this.currentStage = "idle";
     this.landingPhase = "idle";
-    this.payloadState = { attached: true, deploying: false, deployed: false };
+    this.hasSkippedCountdown = false;
+    this.hasTriggeredFlightEvent = false;
+    this.isEventPaused = false;
+    this.payloadState = {
+      attached: true,
+      doorOpening: false,
+      separating: false,
+      deploying: false,
+      operating: false,
+      deployed: false,
+      elapsed: 0
+    };
     this.hasShownTowerClear = false;
 
     this.checkDebugFlags();
@@ -164,30 +220,45 @@ class LaunchSequence {
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       container.appendChild(this.renderer.domElement);
 
+      // Initialize Flight Rig Scene Graph Hierarchy
+      this.environmentRig = new THREE.Group();
+      this.flightRig = new THREE.Group();
+      this.rocketRig = new THREE.Group();
+      this.planetRig = new THREE.Group();
+      this.fxRig = new THREE.Group();
+
+      this.flightRig.add(this.rocketRig);
+      this.scene.add(this.environmentRig);
+      this.scene.add(this.flightRig);
+      this.scene.add(this.planetRig);
+      this.scene.add(this.fxRig);
+
       // Subsystems Initialization
       this.cameraDirector = new CinematicCameraDirector(this.camera);
       const isReduced = (typeof document !== "undefined" && document.body && document.body.classList) ? document.body.classList.contains("reduced-motion") : false;
       this.cameraDirector.setReducedMotion(isReduced);
 
-      this.particleSystem = new ParticleSystem(this.scene, "high");
+      const activeQuality = (this.labOverrides && this.labOverrides.quality) || this.quality || "high";
+      this.particleSystem = new ParticleSystem(this.fxRig, activeQuality);
       this.smokePool = this.particleSystem.smokePool;
       this.dustPool = this.particleSystem.dustPool;
 
-      this.warpVfx = new WarpVFXSystem(this.scene, 280);
+      const qCfg = ParticleSystem.getQualityConfig(activeQuality);
+      this.warpVfx = new WarpVFXSystem(this.fxRig, qCfg.warpStreaks || 280);
       this.warpVfx.setReducedMotion(isReduced);
-      this.scene.add(this.warpVfx.group);
+      this.fxRig.add(this.warpVfx.group);
 
       // Lighting Setup
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
       this.scene.add(ambientLight);
 
-      const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.25);
       dirLight.position.set(20, 30, 25);
       this.scene.add(dirLight);
 
       this.engineLight = new THREE.PointLight(0xff7722, 0, 45);
       this.engineLight.position.set(0, -2.5, 0);
-      this.scene.add(this.engineLight);
+      this.flightRig.add(this.engineLight);
 
       // Build Procedural Scene Elements
       this.createLaunchPad();
@@ -196,18 +267,16 @@ class LaunchSequence {
       this.createDestinationPlanet(destId);
       this.createRocketCopy();
 
-      // Initialize Advanced Engine VFX on Rocket
-      this.engineVfx = new EngineVFXSystem(this.scene);
-      if (this.rocket) {
-        this.rocket.add(this.engineVfx.group);
+      // Read active Trail from Cosmetics or Lab Overrides
+      const profile = (window.profileManager && !this.labOverrides) ? window.profileManager.getActiveProfile() : null;
+      const trailStyle = (this.labOverrides && this.labOverrides.trail) || (profile && profile.rocketCosmetics && profile.rocketCosmetics.trail) || "trail_standard";
+
+      this.engineVfx = new EngineVFXSystem(this.flightRig, { trailStyle });
+      if (this.rocketRig) {
+        this.rocketRig.add(this.engineVfx.group);
         this.engineVfx.group.position.set(0, this.rocketLocalMinY, 0);
       }
       this.flameMesh = this.engineVfx.plumeMesh;
-
-      if (this.isLandingDebug && THREE.AxesHelper) {
-        const axes = new THREE.AxesHelper(6);
-        this.scene.add(axes);
-      }
 
       this.resetHUDUI();
 
@@ -236,18 +305,13 @@ class LaunchSequence {
       this.isDebugMode = qs.includes("dev=1") || qs.includes("dev=true");
       this.isLandingDebug = qs.includes("landingDebug=1");
     }
-    const debugEl = document.getElementById("landing-debug-hud");
-    if (debugEl) {
-      if (this.isLandingDebug) debugEl.classList.remove("hidden");
-      else debugEl.classList.add("hidden");
-    }
   }
 
   resetHUDUI() {
     this.hasRecordedVisit = false;
     if (this.launchPadGroup) this.launchPadGroup.visible = true;
     if (this.cloudsGroup) this.cloudsGroup.visible = true;
-    if (this.surfaceGroup) this.surfaceGroup.visible = false;
+    if (this.terrainMesh) this.terrainMesh.visible = false;
     if (this.destinationGroup) this.destinationGroup.visible = false;
     if (this.earthGroup) this.earthGroup.visible = false;
 
@@ -255,41 +319,28 @@ class LaunchSequence {
     document.getElementById("launch-countdown-box")?.classList.add("hidden");
     document.getElementById("space-victory-banner")?.classList.add("hidden");
     document.getElementById("launch-stage-banner")?.classList.add("hidden");
-    document.getElementById("touchdown-banner")?.classList.add("hidden");
 
     const checkItems = [1, 2, 3, 4];
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
     const textMap = {
       1: isZh ? "✓ 航天器电气与遥测回路校验完毕" : "✓ Avionics & Telemetry Check OK",
-      2: isZh ? "✓ 主发动机液氧低温推进剂加注完毕" : "✓ Cryogenic Propellant Loaded 100%",
-      3: isZh ? "✓ 任务载荷锁止与空间姿态自检正常" : "✓ Mission Payload Locked & Ready",
+      2: isZh ? "✓ 主发动机低温推进剂加注完毕" : "✓ Cryogenic Propellant Loaded 100%",
+      3: isZh ? "✓ 任务载荷锁止与姿态自检正常" : "✓ Mission Payload Locked & Ready",
       4: isZh ? "✓ 星际发射走廊与轨道净空就绪" : "✓ Launch Corridor Clear"
     };
 
     checkItems.forEach(i => {
-      const el = document.getElementById(`chk-item-${i}`);
+      const el = document.getElementById(`check-item-${i}`);
       if (el) el.innerText = textMap[i];
     });
-
-    const btnStart = document.getElementById("btn-start-countdown");
-    if (btnStart) {
-      btnStart.disabled = false;
-      btnStart.innerText = isZh ? "🚀 点火起飞 (Ignition & Liftoff)" : "🚀 Ignition & Liftoff";
-    }
   }
 
-  /**
-   * Enter Fullscreen Cinematic Mode (Fades distracting web menus)
-   */
   enterCinematicMode() {
     document.body.classList.add("cinematic-mode-active");
     const container = this.container || document.getElementById("screen-launch");
     if (container) container.classList.add("cinematic-active");
   }
 
-  /**
-   * Exit Fullscreen Cinematic Mode
-   */
   exitCinematicMode() {
     document.body.classList.remove("cinematic-mode-active");
     const container = this.container || document.getElementById("screen-launch");
@@ -306,95 +357,60 @@ class LaunchSequence {
     this.renderer.setSize(width, height);
   }
 
-  /**
-   * Create Launch Pad with Detailed Gantry, Warning Beacons & Fuel Umbilical
-   */
+  /* =========================================================================
+   * 3. PROCEDURAL ENVIRONMENT & CELESTIAL GRAPHICS
+   * ========================================================================= */
+
   createLaunchPad() {
     if (typeof THREE === "undefined") return;
     this.launchPadGroup = new THREE.Group();
 
-    // 1. Heavy Concrete Launch Table with Trench
+    // Heavy Concrete Pad with Flame Trench
     const padGeo = new THREE.CylinderGeometry(5.0, 6.0, 1.2, 32);
     const padMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8, metalness: 0.2 });
     const pad = new THREE.Mesh(padGeo, padMat);
     pad.position.y = -0.6;
     this.launchPadGroup.add(pad);
 
-    // Flame Trench Hole
     const trenchGeo = new THREE.CylinderGeometry(1.8, 1.8, 1.3, 24);
     const trenchMat = new THREE.MeshBasicMaterial({ color: 0x020617 });
     const trench = new THREE.Mesh(trenchGeo, trenchMat);
     trench.position.y = -0.55;
     this.launchPadGroup.add(trench);
 
-    // Yellow Safety Line Markings
-    const ringGeo = new THREE.RingGeometry(3.0, 3.2, 32);
-    ringGeo.rotateX(-Math.PI / 2);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.position.y = 0.02;
-    this.launchPadGroup.add(ring);
-
-    // 2. Heavy Service Truss Tower
+    // Tower & Service Arm
     const towerGeo = new THREE.BoxGeometry(1.2, 16.0, 1.2);
     const towerMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.6, metalness: 0.4 });
     const tower = new THREE.Mesh(towerGeo, towerMat);
     tower.position.set(-3.2, 7.5, 0);
     this.launchPadGroup.add(tower);
 
-    // Warning Beacon on Tower Tip
-    const beaconGeo = new THREE.SphereGeometry(0.18, 12, 12);
-    const beaconMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-    const beacon = new THREE.Mesh(beaconGeo, beaconMat);
-    beacon.position.set(-3.2, 15.6, 0);
-    this.launchPadGroup.add(beacon);
-
-    // Retractable Crew & Umbilical Service Arm
     const armGeo = new THREE.BoxGeometry(2.6, 0.4, 0.4);
     const armMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.5 });
     const arm = new THREE.Mesh(armGeo, armMat);
     arm.position.set(-1.8, 6.0, 0);
     this.launchPadGroup.add(arm);
 
-    this.scene.add(this.launchPadGroup);
+    this.environmentRig.add(this.launchPadGroup);
   }
 
-  /**
-   * Create Realistic Multi-Layer Atmospheric Clouds
-   */
   createCloudLayer() {
     if (typeof THREE === "undefined") return;
     this.cloudsGroup = new THREE.Group();
 
-    const cloudCount = 18;
-    const cloudMat = new THREE.MeshStandardMaterial({
-      color: 0xf8fafc,
-      transparent: true,
-      opacity: 0.55,
-      roughness: 1.0,
-      depthWrite: false
-    });
-
-    for (let i = 0; i < cloudCount; i++) {
-      const geo = new THREE.DodecahedronGeometry(6 + Math.random() * 8, 1);
-      const mesh = new THREE.Mesh(geo, cloudMat);
-      mesh.position.set(
-        (Math.random() - 0.5) * 80,
-        35 + Math.random() * 25,
-        (Math.random() - 0.5) * 80
-      );
-      this.cloudsGroup.add(mesh);
+    // Create Soft Billboard Cloud Clusters
+    if (this.particleSystem) {
+      const activeQuality = (this.labOverrides && this.labOverrides.quality) || this.quality || "high";
+      const qCfg = ParticleSystem.getQualityConfig(activeQuality);
+      this.particleSystem.createSoftCloudLayers(this.cloudsGroup, qCfg.cloudSprites || 24);
     }
-
-    this.scene.add(this.cloudsGroup);
+    this.environmentRig.add(this.cloudsGroup);
   }
 
-  /**
-   * Create Deep Space Starfield Environment
-   */
   createSpaceEnvironment() {
     if (typeof THREE === "undefined") return;
-    const q = ParticleSystem.getQualityConfig("high");
+    const activeQuality = (this.labOverrides && this.labOverrides.quality) || this.quality || "high";
+    const q = ParticleSystem.getQualityConfig(activeQuality);
     const count = q.stars || 3000;
 
     const geo = new THREE.BufferGeometry();
@@ -410,14 +426,13 @@ class LaunchSequence {
       positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
       positions[i * 3 + 2] = r * Math.cos(phi);
 
-      // Star Color Diversity (White, Ice Blue, Amber)
       const colorType = Math.random();
       if (colorType > 0.8) {
-        colors[i * 3] = 0.6; colors[i * 3 + 1] = 0.8; colors[i * 3 + 2] = 1.0; // Blue giant
+        colors[i * 3] = 0.6; colors[i * 3 + 1] = 0.8; colors[i * 3 + 2] = 1.0;
       } else if (colorType > 0.65) {
-        colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.85; colors[i * 3 + 2] = 0.6; // Amber star
+        colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.85; colors[i * 3 + 2] = 0.6;
       } else {
-        colors[i * 3] = 0.95; colors[i * 3 + 1] = 0.95; colors[i * 3 + 2] = 1.0; // White star
+        colors[i * 3] = 0.95; colors[i * 3 + 1] = 0.95; colors[i * 3 + 2] = 1.0;
       }
     }
 
@@ -432,24 +447,21 @@ class LaunchSequence {
     });
 
     this.starsGroup = new THREE.Points(geo, mat);
-    this.scene.add(this.starsGroup);
+    this.environmentRig.add(this.starsGroup);
 
-    // Procedural Earth Orbit Globe
+    // Earth Orbit Model
     this.earthGroup = PlanetVisualFactory.createEarth(18.0);
     this.earthGroup.position.set(0, -32, -45);
     this.earthGroup.visible = false;
-    this.scene.add(this.earthGroup);
+    this.environmentRig.add(this.earthGroup);
     this.earthMesh = this.earthGroup.userData?.baseMesh || this.earthGroup;
   }
 
-  /**
-   * Create Procedural Destination Planet/Environment
-   */
   createDestinationPlanet(destId) {
     if (typeof THREE === "undefined") return;
 
     if (this.destinationGroup) {
-      this.scene.remove(this.destinationGroup);
+      this.planetRig.remove(this.destinationGroup);
       this.destinationGroup = null;
     }
 
@@ -462,28 +474,38 @@ class LaunchSequence {
     } else if (destId === "saturn") {
       this.destinationGroup = PlanetVisualFactory.createSaturn(18.0);
       this.saturnRingMesh = this.destinationGroup.userData?.ringMesh || null;
-      if (this.particleSystem) this.particleSystem.createSaturnIceField(500);
+      if (this.particleSystem) {
+        const activeQuality = (this.labOverrides && this.labOverrides.quality) || this.quality || "high";
+        const qCfg = ParticleSystem.getQualityConfig(activeQuality);
+        this.particleSystem.createSaturnIceField(qCfg.saturnIce || 500, this.destinationGroup);
+      }
     } else if (destId === "deepSpace") {
       this.destinationGroup = PlanetVisualFactory.createDeepSpace(20.0);
     } else {
-      // Default Earth Orbit
       this.destinationGroup = PlanetVisualFactory.createEarth(18.0);
     }
 
-    this.destinationGroup.position.set(0, 0, -60);
+    this.destinationGroup.position.set(0, 0, -140);
     this.destinationGroup.visible = false;
-    this.scene.add(this.destinationGroup);
+    this.planetRig.add(this.destinationGroup);
     this.destinationMesh = this.destinationGroup.userData?.baseMesh || this.destinationGroup;
   }
 
-  /**
-   * Clone Active Rocket and Attach Installed Parts & Payload
-   */
   createRocketCopy() {
     if (!window.rocketBuilder) return;
-    this.rocket = window.rocketBuilder.createDetachedRocket();
+
+    // Sandbox vs Real Profile Rocket Generation
+    if (this.labOverrides) {
+      const model = this.labOverrides.model || "classic";
+      const theme = this.labOverrides.theme || "explorer";
+      const payload = this.labOverrides.payload || "satellite";
+      this.rocket = window.rocketBuilder.buildCustomRocketInstance(model, theme, payload);
+    } else {
+      this.rocket = window.rocketBuilder.createDetachedRocket();
+    }
+
     this.rocket.position.set(0, 0, 0);
-    this.scene.add(this.rocket);
+    this.rocketRig.add(this.rocket);
 
     this.calculateRocketDimensions();
     this.payloadMesh = this.rocket.getObjectByName("payload_mesh") || null;
@@ -494,7 +516,6 @@ class LaunchSequence {
       this.rocketLocalMinY = -2.5;
       this.rocketLocalMaxY = 3.5;
       this.rocketHeight = 6.0;
-      this.rocketCenterY = 0.5;
       this.touchdownRocketY = 2.5;
       return;
     }
@@ -507,26 +528,35 @@ class LaunchSequence {
     this.rocketLocalMinY = box.min.y;
     this.rocketLocalMaxY = box.max.y;
     this.rocketHeight = Math.max(1.0, box.max.y - box.min.y);
-    this.rocketCenterY = (box.min.y + box.max.y) / 2;
     this.touchdownRocketY = Math.abs(this.rocketLocalMinY) + this.GROUND_Y;
 
     this.rocket.position.copy(prevPos);
   }
 
-  /**
-   * Start Launch Flow with Multishot Storyboard
-   */
-  startLaunch() {
+  /* =========================================================================
+   * 4. LAUNCH API & TIMELINE STORYBOARD
+   * ========================================================================= */
+
+  startLaunch(options = {}) {
+    if (typeof options === "function") {
+      this.onCompleteCallback = options;
+    } else if (options && typeof options === "object") {
+      if (options.onComplete) this.onCompleteCallback = options.onComplete;
+      if (options.destinationId) this.destinationId = options.destinationId;
+    }
+
     this.enterCinematicMode();
     document.getElementById("launch-checklist")?.classList.add("hidden");
     const box = document.getElementById("launch-countdown-box");
     if (box) box.classList.remove("hidden");
 
+    this.currentStage = "countdown";
     this.countdownValue = 5;
-    const numEl = document.getElementById("countdown-number");
+    this.hasSkippedCountdown = false;
+    const numEl = document.getElementById("countdown-num");
     if (numEl) numEl.innerText = "5";
 
-    // Shot 1: Hero Pad (3/4 Low Angle, Full Rocket & Service Tower)
+    // Shot 1: Hero Pad Track
     this.cameraDirector.playShot({
       id: "shot1_hero_pad",
       fromPosition: { x: 4.5, y: 1.2, z: 9.5 },
@@ -543,7 +573,7 @@ class LaunchSequence {
       if (numEl) numEl.innerText = String(this.countdownValue);
 
       if (this.countdownValue === 3) {
-        // Shot 2: Engine Close-up (Ignition Sparks & Steam Vents)
+        // Shot 2: Engine Ignition Prep
         this.cameraDirector.playShot({
           id: "shot2_engine_closeup",
           fromPosition: { x: 1.8, y: -0.2, z: 3.2 },
@@ -554,22 +584,40 @@ class LaunchSequence {
           easing: "easeOutQuart",
           shake: 0.05
         });
-        if (this.particleSystem) {
-          this.particleSystem.emitIgnitionSparks({ x: 0, y: -0.5, z: 0 }, 15);
-        }
       }
 
       if (this.countdownValue <= 0) {
         clearInterval(this.countdownTimer);
         this.countdownTimer = null;
+        if (numEl) numEl.innerText = "IGNITION";
         this.triggerIgnition();
       }
     }, 1000);
   }
 
-  /**
-   * Trigger Ignition (Full 2.0s duration with ground shockwave & audio loop)
-   */
+  // Canonical Alias for Backwards Compatibility
+  startLaunchSequence(...args) {
+    if (typeof args[0] === "function") {
+      return this.startLaunch({ onComplete: args[0] });
+    } else if (typeof args[0] === "object") {
+      return this.startLaunch(args[0]);
+    }
+    return this.startLaunch();
+  }
+
+  skipCountdown() {
+    if (this.hasSkippedCountdown || this.currentStage !== "countdown") return;
+    this.hasSkippedCountdown = true;
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+    this.countdownValue = 0;
+    const numEl = document.getElementById("countdown-num");
+    if (numEl) numEl.innerText = "IGNITION";
+    this.triggerIgnition();
+  }
+
   triggerIgnition() {
     this.currentStage = "ignition";
     this.timelineElapsed = 0;
@@ -577,13 +625,11 @@ class LaunchSequence {
     const box = document.getElementById("launch-countdown-box");
     if (box) box.classList.add("hidden");
 
-    // Audio Continuous Engine Loop
     if (window.audioManager) {
       window.audioManager.startEngineLoop();
       window.audioManager.setEngineThrottle(0.85);
     }
 
-    // Engine VFX
     if (this.engineVfx) {
       this.engineVfx.setVisible(true);
       this.engineVfx.setEnvironmentMode("atmosphere", 0);
@@ -591,14 +637,14 @@ class LaunchSequence {
     }
     if (this.engineLight) this.engineLight.intensity = 4.0;
 
-    // Shot 3: Ignition Blast (Explosive Horizontal Smoke)
+    // Shot 3: Ignition Horizontal Blast
     this.cameraDirector.playShot({
       id: "shot3_ignition",
       fromPosition: { x: -3.5, y: 0.5, z: 7.0 },
       toPosition: { x: -4.0, y: 0.8, z: 8.0 },
       fromTarget: { x: 0, y: 1.0, z: 0 },
       toTarget: { x: 0, y: 1.5, z: 0 },
-      duration: CONFIG.CINEMATIC_TIMING.ignition || 2.0,
+      duration: (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.ignition) || 2.0,
       easing: "easeInOutQuad",
       shake: 0.35
     });
@@ -607,16 +653,12 @@ class LaunchSequence {
       this.particleSystem.emitIgnitionSmoke(0, -0.5, 0, 35);
     }
 
-    const ignDuration = (CONFIG.CINEMATIC_TIMING.ignition || 2.0) * 1000;
-    const t = setTimeout(() => {
+    const ignDuration = ((CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.ignition) || 2.0) * 1000;
+    this.scheduleTimeout(() => {
       this.liftoff();
     }, ignDuration);
-    this.timeouts.push(t);
   }
 
-  /**
-   * Liftoff into Sky
-   */
   liftoff() {
     this.currentStage = "liftoff";
     this.timelineElapsed = 0;
@@ -627,38 +669,37 @@ class LaunchSequence {
     }
     if (this.engineVfx) this.engineVfx.setThrottle(1.0);
 
-    // Shot 4: Tower Clear (Low Angle looking up as rocket clears overhead)
+    // Shot 4: Tower Clear Shot
     this.cameraDirector.playShot({
       id: "shot4_tower_clear",
       fromPosition: { x: -2.0, y: -0.2, z: 4.5 },
       toPosition: { x: -2.0, y: 0.5, z: 5.5 },
       fromTarget: { x: 0, y: 3.0, z: 0 },
       toTarget: { x: 0, y: 18.0, z: 0 },
-      duration: CONFIG.CINEMATIC_TIMING.liftoff || 4.0,
+      duration: (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.liftoff) || 4.0,
       easing: "easeInOutCubic",
       shake: 0.2
     });
   }
 
-  /**
-   * Update Main Flight Timeline Frame-by-Frame
-   */
+  /* =========================================================================
+   * 5. MAIN TIMELINE UPDATE & IN-FLIGHT EVENTS
+   * ========================================================================= */
+
   updateTimeline(dt) {
-    if (this.isEventPaused || this.currentStage === "idle") return;
+    if (this.isEventPaused || this.currentStage === "idle" || this.currentStage === "countdown") return;
 
     this.timelineElapsed += dt;
-    const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
 
     // 1. LIFTOFF STAGE (0 to 4s)
     if (this.currentStage === "liftoff") {
-      const dur = CONFIG.CINEMATIC_TIMING.liftoff || 4.0;
+      const dur = (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.liftoff) || 4.0;
       const prog = Math.min(1.0, this.timelineElapsed / dur);
 
-      // Rocket ascends smoothly from y=0 to y=50
       this.rocket.position.y = prog * prog * 50;
 
       if (this.particleSystem) {
-        this.particleSystem.emitFlightSmoke(this.rocket.position, 2);
+        this.particleSystem.emitFlightTrail(this.rocket.position, 2);
       }
 
       if (prog >= 0.45 && !this.hasShownTowerClear) {
@@ -669,27 +710,25 @@ class LaunchSequence {
       if (prog >= 1.0) {
         this.currentStage = "atmospheric";
         this.timelineElapsed = 0;
-        // Shot 5: Side Tracking through Cloud Layer
         this.cameraDirector.playShot({
           id: "shot5_cloud_tracking",
           fromPosition: { x: 12.0, y: 65, z: 12.0 },
           toPosition: { x: 8.0, y: 95, z: 8.0 },
           fromTarget: { x: 0, y: 65, z: 0 },
           toTarget: { x: 0, y: 110, z: 0 },
-          duration: CONFIG.CINEMATIC_TIMING.atmosphere || 4.5,
+          duration: (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.atmosphere) || 4.5,
           easing: "easeOutQuart",
           shake: 0.15
         });
       }
     }
 
-    // 2. ATMOSPHERIC ASCENT & CLOUD PUNCH-THROUGH (4 to 8.5s)
+    // 2. ATMOSPHERIC ASCENT & CLOUD PUNCH-THROUGH
     else if (this.currentStage === "atmospheric") {
-      const dur = CONFIG.CINEMATIC_TIMING.atmosphere || 4.5;
+      const dur = (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.atmosphere) || 4.5;
       const prog = Math.min(1.0, this.timelineElapsed / dur);
 
       this.rocket.position.y = 50 + prog * 70;
-      // Slight aerodynamic gravity turn
       this.rocket.rotation.z = -prog * 0.22;
 
       if (this.engineVfx) {
@@ -706,7 +745,6 @@ class LaunchSequence {
         if (this.cloudsGroup) this.cloudsGroup.visible = false;
         if (this.earthGroup) this.earthGroup.visible = true;
 
-        // Transition to Local Origin Rig for Deep Space
         this.rocket.position.set(0, 0, 0);
         this.rocket.rotation.set(0, 0, 0);
 
@@ -721,25 +759,23 @@ class LaunchSequence {
 
         this.showMilestoneBanner("🌍 ORBIT ACHIEVED");
 
-        // Shot 7: Orbital Reveal (Slow horizontal pan holding on Earth)
         this.cameraDirector.playShot({
           id: "shot7_orbital_reveal",
           fromPosition: { x: -4.0, y: 1.0, z: 7.5 },
           toPosition: { x: 5.5, y: 0.5, z: 8.0 },
           fromTarget: { x: 0, y: 0, z: 0 },
           toTarget: { x: 0, y: -0.5, z: 0 },
-          duration: CONFIG.CINEMATIC_TIMING.earthOrbit || 3.0,
+          duration: (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.earthOrbit) || 3.0,
           easing: "easeInOutCubic"
         });
       }
     }
 
-    // 3. EARTH ORBIT INSERTION (8.5 to 11.5s)
+    // 3. EARTH ORBIT INSERTION
     else if (this.currentStage === "earthOrbit") {
-      const dur = CONFIG.CINEMATIC_TIMING.earthOrbit || 3.0;
+      const dur = (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.earthOrbit) || 3.0;
       const prog = Math.min(1.0, this.timelineElapsed / dur);
 
-      // Rotate Earth & Atmosphere
       if (this.earthGroup) {
         this.earthGroup.rotation.y += 0.02 * dt;
         if (this.earthGroup.userData?.cloudMesh) {
@@ -765,16 +801,27 @@ class LaunchSequence {
       const dur = destCfg.cinematic?.transferSeconds || 5.0;
       const prog = Math.min(1.0, this.timelineElapsed / dur);
 
-      // Warp FX acceleration
+      // Dynamic In-Flight Event Trigger at midpoint (50% progress)
+      if (prog >= 0.5 && !this.hasTriggeredFlightEvent) {
+        this.hasTriggeredFlightEvent = true;
+        this.triggerInFlightEvent();
+        return;
+      }
+
       if (this.warpVfx) {
         this.warpVfx.setWarpIntensity(Math.sin(prog * Math.PI));
         this.warpVfx.update(dt, this.rocket.position);
       }
 
-      // Earth recedes into the background
       if (this.earthGroup && this.earthGroup.visible) {
         this.earthGroup.position.z -= 40 * dt;
         if (this.earthGroup.position.z < -250) this.earthGroup.visible = false;
+      }
+
+      // Smooth Destination Planet Approach Transition
+      if (prog > 0.4 && this.destinationGroup) {
+        this.destinationGroup.visible = true;
+        this.destinationGroup.position.z = -140 + prog * 40; // smoothly approaches -100
       }
 
       if (prog >= 1.0) {
@@ -790,7 +837,6 @@ class LaunchSequence {
 
         this.showMilestoneBanner("🪐 DESTINATION LOCKED");
 
-        // Dramatic approach shot
         this.cameraDirector.playShot({
           id: "shot_approach",
           fromPosition: { x: 3.5, y: 1.2, z: 8.0 },
@@ -803,15 +849,14 @@ class LaunchSequence {
       }
     }
 
-    // 5. PLANET APPROACH & SENSE OF SCALE
+    // 5. PLANET APPROACH (Smooth continuation without backward pop)
     else if (this.currentStage === "destinationApproach") {
       const destCfg = CONFIG.DESTINATIONS[this.destinationId] || CONFIG.DESTINATIONS.moon;
       const dur = destCfg.cinematic?.approachSeconds || 4.5;
       const prog = Math.min(1.0, this.timelineElapsed / dur);
 
-      // Planet grows from 10% to 75% of viewport
       if (this.destinationGroup) {
-        const startZ = -120;
+        const startZ = -100;
         const endZ = -38;
         this.destinationGroup.position.z = startZ + (endZ - startZ) * CinematicCameraDirector.easeOutQuart(prog);
         this.destinationGroup.rotation.y += 0.015 * dt;
@@ -828,13 +873,19 @@ class LaunchSequence {
       }
     }
 
-    // 6. DESTINATION ACTION (Landing / Flyby / Orbit / Payload Deployment)
+    // 6. DESTINATION CLIMAX ACTION
     else if (this.currentStage === "destinationAction") {
-      const isLanding = CONFIG.DESTINATIONS[this.destinationId]?.type === "landing";
-      if (isLanding) {
-        this.updateLandingSystem(dt);
+      if (this.destinationId === "earthOrbit") {
+        this.updateEarthOrbitAction(dt);
+      } else if (this.destinationId === "jupiter") {
+        this.updateJupiterAction(dt);
+      } else if (this.destinationId === "saturn") {
+        this.updateSaturnAction(dt);
+      } else if (this.destinationId === "deepSpace") {
+        this.updateDeepSpaceAction(dt);
       } else {
-        this.updateFlybyOrOrbit(dt);
+        // Planetary Surface Landings (Moon & Mars)
+        this.updateLandingSystem(dt);
       }
     }
   }
@@ -864,16 +915,168 @@ class LaunchSequence {
     });
   }
 
+  /* =========================================================================
+   * 6. IN-FLIGHT EVENTS WITH 3D VISUAL EFFECTS
+   * ========================================================================= */
+
+  triggerInFlightEvent() {
+    this.isEventPaused = true;
+
+    // Create 3D Event Visual Effects (Flying Asteroids & Warning Light)
+    if (typeof THREE !== "undefined") {
+      const astGeo = new THREE.DodecahedronGeometry(0.8, 0);
+      const astMat = new THREE.MeshStandardMaterial({ color: 0x78716c, roughness: 0.9 });
+      for (let i = 0; i < 5; i++) {
+        const ast = new THREE.Mesh(astGeo, astMat);
+        ast.position.set((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 6, -10 + i * 4);
+        this.fxRig.add(ast);
+        this.event3DMeshes.push(ast);
+      }
+    }
+
+    const eventDef = {
+      titleEn: "⚠️ ASTEROID DRIFT ENCOUNTER",
+      titleZh: "⚠️ 遭遇微行星引力扰动！",
+      descEn: "Recalibrate trajectory vector by solving math problem!",
+      descZh: "解算航向补正题，消除轨道漂移！",
+      bonusXP: 35
+    };
+
+    if (window.uiManager && typeof window.uiManager.showFlightEvent === "function") {
+      window.uiManager.showFlightEvent(eventDef, () => {
+        this.resolveInFlightEvent();
+      });
+    } else {
+      this.scheduleTimeout(() => this.resolveInFlightEvent(), 2000);
+    }
+  }
+
+  resolveInFlightEvent() {
+    this.event3DMeshes.forEach(mesh => {
+      if (mesh && mesh.parent) mesh.parent.remove(mesh);
+    });
+    this.event3DMeshes = [];
+
+    this.showMilestoneBanner("✨ SYSTEM STABILIZED");
+    this.isEventPaused = false;
+  }
+
+  /* =========================================================================
+   * 7. DESTINATION-SPECIFIC CLIMAX HANDLERS
+   * ========================================================================= */
+
   /**
-   * Transition to Local Planetary Surface Scene (Moon / Mars)
+   * Earth Orbit (7~9s): Orbit coast, payload deployment, solar panel unfold, Earth hero shot
    */
+  updateEarthOrbitAction(dt) {
+    const dur = 8.0;
+    const prog = Math.min(1.0, this.timelineElapsed / dur);
+
+    if (this.earthGroup) this.earthGroup.rotation.y += 0.015 * dt;
+
+    if (prog >= 0.25 && !this.payloadState.deploying && !this.payloadState.deployed) {
+      this.deployMissionPayload("satellite");
+    }
+    this.updatePayloadAnimator(dt);
+
+    if (prog >= 1.0 && !this.hasRecordedVisit) {
+      this.finishMissionSuccess();
+    }
+  }
+
+  /**
+   * Jupiter Flyby (8~11s): Giant Jovian bands, Io & Europa moon parallax, Great Red Spot skim, probe scan
+   */
+  updateJupiterAction(dt) {
+    const dur = 9.5;
+    const prog = Math.min(1.0, this.timelineElapsed / dur);
+
+    if (this.destinationGroup) {
+      this.destinationGroup.rotation.y += 0.02 * dt;
+      // Moon orbital parallax
+      if (this.destinationGroup.userData?.ioMoon) {
+        this.destinationGroup.userData.ioMoon.position.x = 20 * Math.cos(prog * Math.PI * 1.5);
+        this.destinationGroup.userData.ioMoon.position.z = 12 * Math.sin(prog * Math.PI * 1.5);
+      }
+      if (this.destinationGroup.userData?.europaMoon) {
+        this.destinationGroup.userData.europaMoon.position.x = -24 * Math.cos(prog * Math.PI * 1.2);
+        this.destinationGroup.userData.europaMoon.position.z = 16 * Math.sin(prog * Math.PI * 1.2);
+      }
+    }
+
+    // Rocket banks dynamically over Jovian cloud bands
+    this.rocket.rotation.z = Math.sin(prog * Math.PI) * 0.35;
+
+    if (prog >= 0.3 && !this.payloadState.deploying && !this.payloadState.deployed) {
+      this.deployMissionPayload("probe");
+    }
+    this.updatePayloadAnimator(dt);
+
+    if (prog >= 1.0 && !this.hasRecordedVisit) {
+      this.finishMissionSuccess();
+    }
+  }
+
+  /**
+   * Saturn Ring Orbit (9~12s): Ring plane dive, 30° roll across Cassini Division, ice streaks, wide hero
+   */
+  updateSaturnAction(dt) {
+    const dur = 10.5;
+    const prog = Math.min(1.0, this.timelineElapsed / dur);
+
+    if (this.destinationGroup) {
+      this.destinationGroup.rotation.y += 0.012 * dt;
+    }
+
+    // Dynamic Rocket Bank & Ring Plane alignment
+    this.rocket.rotation.z = Math.sin(prog * Math.PI) * 0.45;
+
+    if (prog >= 0.3 && !this.payloadState.deploying && !this.payloadState.deployed) {
+      this.deployMissionPayload("probe");
+    }
+    this.updatePayloadAnimator(dt);
+
+    if (prog >= 1.0 && !this.hasRecordedVisit) {
+      this.finishMissionSuccess();
+    }
+  }
+
+  /**
+   * Deep Space Discovery (9~12s): Warp collapse, nebula reveal, ancient beacon relic scan
+   */
+  updateDeepSpaceAction(dt) {
+    const dur = 10.0;
+    const prog = Math.min(1.0, this.timelineElapsed / dur);
+
+    if (this.destinationGroup) {
+      this.destinationGroup.rotation.y += 0.025 * dt;
+      if (this.destinationGroup.userData?.relicMesh) {
+        this.destinationGroup.userData.relicMesh.rotation.x += 0.04 * dt;
+        this.destinationGroup.userData.relicMesh.rotation.y += 0.06 * dt;
+      }
+    }
+
+    if (prog >= 0.35 && !this.payloadState.deploying && !this.payloadState.deployed) {
+      this.deployMissionPayload("probe");
+    }
+    this.updatePayloadAnimator(dt);
+
+    if (prog >= 1.0 && !this.hasRecordedVisit) {
+      this.finishMissionSuccess();
+    }
+  }
+
+  /* =========================================================================
+   * 8. PROCEDURAL PLANETARY TERRAIN & 4-PHASE LANDING
+   * ========================================================================= */
+
   transitionToSurfaceScene() {
     if (this.launchPadGroup) this.launchPadGroup.visible = false;
     if (this.cloudsGroup) this.cloudsGroup.visible = false;
     if (this.destinationGroup) this.destinationGroup.visible = false;
 
-    this.createLandingSurface(this.destinationId);
-    if (this.surfaceGroup) this.surfaceGroup.visible = true;
+    this.createPlanetaryTerrain(this.destinationId);
+    if (this.terrainMesh) this.terrainMesh.visible = true;
 
     this.calculateRocketDimensions();
     this.rocket.position.set(0, 32, 0);
@@ -893,7 +1096,7 @@ class LaunchSequence {
 
     this.showMilestoneBanner("🛬 RETRO-PROPULSION BURN");
 
-    // Descent Wide Shot
+    // Shot A: High Descent Wide Shot
     this.cameraDirector.playShot({
       id: "shot_landing_descent",
       fromPosition: { x: 12, y: 18, z: 20 },
@@ -906,40 +1109,50 @@ class LaunchSequence {
   }
 
   createLandingSurface(destId) {
+    return this.createPlanetaryTerrain(destId);
+  }
+
+  createPlanetaryTerrain(destId) {
     if (typeof THREE === "undefined") return;
 
     if (this.surfaceGroup) {
-      this.scene.remove(this.surfaceGroup);
+      this.environmentRig.remove(this.surfaceGroup);
+      this.disposeObject3D(this.surfaceGroup);
       this.surfaceGroup = null;
     }
 
     this.surfaceGroup = new THREE.Group();
+    this.surfaceGroup.position.set(0, 0, 0);
+
     const isMars = destId === "mars";
     const surfaceColor = isMars ? 0x991b1b : 0x475569;
 
-    // Ground Plane situated at GROUND_Y = 0
-    const groundGeo = new THREE.CircleGeometry(45, 48);
-    groundGeo.rotateX(-Math.PI / 2);
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: surfaceColor,
-      roughness: 0.95,
-      metalness: 0.05
-    });
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.position.set(0, this.GROUND_Y, 0);
-    this.surfaceGroup.add(ground);
+    // Displaced PlaneGeometry for Rugged Uneven Terrain
+    const terrainGeo = new THREE.PlaneGeometry(100, 100, 40, 40);
+    terrainGeo.rotateX(-Math.PI / 2);
 
-    // Procedural Crater Rims
-    const craterMat = new THREE.MeshStandardMaterial({ color: isMars ? 0x7f1d1d : 0x334155, roughness: 0.9 });
-    for (let i = 0; i < 10; i++) {
-      const ringGeo = new THREE.RingGeometry(2.5 + Math.random() * 5, 3.2 + Math.random() * 5.5, 24);
-      ringGeo.rotateX(-Math.PI / 2);
-      const crater = new THREE.Mesh(ringGeo, craterMat);
-      const ang = Math.random() * Math.PI * 2;
-      const d = 8 + Math.random() * 25;
-      crater.position.set(Math.cos(ang) * d, this.GROUND_Y + 0.02, Math.sin(ang) * d);
-      this.surfaceGroup.add(crater);
+    if (terrainGeo.attributes && terrainGeo.attributes.position) {
+      const pos = terrainGeo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+        const distFromCenter = Math.sqrt(x * x + z * z);
+        // Flatter at landing center, rugged dunes/craters outside
+        const roughness = Math.min(1.0, distFromCenter / 15.0);
+        const elevation = (Math.sin(x * 0.15) * Math.cos(z * 0.15) * 1.8 + Math.sin(x * 0.35 + z * 0.2) * 0.8) * roughness;
+        pos.setY(i, this.GROUND_Y + elevation);
+      }
+      pos.needsUpdate = true;
+      if (typeof terrainGeo.computeVertexNormals === "function") terrainGeo.computeVertexNormals();
     }
+
+    const terrainMat = new THREE.MeshStandardMaterial({
+      color: surfaceColor,
+      roughness: 0.92,
+      metalness: 0.08
+    });
+    this.terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
+    this.surfaceGroup.add(this.terrainMesh);
 
     // Contact Landing Shadow
     const shadowGeo = new THREE.CircleGeometry(2.2, 32);
@@ -951,15 +1164,22 @@ class LaunchSequence {
       depthWrite: false
     });
     this.contactShadow = new THREE.Mesh(shadowGeo, shadowMat);
-    this.contactShadow.position.set(0, this.GROUND_Y + 0.01, 0);
+    this.contactShadow.position.set(0, this.GROUND_Y + 0.02, 0);
     this.surfaceGroup.add(this.contactShadow);
 
-    this.scene.add(this.surfaceGroup);
+    this.environmentRig.add(this.surfaceGroup);
   }
 
-  /**
-   * Update 4-Phase Landing Timeline (Phase A: High Descent, B: Retro Burn, C: Final Descent, D: Touchdown Hold)
-   */
+  emitRadialDust(altitudeOrPos, dustColor = 0xd1d5db) {
+    let alt = typeof altitudeOrPos === "number" ? altitudeOrPos : (altitudeOrPos?.y || 0);
+    if (alt > 8.0) return;
+    if (this.particleSystem) {
+      const pos = typeof altitudeOrPos === "object" ? altitudeOrPos : (this.rocket ? this.rocket.position : { x: 0, y: alt, z: 0 });
+      const isMars = this.destinationId === "mars";
+      this.particleSystem.emitLandingDust(pos, isMars ? 0x991b1b : dustColor, 6);
+    }
+  }
+
   updateLandingSystem(dt) {
     this.landingPhaseElapsed += dt;
 
@@ -983,8 +1203,8 @@ class LaunchSequence {
       this.rocket.position.y = 14 - prog * 9;
       this.currentVerticalSpeed = 5.0;
 
-      // Engine Close Shot (<5m)
-      if (prog >= 0.8 && this.cameraDirector.currentShot?.id !== "shot_engine_dust") {
+      // Shot B: Engine Close-up & Surface Dust
+      if (prog >= 0.6 && this.cameraDirector.currentShot?.id !== "shot_engine_dust") {
         this.cameraDirector.playShot({
           id: "shot_engine_dust",
           fromPosition: { x: 3.5, y: 1.0, z: 4.5 },
@@ -1003,25 +1223,22 @@ class LaunchSequence {
       }
     }
 
-    // Phase C: Final Descent & Flame Cutoff (5m -> Touchdown Y, 1.6s)
+    // Phase C: Final Descent & Landing Leg Contact (5m -> Touchdown Y, 1.6s)
     else if (this.landingPhase === "finalDescent") {
       const dur = 1.6;
       const prog = Math.min(1.0, this.landingPhaseElapsed / dur);
       this.rocket.position.y = 5.0 - prog * (5.0 - this.touchdownRocketY);
       this.currentVerticalSpeed = Math.max(0.2, (1.0 - prog) * 3.0);
 
-      // Smooth throttle decline
       const th = Math.max(0, 0.7 * (1.0 - prog));
       if (this.engineVfx) this.engineVfx.setThrottle(th);
       if (window.audioManager) window.audioManager.setEngineThrottle(th);
 
-      // Emit Radial Dust
       if (this.particleSystem && prog > 0.3) {
         const isMars = this.destinationId === "mars";
         this.particleSystem.emitLandingDust(this.rocket.position, isMars ? 0x991b1b : 0xd1d5db, 4);
       }
 
-      // Contact Shadow Darkening
       if (this.contactShadow) {
         this.contactShadow.material.opacity = prog * 0.75;
       }
@@ -1032,7 +1249,7 @@ class LaunchSequence {
         this.rocket.position.y = this.touchdownRocketY;
         this.currentVerticalSpeed = 0;
 
-        // Cut engine and flame completely
+        // Cut engine flame completely
         if (this.engineVfx) this.engineVfx.setVisible(false);
         if (this.flameMesh) this.flameMesh.visible = false;
         if (this.engineLight) this.engineLight.intensity = 0;
@@ -1041,104 +1258,84 @@ class LaunchSequence {
           window.audioManager.playTouchdownThump();
         }
 
-        this.showMilestoneBanner("🏆 TOUCHDOWN CONFIRMED");
+        const bannerTitle = (this.destinationId === "mars") ? "🔴 MARS SURFACE MISSION COMPLETE" : "🌙 TOUCHDOWN CONFIRMED";
+        this.showMilestoneBanner(bannerTitle);
 
-        // Touchdown Hero Orbit Shot
+        // Shot D: Touchdown Low-Angle Hero Orbit
         this.cameraDirector.playShot({
           id: "shot_touchdown_hero",
           fromPosition: { x: 5.5, y: 1.5, z: 8.5 },
           toPosition: { x: -6.0, y: 2.2, z: 9.0 },
           fromTarget: { x: 0, y: 2.5, z: 0 },
           toTarget: { x: 0, y: 2.5, z: 0 },
-          duration: 2.6,
+          duration: 3.8,
           easing: "easeInOutCubic"
         });
 
-        // Deploy Rover/Payload after 1s
-        setTimeout(() => {
-          this.deployMissionPayload(this.destinationId);
+        // Deploy Payload during hold
+        this.scheduleTimeout(() => {
+          this.deployMissionPayload("rover");
         }, 1000);
       }
     }
 
-    // Phase D: Touchdown Hold (2.6s celebration before results)
+    // Phase D: Extended Touchdown Hold (3.8s celebration before mission complete)
     else if (this.landingPhase === "touchdownHold") {
-      const dur = 2.6;
+      this.updatePayloadAnimator(dt);
+      const dur = 3.8;
       if (this.landingPhaseElapsed >= dur && !this.hasRecordedVisit) {
         this.finishMissionSuccess();
       }
     }
   }
 
-  /**
-   * Update Flyby or Orbital Destinations (Earth Orbit / Jupiter / Saturn / Deep Space)
-   */
-  updateFlybyOrOrbit(dt) {
-    const destCfg = CONFIG.DESTINATIONS[this.destinationId] || CONFIG.DESTINATIONS.earthOrbit;
-    const dur = destCfg.cinematic?.destinationSeconds || 7.0;
-    const prog = Math.min(1.0, this.timelineElapsed / dur);
+  /* =========================================================================
+   * 9. DELTATIME FRAME-BASED PAYLOAD ANIMATOR
+   * ========================================================================= */
 
-    // Rotate Celestial Target
-    if (this.destinationGroup) {
-      this.destinationGroup.rotation.y += 0.02 * dt;
-    }
-
-    // Deploy payload at 30% progress
-    if (prog >= 0.3 && !this.payloadState.deploying && !this.payloadState.deployed) {
-      this.deployMissionPayload(this.destinationId);
-    }
-
-    if (prog >= 1.0 && !this.hasRecordedVisit) {
-      this.finishMissionSuccess();
-    }
-  }
-
-  /**
-   * World-Space Payload Detachment & Rich Task Animation
-   */
-  deployMissionPayload(destId) {
+  deployMissionPayload(payloadType = "satellite") {
     if (this.payloadState.deploying || this.payloadState.deployed) return;
     this.payloadState.deploying = true;
-    this.payloadState.deployed = true;
+    this.payloadState.elapsed = 0;
 
     if (!this.payloadMesh) {
       this.payloadMesh = this.rocket?.getObjectByName("payload_mesh") || null;
     }
 
     if (this.payloadMesh && typeof THREE !== "undefined") {
-      // Detach from rocket and attach to world scene
       const worldPos = new THREE.Vector3();
       this.payloadMesh.getWorldPosition(worldPos);
       if (this.payloadMesh.parent) this.payloadMesh.parent.remove(this.payloadMesh);
       this.scene.add(this.payloadMesh);
       this.payloadMesh.position.copy(worldPos);
+    }
+  }
 
-      // Animate Payload in World Space
-      const isLanding = CONFIG.DESTINATIONS[destId]?.type === "landing";
-      if (isLanding) {
-        // Rover roll out
-        const startZ = this.payloadMesh.position.z;
-        const targetZ = startZ + 6.0;
-        let rollElapsed = 0;
-        const rollInterval = setInterval(() => {
-          rollElapsed += 0.03;
-          const p = Math.min(1.0, rollElapsed / 2.5);
-          this.payloadMesh.position.z = startZ + (targetZ - startZ) * p;
-          this.payloadMesh.position.y = this.GROUND_Y + 0.35;
-          if (p >= 1.0) clearInterval(rollInterval);
-        }, 30);
-      } else {
-        // Satellite / Probe float into orbit
-        const startY = this.payloadMesh.position.y;
-        const targetY = startY + 4.0;
-        let orbitElapsed = 0;
-        const orbitInterval = setInterval(() => {
-          orbitElapsed += 0.03;
-          const p = Math.min(1.0, orbitElapsed / 3.0);
-          this.payloadMesh.position.y = startY + (targetY - startY) * p;
-          this.payloadMesh.rotation.y += 0.02;
-          if (p >= 1.0) clearInterval(orbitInterval);
-        }, 30);
+  updatePayloadAnimator(dt) {
+    if (!this.payloadState.deploying || !this.payloadMesh) return;
+
+    this.payloadState.elapsed += dt;
+    const el = this.payloadState.elapsed;
+    const isLanding = CONFIG.DESTINATIONS[this.destinationId]?.type === "landing";
+
+    if (isLanding) {
+      // Rover rolls forward and lowers onto surface
+      const prog = Math.min(1.0, el / 2.8);
+      this.payloadMesh.position.z += 1.8 * dt;
+      this.payloadMesh.position.y = this.GROUND_Y + 0.35;
+      this.payloadMesh.rotation.y += 0.05 * dt;
+      if (prog >= 1.0) {
+        this.payloadState.deploying = false;
+        this.payloadState.deployed = true;
+      }
+    } else {
+      // Satellite / Probe drifts into orbit and unfolds
+      const prog = Math.min(1.0, el / 3.2);
+      this.payloadMesh.position.y += 0.8 * dt;
+      this.payloadMesh.rotation.y += 0.25 * dt;
+      if (prog >= 1.0) {
+        this.payloadState.deploying = false;
+        this.payloadState.deployed = true;
       }
     }
   }
@@ -1149,21 +1346,17 @@ class LaunchSequence {
     banner.innerText = text;
     banner.classList.remove("hidden");
     banner.classList.remove("banner-pop");
-    void banner.offsetWidth; // trigger reflow
+    void banner.offsetWidth;
     banner.classList.add("banner-pop");
 
-    setTimeout(() => {
+    this.scheduleTimeout(() => {
       banner.classList.add("hidden");
     }, 2400);
   }
 
-  emitRadialDust(altitude) {
-    if (altitude > 8.0) return;
-    if (this.particleSystem) {
-      const isMars = this.destinationId === "mars";
-      this.particleSystem.emitLandingDust(this.rocket ? this.rocket.position : { x: 0, y: altitude, z: 0 }, isMars ? 0x991b1b : 0xd1d5db, 6);
-    }
-  }
+  /* =========================================================================
+   * 10. VICTORY CELEBRATION & DEBRIEF
+   * ========================================================================= */
 
   finishMissionSuccess() {
     if (this.hasRecordedVisit) return;
@@ -1175,10 +1368,26 @@ class LaunchSequence {
       window.audioManager.playVictoryFanfare();
     }
 
-    this.exitCinematicMode();
+    const victoryBanner = document.getElementById("space-victory-banner");
+    const victoryTitle = document.getElementById("victory-title-text");
+    if (victoryBanner) {
+      const titles = {
+        moon: "🌙 TOUCHDOWN CONFIRMED — LUNAR BASE SECURED! 🚀",
+        mars: "🔴 MARS SURFACE MISSION COMPLETE! 🚩",
+        jupiter: "🪐 JOVIAN SCIENCE PASS COMPLETE! 🛰️",
+        saturn: "💍 SATURN RING ORBIT ACHIEVED! 💎",
+        deepSpace: "🌌 UNKNOWN DEEP SPACE SIGNAL ACQUIRED! 📡",
+        earthOrbit: "🌍 ORBITAL DEPLOYMENT SUCCESSFUL! 🛰️"
+      };
+      if (victoryTitle) victoryTitle.innerText = titles[this.destinationId] || "MISSION SUCCESS! ARRIVED AT DESTINATION! 🌌";
+      victoryBanner.classList.remove("hidden");
+    }
 
     if (window.game && typeof window.game.handleMissionCompleted === "function") {
       window.game.handleMissionCompleted(this.destinationId);
+    }
+    if (typeof this.onCompleteCallback === "function") {
+      this.onCompleteCallback(this.destinationId);
     }
   }
 
@@ -1192,9 +1401,6 @@ class LaunchSequence {
     }
   }
 
-  /**
-   * Jump directly to any mission stage for Developer & Animation Lab Testing
-   */
   jumpToStage(stageName, destId = "moon", containerId = "canvas-container-launch") {
     this.initScene(containerId, destId);
     document.getElementById("launch-checklist")?.classList.add("hidden");
@@ -1250,29 +1456,10 @@ class LaunchSequence {
     }
   }
 
-  updateDebugHUD() {
-    if (!this.isLandingDebug) return;
-    const hud = document.getElementById("landing-debug-hud");
-    if (!hud || !this.rocket || !this.camera) return;
+  /* =========================================================================
+   * 11. MAIN RENDER LOOP & CLEAN DISPOSAL
+   * ========================================================================= */
 
-    const rY = this.rocket.position.y.toFixed(2);
-    const rBaseY = (this.rocket.position.y + this.rocketLocalMinY).toFixed(2);
-    const distToGround = Math.max(0, this.rocket.position.y - this.touchdownRocketY).toFixed(2);
-    const camPos = `(${this.camera.position.x.toFixed(1)}, ${this.camera.position.y.toFixed(1)}, ${this.camera.position.z.toFixed(1)})`;
-
-    hud.innerHTML = `
-      <div><strong>[CINEMATIC TELEMETRY]</strong></div>
-      <div>Stage: ${this.currentStage} | Phase: ${this.landingPhase}</div>
-      <div>Rocket Pos: (${this.rocket.position.x.toFixed(1)}, ${rY}, ${this.rocket.position.z.toFixed(1)})</div>
-      <div>Dist to Ground: ${distToGround}m | Vertical Speed: ${this.currentVerticalSpeed.toFixed(1)} m/s</div>
-      <div>Camera: ${camPos}</div>
-      <div>Payload State: ${this.payloadState.deployed ? "DEPLOYED" : (this.payloadState.deploying ? "DEPLOYING" : "ATTACHED")}</div>
-    `;
-  }
-
-  /**
-   * Main Render & Physics Loop
-   */
   animate() {
     this.animationId = this.requestTrackedRaf(() => this.animate());
 
@@ -1284,7 +1471,6 @@ class LaunchSequence {
     if (this.cameraDirector) this.cameraDirector.update(dt);
     if (this.engineVfx) this.engineVfx.update(dt, now / 1000);
     if (this.particleSystem) this.particleSystem.update(dt);
-    this.updateDebugHUD();
 
     if (this.renderer && this.scene && this.camera) {
       this.renderer.render(this.scene, this.camera);
@@ -1311,12 +1497,8 @@ class LaunchSequence {
       window.removeEventListener("resize", this.boundResizeHandler);
       this.boundResizeHandler = null;
     }
-    if (this.countdownTimer) {
-      clearInterval(this.countdownTimer);
-      this.countdownTimer = null;
-    }
-    this.timeouts.forEach(t => clearTimeout(t));
-    this.timeouts = [];
+
+    this.clearScheduledWork();
 
     if (this.animationId) {
       this.cancelTrackedRaf(this.animationId);
@@ -1325,6 +1507,20 @@ class LaunchSequence {
     this.activeRafs.forEach(id => this.cancelTrackedRaf(id));
     this.activeRafs.clear();
 
+    this.exitCinematicMode();
+
+    if (window.audioManager && typeof window.audioManager.stopEngineLoop === "function") {
+      window.audioManager.stopEngineLoop();
+    }
+    if (this.cameraDirector) {
+      this.cameraDirector.stopShot();
+      this.cameraDirector = null;
+    }
+    if (this.warpVfx) {
+      this.warpVfx.setWarpIntensity(0, true);
+      this.warpVfx.dispose();
+      this.warpVfx = null;
+    }
     if (this.engineVfx) {
       this.engineVfx.dispose();
       this.engineVfx = null;
@@ -1333,55 +1529,44 @@ class LaunchSequence {
       this.particleSystem.dispose();
       this.particleSystem = null;
     }
-    if (this.warpVfx) {
-      this.warpVfx.dispose();
-      this.warpVfx = null;
+
+    this.event3DMeshes.forEach(m => {
+      if (m && m.parent) m.parent.remove(m);
+    });
+    this.event3DMeshes = [];
+
+    if (this.flightRig && this.scene) {
+      this.scene.remove(this.flightRig);
+      this.disposeObject3D(this.flightRig);
+      this.flightRig = null;
+    }
+    if (this.planetRig && this.scene) {
+      this.scene.remove(this.planetRig);
+      this.disposeObject3D(this.planetRig);
+      this.planetRig = null;
+    }
+    if (this.environmentRig && this.scene) {
+      this.scene.remove(this.environmentRig);
+      this.disposeObject3D(this.environmentRig);
+      this.environmentRig = null;
+    }
+    if (this.fxRig && this.scene) {
+      this.scene.remove(this.fxRig);
+      this.disposeObject3D(this.fxRig);
+      this.fxRig = null;
     }
 
-    if (this.rocket && this.scene) {
-      this.scene.remove(this.rocket);
-      this.disposeObject3D(this.rocket);
-      this.rocket = null;
-    }
-
-    if (this.surfaceGroup && this.scene) {
-      this.scene.remove(this.surfaceGroup);
-      this.disposeObject3D(this.surfaceGroup);
-      this.surfaceGroup = null;
-    }
-
-    if (this.destinationGroup && this.scene) {
-      this.scene.remove(this.destinationGroup);
-      this.disposeObject3D(this.destinationGroup);
-      this.destinationGroup = null;
-    }
+    this.rocket = null;
+    this.flameMesh = null;
+    this.terrainMesh = null;
+    this.destinationGroup = null;
     this.destinationMesh = null;
     this.saturnRingMesh = null;
-
-    if (this.earthGroup && this.scene) {
-      this.scene.remove(this.earthGroup);
-      this.disposeObject3D(this.earthGroup);
-      this.earthGroup = null;
-    }
+    this.earthGroup = null;
     this.earthMesh = null;
-
-    if (this.launchPadGroup && this.scene) {
-      this.scene.remove(this.launchPadGroup);
-      this.disposeObject3D(this.launchPadGroup);
-      this.launchPadGroup = null;
-    }
-
-    if (this.cloudsGroup && this.scene) {
-      this.scene.remove(this.cloudsGroup);
-      this.disposeObject3D(this.cloudsGroup);
-      this.cloudsGroup = null;
-    }
-
-    if (this.starsGroup && this.scene) {
-      this.scene.remove(this.starsGroup);
-      this.disposeObject3D(this.starsGroup);
-      this.starsGroup = null;
-    }
+    this.launchPadGroup = null;
+    this.cloudsGroup = null;
+    this.starsGroup = null;
 
     if (this.renderer) {
       this.renderer.dispose();
@@ -1395,3 +1580,6 @@ class LaunchSequence {
 
 // Global Launch Sequence Instance
 window.launchSequence = new LaunchSequence();
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = LaunchSequence;
+}

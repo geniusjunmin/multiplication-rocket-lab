@@ -3,7 +3,7 @@
  * Version 4.0.0 Space Adventure Progression Architecture
  */
 const CONFIG = {
-  APP_VERSION: "4.1.0",
+  APP_VERSION: "4.2.1",
   SCHEMA_VERSION: 4,
   PART_COUNT: 10,
   DEFAULT_QUESTION_COUNT: 15,
@@ -1189,6 +1189,37 @@ const CONFIG = {
     lightning: { reqEn: "Achieve a 10-streak combo", reqZh: "达成 10 连胜答对", check: (p) => (p.maxComboAllTime >= 10) },
     galaxy: { reqEn: "Earn 20 Mission Stars", reqZh: "累计获得 20 颗任务之星", check: (p) => (p.progression && p.progression.totalStars >= 20) || (p.badges && p.badges.length >= 5) },
     lunar_white: { reqEn: "Complete all 3 Moon Missions", reqZh: "完成全部 3 个月球任务", check: (p) => p.missionRecords && ["moon_crater_survey", "moon_rover_delivery", "moon_beacon_rescue"].every(id => p.missionRecords[id] && p.missionRecords[id].completedCount > 0) }
+  },
+
+  // 3D Graphics & VFX Quality Tiers
+  VFX_QUALITY: {
+    high: {
+      stars: 3200,
+      smoke: 120,
+      dust: 100,
+      sparks: 80,
+      warpStreaks: 320,
+      saturnIce: 600,
+      cloudSprites: 36
+    },
+    medium: {
+      stars: 2000,
+      smoke: 70,
+      dust: 60,
+      sparks: 40,
+      warpStreaks: 180,
+      saturnIce: 300,
+      cloudSprites: 20
+    },
+    low: {
+      stars: 1000,
+      smoke: 35,
+      dust: 30,
+      sparks: 20,
+      warpStreaks: 80,
+      saturnIce: 120,
+      cloudSprites: 10
+    }
   }
 };
 

@@ -2940,6 +2940,28 @@ body.cinematic-mode-active .launch-container {
 }
 
 /* Milestone Stage Banner Pop Animation */
+.launch-stage-banner {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(15, 23, 42, 0.9);
+  border: 2px solid #38bdf8;
+  border-radius: var(--radius-md);
+  padding: 0.8rem 2.2rem;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-shadow: 0 0 15px rgba(56, 189, 248, 0.8);
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.4), inset 0 0 15px rgba(56, 189, 248, 0.2);
+  z-index: 60;
+  pointer-events: none;
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+
 .banner-pop {
   animation: milestoneBannerPop 2.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

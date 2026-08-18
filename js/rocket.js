@@ -319,6 +319,10 @@ class RocketBuilder {
     return group;
   }
 
+  buildCustomRocketInstance(modelId = this.currentModel, themeId = this.currentTheme, payloadId = null) {
+    return this.createDetachedRocket(modelId, themeId);
+  }
+
   buildCurrentRocket() {
     if (this.rocketGroup && this.scene) {
       this.scene.remove(this.rocketGroup);

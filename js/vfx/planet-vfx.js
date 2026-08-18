@@ -1,9 +1,10 @@
 /**
  * Multiplication Rocket Lab - Procedural Planet & Space Environment VFX (js/vfx/planet-vfx.js)
- * Version 4.2.0 Cinematic VFX & Animation Overhaul
+ * Version 4.2.1 Cinematic Integration & Spectacle Pass
  * 
  * Provides offline procedural multi-layered textures, atmospheric Fresnel halos,
- * realistic gas giant cloud bands, Cassini division rings, and deep space nebulas without external CDN assets.
+ * realistic gas giant cloud bands, Jovian moons (Io & Europa), Cassini division rings,
+ * Deep Space nebula clusters, and mysterious beacon artifacts without external CDN assets.
  */
 class PlanetVisualFactory {
 
@@ -42,7 +43,6 @@ class PlanetVisualFactory {
 
     // A. Earth Base Surface (Oceans + Continents)
     const earthTex = PlanetVisualFactory.createProceduralTexture(512, 256, (ctx, w, h) => {
-      // Ocean Blue Base
       const oceanGrad = ctx.createLinearGradient(0, 0, 0, h);
       oceanGrad.addColorStop(0, "#0c4a6e");
       oceanGrad.addColorStop(0.5, "#0284c7");
@@ -50,70 +50,61 @@ class PlanetVisualFactory {
       ctx.fillStyle = oceanGrad;
       ctx.fillRect(0, 0, w, h);
 
-      // Continent Landmass Patches
-      ctx.fillStyle = "#15803d"; // Forest Green
-      // Eurasia & Africa
+      // Continent Landmasses
+      ctx.fillStyle = "#15803d";
       ctx.beginPath();
-      ctx.ellipse(w * 0.55, h * 0.45, w * 0.22, h * 0.28, 0.2, 0, Math.PI * 2);
+      ctx.ellipse(w * 0.32, h * 0.42, w * 0.18, h * 0.22, 0.2, 0, Math.PI * 2);
       ctx.fill();
-      // Americas
+
       ctx.fillStyle = "#166534";
       ctx.beginPath();
-      ctx.ellipse(w * 0.22, h * 0.5, w * 0.12, h * 0.35, -0.2, 0, Math.PI * 2);
+      ctx.ellipse(w * 0.68, h * 0.48, w * 0.22, h * 0.25, -0.3, 0, Math.PI * 2);
       ctx.fill();
-      // Deserts / Savannas
-      ctx.fillStyle = "#d97706";
-      ctx.beginPath();
-      ctx.ellipse(w * 0.52, h * 0.42, w * 0.08, h * 0.1, 0, 0, Math.PI * 2);
-      ctx.fill();
+
       // Polar Ice Caps
       ctx.fillStyle = "#f8fafc";
       ctx.fillRect(0, 0, w, h * 0.08);
       ctx.fillRect(0, h * 0.92, w, h * 0.08);
     });
 
-    const baseGeo = new THREE.SphereGeometry(radius, 48, 36);
-    const baseMat = new THREE.MeshStandardMaterial({
+    const geo = new THREE.SphereGeometry(radius, 48, 36);
+    const mat = new THREE.MeshStandardMaterial({
       map: earthTex || null,
       color: earthTex ? 0xffffff : 0x0284c7,
-      roughness: 0.6,
+      roughness: 0.65,
       metalness: 0.1
     });
-    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
-    group.add(baseMesh);
+    const mesh = new THREE.Mesh(geo, mat);
+    group.add(mesh);
 
-    // B. Rotating Cloud Sphere
+    // B. Atmospheric Cloud Swirl Layer
     const cloudTex = PlanetVisualFactory.createProceduralTexture(512, 256, (ctx, w, h) => {
-      ctx.fillStyle = "rgba(0,0,0,0)";
-      ctx.fillRect(0, 0, w, h);
-
+      ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
-      for (let i = 0; i < 40; i++) {
-        const cx = Math.random() * w;
-        const cy = h * 0.15 + Math.random() * (h * 0.7);
-        const rw = 20 + Math.random() * 60;
-        const rh = 8 + Math.random() * 20;
+      for (let i = 0; i < 18; i++) {
+        const x = (i / 18) * w + (Math.sin(i) * 30);
+        const y = h * 0.2 + (Math.cos(i * 1.5) * h * 0.35);
         ctx.beginPath();
-        ctx.ellipse(cx, cy, rw, rh, Math.random() * 0.5, 0, Math.PI * 2);
+        ctx.ellipse(x % w, y, 45, 14, (i % 2 === 0 ? 0.35 : -0.35), 0, Math.PI * 2);
         ctx.fill();
       }
     });
 
-    const cloudGeo = new THREE.SphereGeometry(radius * 1.018, 40, 30);
-    const cloudMat = new THREE.MeshBasicMaterial({
+    const cloudGeo = new THREE.SphereGeometry(radius * 1.025, 40, 30);
+    const cloudMat = new THREE.MeshStandardMaterial({
       map: cloudTex || null,
       color: 0xffffff,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.55,
+      roughness: 1.0,
       depthWrite: false
     });
-    const cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
-    cloudMesh.userData = { isCloudLayer: true, rotSpeed: 0.015 };
-    group.add(cloudMesh);
+    const cloudsMesh = new THREE.Mesh(cloudGeo, cloudMat);
+    group.add(cloudsMesh);
 
-    // C. Atmosphere Fresnel Glow Halo
-    const glowGeo = new THREE.SphereGeometry(radius * 1.08, 36, 24);
-    const glowMat = new THREE.MeshBasicMaterial({
+    // C. Cyan Atmospheric Fresnel Halo
+    const haloGeo = new THREE.SphereGeometry(radius * 1.08, 36, 24);
+    const haloMat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
       transparent: true,
       opacity: 0.25,
@@ -121,83 +112,80 @@ class PlanetVisualFactory {
       blending: THREE.AdditiveBlending,
       depthWrite: false
     });
-    const glowMesh = new THREE.Mesh(glowGeo, glowMat);
-    group.add(glowMesh);
+    const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+    group.add(haloMesh);
 
-    group.userData = { radius, baseMesh, cloudMesh, glowMesh };
+    group.userData = { radius, baseMesh: mesh, cloudMesh: cloudsMesh, haloMesh };
     return group;
   }
 
   /**
-   * 2. Procedural Moon with Mare & Craters
+   * 2. Procedural Moon with Basalt Maria & Craters
    */
-  static createMoon(radius = 7.0) {
+  static createMoon(radius = 6.0) {
     const group = (typeof THREE !== "undefined" && THREE.Group) ? new THREE.Group() : { add() {} };
     if (typeof THREE === "undefined") return group;
 
     const moonTex = PlanetVisualFactory.createProceduralTexture(512, 256, (ctx, w, h) => {
-      // Grey regolith base
       ctx.fillStyle = "#94a3b8";
       ctx.fillRect(0, 0, w, h);
 
-      // Dark Lunar Mare Basalt Plains
+      // Lunar Maria (Dark Basalt Plains)
       ctx.fillStyle = "#475569";
       ctx.beginPath();
-      ctx.ellipse(w * 0.35, h * 0.45, w * 0.18, h * 0.2, 0.3, 0, Math.PI * 2);
+      ctx.ellipse(w * 0.35, h * 0.45, w * 0.16, h * 0.2, 0.4, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.ellipse(w * 0.65, h * 0.4, w * 0.12, h * 0.15, -0.2, 0, Math.PI * 2);
+      ctx.ellipse(w * 0.65, h * 0.4, w * 0.18, h * 0.16, -0.2, 0, Math.PI * 2);
       ctx.fill();
 
-      // Craters with rim shadows
-      for (let i = 0; i < 35; i++) {
-        const cx = Math.random() * w;
-        const cy = Math.random() * h;
-        const cr = 4 + Math.random() * 18;
+      // Craters with bright rims and dark centers
+      const craters = [
+        { x: 0.2, y: 0.3, r: 18 },
+        { x: 0.5, y: 0.7, r: 24 },
+        { x: 0.8, y: 0.35, r: 14 },
+        { x: 0.45, y: 0.25, r: 12 },
+        { x: 0.7, y: 0.75, r: 16 }
+      ];
 
-        // Crater Wall Dark
+      craters.forEach(c => {
+        const cx = c.x * w;
+        const cy = c.y * h;
+        // Bright rim
+        ctx.fillStyle = "#e2e8f0";
+        ctx.beginPath();
+        ctx.arc(cx, cy, c.r + 3, 0, Math.PI * 2);
+        ctx.fill();
+        // Dark depression floor
         ctx.fillStyle = "#334155";
         ctx.beginPath();
-        ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+        ctx.arc(cx, cy, c.r, 0, Math.PI * 2);
         ctx.fill();
-
-        // Crater Floor
-        ctx.fillStyle = "#64748b";
-        ctx.beginPath();
-        ctx.arc(cx + 1, cy + 1, cr * 0.75, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Crater Rim Highlight
-        ctx.strokeStyle = "#cbd5e1";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(cx, cy, cr, Math.PI * 0.75, Math.PI * 1.75);
-        ctx.stroke();
-      }
+      });
     });
 
-    const geo = new THREE.SphereGeometry(radius, 44, 32);
+    const geo = new THREE.SphereGeometry(radius, 40, 30);
     const mat = new THREE.MeshStandardMaterial({
       map: moonTex || null,
       color: moonTex ? 0xffffff : 0x94a3b8,
-      roughness: 0.9,
+      roughness: 0.95,
       metalness: 0.05
     });
     const mesh = new THREE.Mesh(geo, mat);
     group.add(mesh);
+
     group.userData = { radius, baseMesh: mesh };
     return group;
   }
 
   /**
-   * 3. Procedural Mars with Syrtis Major, Polar Ice, and Haze
+   * 3. Procedural Mars with Valles Marineris, Polar Ice Cap & Orange Atmospheric Haze
    */
-  static createMars(radius = 7.5) {
+  static createMars(radius = 7.0) {
     const group = (typeof THREE !== "undefined" && THREE.Group) ? new THREE.Group() : { add() {} };
     if (typeof THREE === "undefined") return group;
 
     const marsTex = PlanetVisualFactory.createProceduralTexture(512, 256, (ctx, w, h) => {
-      // Rust Red Base
       const grad = ctx.createLinearGradient(0, 0, 0, h);
       grad.addColorStop(0, "#991b1b");
       grad.addColorStop(0.5, "#ea580c");
@@ -249,14 +237,13 @@ class PlanetVisualFactory {
   }
 
   /**
-   * 4. Procedural Jupiter with Banded Clouds & Great Red Spot
+   * 4. Procedural Jupiter with Banded Clouds, Great Red Spot, Io & Europa Moons
    */
   static createJupiter(radius = 11.0) {
     const group = (typeof THREE !== "undefined" && THREE.Group) ? new THREE.Group() : { add() {} };
     if (typeof THREE === "undefined") return group;
 
     const jupiterTex = PlanetVisualFactory.createProceduralTexture(512, 256, (ctx, w, h) => {
-      // Alternating atmospheric cloud bands
       const bands = [
         { y: 0.0, color: "#fed7aa" },
         { y: 0.12, color: "#b45309" },
@@ -310,14 +297,21 @@ class PlanetVisualFactory {
     const mesh = new THREE.Mesh(geo, mat);
     group.add(mesh);
 
-    // Orbiting Io Moon
-    const moonGeo = new THREE.SphereGeometry(0.6, 16, 12);
-    const moonMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.8 });
-    const ioMoon = new THREE.Mesh(moonGeo, moonMat);
-    ioMoon.position.set(radius * 1.7, 1.2, radius * 0.8);
+    // Orbiting Io Moon (Sulfur Yellow)
+    const ioGeo = new THREE.SphereGeometry(0.65, 16, 12);
+    const ioMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.8 });
+    const ioMoon = new THREE.Mesh(ioGeo, ioMat);
+    ioMoon.position.set(radius * 1.5, 1.2, radius * 0.7);
     group.add(ioMoon);
 
-    group.userData = { radius, baseMesh: mesh, ioMoon };
+    // Orbiting Europa Moon (Ice Blue)
+    const europaGeo = new THREE.SphereGeometry(0.55, 16, 12);
+    const europaMat = new THREE.MeshStandardMaterial({ color: 0xe0f2fe, roughness: 0.5 });
+    const europaMoon = new THREE.Mesh(europaGeo, europaMat);
+    europaMoon.position.set(-radius * 1.9, -0.8, radius * 0.4);
+    group.add(europaMoon);
+
+    group.userData = { radius, baseMesh: mesh, ioMoon, europaMoon };
     return group;
   }
 
@@ -395,7 +389,7 @@ class PlanetVisualFactory {
   }
 
   /**
-   * 6. Procedural Deep Space Nebula & Cosmic Cluster (Replaces Wireframes!)
+   * 6. Procedural Deep Space Nebula & Ancient Beacon Relic
    */
   static createDeepSpace(radius = 10.0) {
     const group = (typeof THREE !== "undefined" && THREE.Group) ? new THREE.Group() : { add() {} };
@@ -411,6 +405,18 @@ class PlanetVisualFactory {
     });
     const coreMesh = new THREE.Mesh(coreGeo, coreMat);
     group.add(coreMesh);
+
+    // Ancient Alien Beacon Relic (Mysterious Signal Geometry)
+    const relicGeo = new THREE.OctahedronGeometry(2.0, 1);
+    const relicMat = new THREE.MeshStandardMaterial({
+      color: 0x22d3ee,
+      emissive: 0x0891b2,
+      metalness: 0.9,
+      roughness: 0.2
+    });
+    const relicMesh = new THREE.Mesh(relicGeo, relicMat);
+    relicMesh.position.set(0, 0, 4.5);
+    group.add(relicMesh);
 
     // Multi-Layered Translucent Nebula Clouds
     const nebulaTex = PlanetVisualFactory.createProceduralTexture(128, 128, (ctx, w, h) => {
@@ -442,7 +448,7 @@ class PlanetVisualFactory {
       group.add(sprite);
     }
 
-    group.userData = { radius, baseMesh: coreMesh };
+    group.userData = { radius, baseMesh: coreMesh, relicMesh };
     return group;
   }
 }

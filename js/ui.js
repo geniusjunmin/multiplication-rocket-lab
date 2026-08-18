@@ -407,8 +407,16 @@ class UIManager {
   }
 
   /**
-   * In-Flight Dynamic Event Modal
+   * In-Flight Dynamic Event Modal (Canonical and Backward Compatible)
    */
+  showFlightEvent(eventDef, onResolved) {
+    return this.triggerFlightEventModal(eventDef, onResolved);
+  }
+
+  showFlightEventModal(eventDef, onResolved) {
+    return this.triggerFlightEventModal(eventDef, onResolved);
+  }
+
   triggerFlightEventModal(eventDef, onResolved) {
     this.activeEventData = eventDef;
     this.activeEventCallback = onResolved;
@@ -419,10 +427,10 @@ class UIManager {
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
 
     const titleEl = document.getElementById("event-modal-title");
-    if (titleEl) titleEl.innerText = isZh ? eventDef.titleZh : eventDef.titleEn;
+    if (titleEl) titleEl.innerText = isZh ? (eventDef.titleZh || eventDef.nameZh || "飞行特情事件") : (eventDef.titleEn || eventDef.nameEn || "Flight Event");
 
     const descEl = document.getElementById("event-modal-desc");
-    if (descEl) descEl.innerText = isZh ? eventDef.descZh : eventDef.descEn;
+    if (descEl) descEl.innerText = isZh ? (eventDef.descZh || eventDef.storyZh || "请快速计算") : (eventDef.descEn || eventDef.storyEn || "Calculate to stabilize course!");
 
     if (window.audioManager) window.audioManager.playEventAlert();
 

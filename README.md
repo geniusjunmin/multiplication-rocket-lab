@@ -1,14 +1,14 @@
-# Multiplication Rocket Lab 🚀 (乘法火箭实验室 v4.1.0)
+# Multiplication Rocket Lab 🚀 (乘法火箭实验室 v4.2.1)
 
 [![GitHub Pages Deployment](https://img.shields.io/badge/Live_Demo-GitHub_Pages-6366f1?style=for-the-badge&logo=github)](https://geniusjunmin.github.io/multiplication-rocket-lab/)
-[![Automated Tests](https://img.shields.io/badge/Tests-60%2F60%20Passing-10b981?style=for-the-badge&logo=node.js)](https://geniusjunmin.github.io/multiplication-rocket-lab/test.html)
+[![Automated Tests](https://img.shields.io/badge/Tests-72%2F72%20Passing-10b981?style=for-the-badge&logo=node.js)](https://geniusjunmin.github.io/multiplication-rocket-lab/test.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-10b981.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 **Multiplication Rocket Lab** is a gamified 3D math learning adventure designed for primary school children (UK National Curriculum & Worldwide, Ages 6-12). Combining times tables and division practice with procedural Three.js 3D rocket engineering and solar system exploration, it empowers children to level up as Space Commanders through daily space adventures.
 
 ---
 
-## 🌟 What's New in Version 4.1.0 — Space Adventure Progression & Integrity
+## 🌟 What's New in Version 4.2.1 — Cinematic Integration & Spectacle Pass
 
 ### 1. 🪐 Interplanetary Mission Board & Story Objectives
 - **18+ Interplanetary Missions**: Unique, story-driven missions across Earth Orbit, Moon, Mars, Jupiter, Saturn, and Deep Space (e.g. *Copernicus Crater Mineral Survey*, *Jezero Rover Deployment*, *Great Red Spot Radiation Flight*).

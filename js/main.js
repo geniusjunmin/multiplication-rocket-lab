@@ -1,9 +1,9 @@
 /**
  * Multiplication Rocket Lab - Application Main Entry & Event Dispatcher (js/main.js)
- * Version 4.0.0 Space Adventure Progression Architecture
+ * Version 4.2.1 Cinematic Integration & Spectacle Pass
  */
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("Multiplication Rocket Lab v4.0.0 Space Adventure Progression Initialized!");
+  console.log("Multiplication Rocket Lab v4.2.1 Cinematic Integration & Spectacle Pass Initialized!");
 
   initDevMode();
   if (window.i18n) window.i18n.updateDOM();
@@ -580,15 +580,18 @@ function bindLaunchEvents() {
 
     if (window.launchSequence) {
       const destId = window.storageManager ? (window.storageManager.get("selectedDestination") || "moon") : "moon";
-      window.launchSequence.startLaunchSequence(() => {
-        console.log(`Mission to ${destId} complete!`);
+      window.launchSequence.startLaunch({
+        destinationId: destId,
+        onComplete: () => {
+          console.log(`Mission to ${destId} complete!`);
+        }
       });
     }
   });
 
   document.getElementById("btn-skip-countdown")?.addEventListener("click", () => {
     if (window.launchSequence) {
-      window.launchSequence.countdownValue = 0;
+      window.launchSequence.skipCountdown();
     }
   });
 

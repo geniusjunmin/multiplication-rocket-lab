@@ -40,9 +40,10 @@ describe("4. Interplanetary Launch Engine & Planet Arrival Scenes (LaunchSequenc
     const launch = new LaunchSequence();
     launch.initScene("canvas-container-launch", "mars");
     
-    launch.triggerIgnition(() => {
-      Assert.equal(launch.currentStage, "ignition", "Stage should transition to ignition");
-    });
+    launch.triggerIgnition();
+    Assert.equal(launch.currentStage, "ignition", "Stage should transition to ignition");
+    launch.liftoff();
+    Assert.equal(launch.currentStage, "liftoff", "Stage should transition to liftoff");
     launch.destroy();
   });
 
@@ -86,8 +87,8 @@ describe("4. Interplanetary Launch Engine & Planet Arrival Scenes (LaunchSequenc
     Assert.equal(launch.flameMesh.visible, false, "Flame must be turned OFF at touchdown");
     Assert.equal(launch.engineLight.intensity, 0, "Engine light must be cut off at touchdown");
 
-    // Hold for 2.6s to trigger settlement & mission complete
-    launch.landingPhaseElapsed = 2.6;
+    // Hold for 3.8s to trigger settlement & mission complete
+    launch.landingPhaseElapsed = 3.8;
     launch.updateLandingSystem(0.1);
 
     Assert.equal(launch.hasRecordedVisit, true, "Visit should be recorded only after touchdown hold settles");
@@ -257,6 +258,83 @@ describe("4. Interplanetary Launch Engine & Planet Arrival Scenes (LaunchSequenc
     animLab.applyCustomization("starship", "neon", "rover", "trail_rainbow");
     Assert.equal(animLab.labOverrides.model, "starship", "Lab override model must be starship");
     Assert.equal(profile.currentRocketModel, originalModel, "Real player profile model must NOT be mutated by Animation Lab");
+  });
+
+  it("4.18 DOM Contract Test: critical IDs must exist in DOM contract", () => {
+    const launch = new LaunchSequence();
+    launch.initScene("canvas-container-launch", "moon");
+
+    const ids = ["countdown-num", "check-item-1", "check-item-2", "check-item-3", "check-item-4", "launch-stage-banner", "space-victory-banner", "victory-title-text"];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      Assert.isTrue(el !== null, `DOM element #${id} must exist in document contract`);
+    });
+    launch.destroy();
+  });
+
+  it("4.19 Real API Integration Test: startLaunch canonical API and backward-compatible alias", () => {
+    const launch = new LaunchSequence();
+    launch.initScene("canvas-container-launch", "moon");
+
+    Assert.equal(typeof launch.startLaunch, "function", "startLaunch canonical API must be a function");
+    Assert.equal(typeof launch.startLaunchSequence, "function", "startLaunchSequence backward-compatible alias must be a function");
+
+    let completed = false;
+    launch.startLaunch({
+      destinationId: "moon",
+      onComplete: () => { completed = true; }
+    });
+    Assert.equal(launch.currentStage, "countdown", "startLaunch must transition to countdown");
+
+    launch.destroy();
+  });
+
+  it("4.20 Single-Fire Skip Countdown should transition immediately to ignition", () => {
+    const launch = new LaunchSequence();
+    launch.initScene("canvas-container-launch", "moon");
+    launch.startLaunch();
+
+    Assert.equal(launch.currentStage, "countdown", "Must start in countdown stage");
+    launch.skipCountdown();
+
+    Assert.equal(launch.countdownValue, 0, "Countdown value should immediately snap to 0");
+    Assert.equal(launch.currentStage, "ignition", "Skip countdown must trigger ignition immediately");
+    Assert.equal(launch.hasSkippedCountdown, true, "hasSkippedCountdown flag must be set to prevent duplicate triggers");
+
+    // Second call should be a no-op
+    launch.skipCountdown();
+    Assert.equal(launch.currentStage, "ignition", "Second skip call should be safe no-op");
+    launch.destroy();
+  });
+
+  it("4.21 Lifecycle & Timer Leak Test: destroy() must clean all timeouts, intervals, RAFs, and audio loops", () => {
+    const launch = new LaunchSequence();
+    launch.initScene("canvas-container-launch", "mars");
+    launch.startLaunch();
+
+    launch.scheduleTimeout(() => {}, 5000);
+    launch.scheduleInterval(() => {}, 1000);
+
+    launch.destroy();
+
+    Assert.equal(launch.activeTimeouts.length, 0, "activeTimeouts must be 0 after destroy");
+    Assert.equal(launch.activeIntervals.length, 0, "activeIntervals must be 0 after destroy");
+    Assert.equal(launch.activeRafs.size, 0, "activeRafs must be empty after destroy");
+    Assert.equal(launch.scene, null, "scene must be null after destroy");
+    Assert.isFalse(document.body.classList.contains("cinematic-mode-active"), "cinematic-mode-active class must be removed on destroy");
+  });
+
+  it("4.22 EngineVFXSystem should support cosmetic trail styles matching research unlocks", () => {
+    const scene = new THREE.Scene();
+    const engine = new EngineVFXSystem(scene);
+
+    const styles = ["trail_standard", "trail_plasma_blue", "trail_ion_green", "trail_solar_flare", "trail_starlight"];
+    styles.forEach(styleId => {
+      engine.setTrailStyle(styleId);
+      Assert.equal(engine.state.trailStyle, styleId, `Engine trailStyle must match ${styleId}`);
+      Assert.isTrue(engine.plumeMesh.material.color !== null, `Plume mesh color must update for ${styleId}`);
+    });
+    engine.dispose();
   });
 
 });

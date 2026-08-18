@@ -1,8 +1,8 @@
 /**
  * Multiplication Rocket Lab - Service Worker (sw.js)
- * Version 4.1.0 — Offline-First PWA Cache
+ * Version 4.2.1 — Offline-First PWA Cache
  */
-const CACHE_NAME = "rocket-lab-cache-v4.2.0";
+const CACHE_NAME = "rocket-lab-cache-v4.2.1";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",

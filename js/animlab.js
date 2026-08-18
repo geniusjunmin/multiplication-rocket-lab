@@ -1,6 +1,6 @@
 /**
  * Multiplication Rocket Lab - Animation Test Lab (js/animlab.js)
- * Version 4.2.0 Cinematic VFX & Animation Overhaul
+ * Version 4.2.1 Cinematic Integration & Spectacle Pass
  * 
  * Dedicated visual sandbox for testing and previewing 3D flight sequences,
  * multi-shot launch cinematography, procedural planets, and VFX systems.
@@ -45,9 +45,12 @@ class AnimationLab {
   initViewport(destId = this.currentDest) {
     this.currentDest = destId;
     if (window.launchSequence) {
-      window.launchSequence.initScene("canvas-container-anim-lab", destId);
+      window.launchSequence.initScene("canvas-container-anim-lab", destId, {
+        sandbox: true,
+        ...this.labOverrides,
+        quality: this.vfxQuality
+      });
       window.launchSequence.speedMultiplier = this.speedMultiplier;
-      this.applyLabOverridesToScene();
     }
     this.syncHUD();
   }
@@ -55,10 +58,18 @@ class AnimationLab {
   playFullFlight(destId = this.currentDest) {
     this.currentDest = destId;
     if (window.launchSequence) {
-      window.launchSequence.initScene("canvas-container-anim-lab", destId);
+      window.launchSequence.initScene("canvas-container-anim-lab", destId, {
+        sandbox: true,
+        ...this.labOverrides,
+        quality: this.vfxQuality
+      });
       window.launchSequence.speedMultiplier = this.speedMultiplier;
-      this.applyLabOverridesToScene();
-      window.launchSequence.startLaunch();
+      window.launchSequence.startLaunch({
+        destinationId: destId,
+        onComplete: () => {
+          console.log(`[AnimLab] Full flight to ${destId} completed!`);
+        }
+      });
     }
     this.syncHUD();
   }
@@ -68,7 +79,6 @@ class AnimationLab {
     if (window.launchSequence) {
       window.launchSequence.jumpToStage(stageName, destId, "canvas-container-anim-lab");
       window.launchSequence.speedMultiplier = this.speedMultiplier;
-      this.applyLabOverridesToScene();
     }
     this.syncHUD();
   }
@@ -122,7 +132,7 @@ class AnimationLab {
       window.launchSequence.isEventPaused = true;
     }
     if (window.uiManager) {
-      window.uiManager.showFlightEventModal(eventDef, (selectedOpt) => {
+      window.uiManager.showFlightEvent(eventDef, () => {
         if (window.launchSequence) {
           window.launchSequence.isEventPaused = false;
         }
@@ -160,25 +170,6 @@ class AnimationLab {
     this.labOverrides.payload = payload;
     this.labOverrides.trail = trail;
     this.initViewport(this.currentDest);
-  }
-
-  applyLabOverridesToScene() {
-    if (!window.launchSequence || !window.launchSequence.rocket) return;
-    const ov = this.labOverrides;
-
-    // Apply color theme
-    if (CONFIG.THEMES && CONFIG.THEMES[ov.theme]) {
-      const themeColors = CONFIG.THEMES[ov.theme].colors;
-      window.launchSequence.rocket.traverse(child => {
-        if (child.isMesh && child.material) {
-          if (child.name.includes("body") && themeColors.primary) {
-            child.material.color.setHex(themeColors.primary);
-          } else if (child.name.includes("fin") && themeColors.secondary) {
-            child.material.color.setHex(themeColors.secondary);
-          }
-        }
-      });
-    }
   }
 
   syncHUD() {
@@ -290,6 +281,11 @@ class AnimationLab {
     document.getElementById("anim-select-theme")?.addEventListener("change", syncSelectors);
     document.getElementById("anim-select-payload")?.addEventListener("change", syncSelectors);
     document.getElementById("anim-select-trail")?.addEventListener("change", syncSelectors);
+
+    document.getElementById("anim-select-quality")?.addEventListener("change", (e) => {
+      this.vfxQuality = e.target.value;
+      this.initViewport(this.currentDest);
+    });
   }
 }
 

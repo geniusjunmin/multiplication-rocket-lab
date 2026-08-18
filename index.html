@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title data-i18n="appTitle">Multiplication Rocket Lab 4.1 🚀</title>
+  <title data-i18n="appTitle">Multiplication Rocket Lab 4.2.1 🚀</title>
   
   <meta name="description" content="Master Times Tables & Division, Build 3D Rockets & Explore the Solar System with Missions & Progression!">
   <meta name="theme-color" content="#6366f1">
@@ -365,14 +365,18 @@
               <div class="anim-control-group">
                 <h4 class="anim-group-title">⚡ 2. 关键飞行阶段精准直达</h4>
                 <div class="anim-btn-grid cols-4">
-                  <button class="btn btn-anim-chip" data-action="stage" data-stage="liftoff">🚀 1. 点火升空</button>
-                  <button class="btn btn-anim-chip" data-action="stage" data-stage="atmospheric">☁️ 2. 大气转弯</button>
-                  <button class="btn btn-anim-chip" data-action="stage" data-stage="earthOrbit">🌍 3. 轨道切入</button>
-                  <button class="btn btn-anim-chip" data-action="stage" data-stage="transfer">⚡ 4. 转移加速</button>
-                  <button class="btn btn-anim-chip" data-action="stage" data-stage="destinationApproach">🪐 5. 进场接近</button>
-                  <button class="btn btn-anim-chip" data-action="stage" data-stage="destinationAction">🛬 6. 着陆/巡航</button>
-                  <button class="btn btn-anim-chip" data-action="stage" data-stage="missionComplete">🏆 7. 胜利镜头</button>
-                  <button class="btn btn-anim-chip" data-action="eventModal">🚨 8. 特情弹窗</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="pad">🏗️ 1. 发射台</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="countdown">⏱️ 2. 倒计时</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="ignition">🔥 3. 点火阶段</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="liftoff">🚀 4. 起飞升空</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="atmospheric">☁️ 5. 大气穿云</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="earthOrbit">🌍 6. 地球轨道</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="transfer">⚡ 7. 转移加速</button>
+                  <button class="btn btn-anim-chip" data-action="eventModal">🚨 8. 特情事件</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="destinationApproach">🪐 9. 进场接近</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="destinationAction">🛬 10. 行星任务</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="landing">🛬 11. 地表着陆</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="missionComplete">🏆 12. 任务胜利</button>
                 </div>
               </div>
 
@@ -397,7 +401,7 @@
 
               <!-- Group 4: 🎨 实时换装与载荷测试 (Real-time Customization) -->
               <div class="anim-control-group">
-                <h4 class="anim-group-title">🎨 4. 火箭型号、涂装、载荷与尾迹即时切换</h4>
+                <h4 class="anim-group-title">🎨 4. 火箭型号、涂装、载荷、尾迹与画质即时切换</h4>
                 <div class="anim-customizer-row">
                   <div class="custom-select-item">
                     <label>🚀 火箭型号:</label>
@@ -436,6 +440,14 @@
                       <option value="trail_ion_green">🌿 离子翠绿辉光</option>
                       <option value="trail_solar_flare">☀️ 太阳耀斑深红</option>
                       <option value="trail_starlight">✨ 星光幻紫粒子</option>
+                    </select>
+                  </div>
+                  <div class="custom-select-item">
+                    <label>✨ 画质特效:</label>
+                    <select id="anim-select-quality" class="input-select">
+                      <option value="high">🌟 极致特效 (High)</option>
+                      <option value="medium">⚡ 平衡流畅 (Medium)</option>
+                      <option value="low">🌱 节能极速 (Low)</option>
                     </select>
                   </div>
                 </div>
@@ -873,6 +885,8 @@
             <div id="countdown-num" class="countdown-num">5</div>
             <button id="btn-skip-countdown" class="btn btn-chip-sm" data-i18n="btnSkipCountdown">⏩ Skip Countdown</button>
           </div>
+
+          <div id="launch-stage-banner" class="launch-stage-banner hidden"></div>
 
           <div id="space-victory-banner" class="victory-banner hidden">
             <div class="victory-icon-burst">✨ ⭐ 🪐 ⭐ ✨</div>

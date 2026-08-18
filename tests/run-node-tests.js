@@ -199,6 +199,22 @@ global.THREE = {
   TorusGeometry: class { rotateX() {} translate() {} dispose() {} },
   SphereGeometry: class { rotateX() {} translate() {} dispose() {} },
   CircleGeometry: class { rotateX() {} translate() {} dispose() {} },
+  PlaneGeometry: class {
+    constructor() {
+      this.attributes = {
+        position: {
+          count: 10,
+          getX() { return 0; },
+          getZ() { return 0; },
+          setY() {},
+          needsUpdate: false
+        }
+      };
+    }
+    rotateX() {}
+    computeVertexNormals() {}
+    dispose() {}
+  },
   RingGeometry: class { rotateX() {} translate() {} dispose() {} },
   OctahedronGeometry: class { rotateX() {} translate() {} dispose() {} },
   DodecahedronGeometry: class { rotateX() {} translate() {} dispose() {} },
