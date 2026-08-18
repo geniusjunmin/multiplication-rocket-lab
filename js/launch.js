@@ -816,6 +816,11 @@ class LaunchSequence {
       const dur = (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.earthOrbit) || 3.0;
       const prog = Math.min(1.0, this.timelineElapsed / dur);
 
+      // Smooth horizontal prograde orbital cruise over Earth
+      this.rocket.rotation.x = -1.25;
+      this.rocket.rotation.y = 0.15 * prog;
+      this.rocket.rotation.z = -0.3;
+
       if (this.earthGroup) {
         this.earthGroup.rotation.y += 0.02 * dt;
         if (this.earthGroup.userData?.cloudMesh) {
@@ -847,6 +852,11 @@ class LaunchSequence {
         this.triggerInFlightEvent();
         return;
       }
+
+      // Rocket flying forward towards -Z destination with banking roll and subtle pitch oscillation
+      this.rocket.rotation.x = -Math.PI / 2 + 0.12;
+      this.rocket.rotation.y = 0.08 * Math.sin(this.timelineElapsed * 1.5);
+      this.rocket.rotation.z = 0.12 * Math.sin(this.timelineElapsed * 1.2);
 
       if (this.warpVfx) {
         this.warpVfx.setWarpIntensity(Math.sin(prog * Math.PI));
@@ -895,6 +905,19 @@ class LaunchSequence {
       const dur = destCfg.cinematic?.approachSeconds || 4.5;
       const prog = Math.min(1.0, this.timelineElapsed / dur);
 
+      const isLanding = destCfg.type === "landing";
+      if (isLanding) {
+        // Smoothly rotate nose back upwards for retro-entry
+        this.rocket.rotation.x = (-Math.PI / 2 + 0.12) * (1.0 - prog);
+        this.rocket.rotation.y = 0;
+        this.rocket.rotation.z = -0.15 * (1.0 - prog);
+      } else {
+        // Orbit / flyby orbital banking
+        this.rocket.rotation.x = -0.65 * (1.0 - prog * 0.4);
+        this.rocket.rotation.y = 0.4 * prog;
+        this.rocket.rotation.z = -0.25;
+      }
+
       if (this.destinationGroup) {
         const startZ = -100;
         const endZ = -38;
@@ -903,7 +926,6 @@ class LaunchSequence {
       }
 
       if (prog >= 1.0) {
-        const isLanding = destCfg.type === "landing";
         if (isLanding) {
           this.transitionToSurfaceScene();
         } else {
@@ -941,10 +963,12 @@ class LaunchSequence {
     }
     this.showMilestoneBanner("⚡ TRANSFER BURN");
 
+    this.rocket.rotation.set(-Math.PI / 2 + 0.12, 0, 0);
+
     this.cameraDirector.playShot({
       id: "shot_warp_burn",
-      fromPosition: { x: 0, y: 0.5, z: 6.5 },
-      toPosition: { x: 0, y: 0.2, z: 4.8 },
+      fromPosition: { x: 0, y: 0.8, z: 6.5 },
+      toPosition: { x: 0, y: 0.3, z: 4.8 },
       fromTarget: { x: 0, y: 0, z: -10 },
       toTarget: { x: 0, y: 0, z: -10 },
       duration: 4.5,
@@ -1012,6 +1036,11 @@ class LaunchSequence {
     const dur = 8.0;
     const prog = Math.min(1.0, this.timelineElapsed / dur);
 
+    // Orbit horizontal prograde attitude
+    this.rocket.rotation.x = -1.25;
+    this.rocket.rotation.y = 0.15 + 0.05 * Math.sin(prog * Math.PI);
+    this.rocket.rotation.z = -0.3;
+
     if (this.earthGroup) this.earthGroup.rotation.y += 0.015 * dt;
 
     if (prog >= 0.25 && !this.payloadState.deploying && !this.payloadState.deployed) {
@@ -1044,7 +1073,9 @@ class LaunchSequence {
       }
     }
 
-    // Rocket banks dynamically over Jovian cloud bands
+    // Rocket sweeps horizontally past Great Red Spot and Jovian cloud bands
+    this.rocket.rotation.x = -0.7;
+    this.rocket.rotation.y = 0.5 + 0.2 * Math.sin(prog * Math.PI * 1.5);
     this.rocket.rotation.z = Math.sin(prog * Math.PI) * 0.35;
 
     if (prog >= 0.3 && !this.payloadState.deploying && !this.payloadState.deployed) {
@@ -1069,6 +1100,8 @@ class LaunchSequence {
     }
 
     // Dynamic Rocket Bank & Ring Plane alignment
+    this.rocket.rotation.x = -0.55;
+    this.rocket.rotation.y = 0.6;
     this.rocket.rotation.z = Math.sin(prog * Math.PI) * 0.45;
 
     if (prog >= 0.3 && !this.payloadState.deploying && !this.payloadState.deployed) {
@@ -1095,6 +1128,11 @@ class LaunchSequence {
         this.destinationGroup.userData.relicMesh.rotation.y += 0.06 * dt;
       }
     }
+
+    // Cruising orientation into deep space nebula
+    this.rocket.rotation.x = -0.9;
+    this.rocket.rotation.y = 0.3 * Math.sin(prog * Math.PI);
+    this.rocket.rotation.z = 0.15;
 
     if (prog >= 0.35 && !this.payloadState.deploying && !this.payloadState.deployed) {
       this.deployMissionPayload("probe");
@@ -1546,7 +1584,7 @@ class LaunchSequence {
       if (this.surfaceGroup) this.surfaceGroup.visible = false;
       if (this.rocket) {
         this.rocket.position.set(0, 0, 0);
-        this.rocket.rotation.set(0, 0, 0);
+        this.rocket.rotation.set(-1.25, 0, -0.3);
       }
       if (this.engineVfx) {
         this.engineVfx.setVisible(true);
@@ -1579,7 +1617,7 @@ class LaunchSequence {
       if (this.surfaceGroup) this.surfaceGroup.visible = false;
       if (this.rocket) {
         this.rocket.position.set(0, 0, 0);
-        this.rocket.rotation.set(0, 0, 0);
+        this.rocket.rotation.set(-Math.PI / 2 + 0.12, 0, 0);
       }
       this.startTransferBurn();
     } else if (stageName === "destinationApproach" || stageName === "approach") {
@@ -1593,9 +1631,10 @@ class LaunchSequence {
         this.destinationGroup.position.set(0, 0, -100);
       }
       if (this.surfaceGroup) this.surfaceGroup.visible = false;
+      const isLanding = (destId === "moon" || destId === "mars");
       if (this.rocket) {
         this.rocket.position.set(0, 0, 0);
-        this.rocket.rotation.set(0, 0, 0);
+        this.rocket.rotation.set(isLanding ? -0.4 : -0.65, isLanding ? 0 : 0.4, isLanding ? -0.1 : -0.25);
       }
       if (this.engineVfx) {
         this.engineVfx.setVisible(true);
@@ -1635,7 +1674,15 @@ class LaunchSequence {
         if (this.surfaceGroup) this.surfaceGroup.visible = false;
         if (this.rocket) {
           this.rocket.position.set(0, 0, 0);
-          this.rocket.rotation.set(0, 0, 0);
+          if (destId === "earthOrbit") {
+            this.rocket.rotation.set(-1.25, 0.15, -0.3);
+          } else if (destId === "jupiter") {
+            this.rocket.rotation.set(-0.7, 0.5, 0.2);
+          } else if (destId === "saturn") {
+            this.rocket.rotation.set(-0.55, 0.6, 0.3);
+          } else {
+            this.rocket.rotation.set(-0.9, 0, 0.15);
+          }
         }
         if (this.engineVfx) {
           this.engineVfx.setVisible(true);
