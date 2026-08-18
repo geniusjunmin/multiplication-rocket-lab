@@ -272,7 +272,10 @@ class LaunchSequence {
       const trailStyle = (this.labOverrides && this.labOverrides.trail) || (profile && profile.rocketCosmetics && profile.rocketCosmetics.trail) || "trail_standard";
 
       this.engineVfx = new EngineVFXSystem(this.flightRig, { trailStyle });
-      if (this.rocketRig) {
+      if (this.rocket) {
+        this.rocket.add(this.engineVfx.group);
+        this.engineVfx.group.position.set(0, this.rocketLocalMinY, 0);
+      } else if (this.rocketRig) {
         this.rocketRig.add(this.engineVfx.group);
         this.engineVfx.group.position.set(0, this.rocketLocalMinY, 0);
       }
@@ -504,10 +507,9 @@ class LaunchSequence {
       this.rocket = window.rocketBuilder.createDetachedRocket();
     }
 
-    this.rocket.position.set(0, 0, 0);
     this.rocketRig.add(this.rocket);
-
     this.calculateRocketDimensions();
+    this.rocket.position.set(0, this.padRocketY, 0);
     this.payloadMesh = this.rocket.getObjectByName("payload_mesh") || null;
   }
 
@@ -517,6 +519,7 @@ class LaunchSequence {
       this.rocketLocalMaxY = 3.5;
       this.rocketHeight = 6.0;
       this.touchdownRocketY = 2.5;
+      this.padRocketY = 2.5;
       return;
     }
 
@@ -529,6 +532,7 @@ class LaunchSequence {
     this.rocketLocalMaxY = box.max.y;
     this.rocketHeight = Math.max(1.0, box.max.y - box.min.y);
     this.touchdownRocketY = Math.abs(this.rocketLocalMinY) + this.GROUND_Y;
+    this.padRocketY = Math.abs(this.rocketLocalMinY);
 
     this.rocket.position.copy(prevPos);
   }
@@ -563,7 +567,7 @@ class LaunchSequence {
       this.destinationGroup.position.set(0, 0, -140);
     }
     if (this.rocket) {
-      this.rocket.position.set(0, 0, 0);
+      this.rocket.position.set(0, this.padRocketY || 2.5, 0);
       this.rocket.rotation.set(0, 0, 0);
     }
     if (this.engineVfx) {
@@ -585,13 +589,15 @@ class LaunchSequence {
     const numEl = document.getElementById("countdown-num");
     if (numEl) numEl.innerText = "5";
 
+    const padY = this.padRocketY || 2.5;
+
     // Shot 1: Hero Pad Track
     this.cameraDirector.playShot({
       id: "shot1_hero_pad",
-      fromPosition: { x: 4.5, y: 1.2, z: 9.5 },
-      toPosition: { x: 3.5, y: 1.8, z: 8.5 },
-      fromTarget: { x: 0, y: 2.5, z: 0 },
-      toTarget: { x: 0, y: 3.0, z: 0 },
+      fromPosition: { x: 4.5, y: padY + 1.2, z: 9.5 },
+      toPosition: { x: 3.5, y: padY + 1.8, z: 8.5 },
+      fromTarget: { x: 0, y: padY + 1.5, z: 0 },
+      toTarget: { x: 0, y: padY + 2.0, z: 0 },
       duration: 2.0,
       easing: "easeInOutCubic"
     });
@@ -605,10 +611,10 @@ class LaunchSequence {
         // Shot 2: Engine Ignition Prep
         this.cameraDirector.playShot({
           id: "shot2_engine_closeup",
-          fromPosition: { x: 1.8, y: -0.2, z: 3.2 },
-          toPosition: { x: 1.4, y: 0.1, z: 2.8 },
-          fromTarget: { x: 0, y: -0.5, z: 0 },
-          toTarget: { x: 0, y: -0.4, z: 0 },
+          fromPosition: { x: 1.8, y: padY - 1.5, z: 3.2 },
+          toPosition: { x: 1.4, y: padY - 1.2, z: 2.8 },
+          fromTarget: { x: 0, y: padY - 2.0, z: 0 },
+          toTarget: { x: 0, y: padY - 1.8, z: 0 },
           duration: 2.0,
           easing: "easeOutQuart",
           shake: 0.05
@@ -666,20 +672,22 @@ class LaunchSequence {
     }
     if (this.engineLight) this.engineLight.intensity = 4.0;
 
+    const padY = this.padRocketY || 2.5;
+
     // Shot 3: Ignition Horizontal Blast
     this.cameraDirector.playShot({
       id: "shot3_ignition",
-      fromPosition: { x: -3.5, y: 0.5, z: 7.0 },
-      toPosition: { x: -4.0, y: 0.8, z: 8.0 },
-      fromTarget: { x: 0, y: 1.0, z: 0 },
-      toTarget: { x: 0, y: 1.5, z: 0 },
+      fromPosition: { x: -3.5, y: padY - 1.0, z: 7.0 },
+      toPosition: { x: -4.0, y: padY - 0.7, z: 8.0 },
+      fromTarget: { x: 0, y: padY - 1.0, z: 0 },
+      toTarget: { x: 0, y: padY, z: 0 },
       duration: (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.ignition) || 2.0,
       easing: "easeInOutQuad",
       shake: 0.35
     });
 
     if (this.particleSystem) {
-      this.particleSystem.emitIgnitionSmoke(0, -0.5, 0, 35);
+      this.particleSystem.emitIgnitionSmoke(0, 0, 0, 35);
     }
 
     const ignDuration = ((CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.ignition) || 2.0) * 1000;
@@ -698,13 +706,15 @@ class LaunchSequence {
     }
     if (this.engineVfx) this.engineVfx.setThrottle(1.0);
 
+    const padY = this.padRocketY || 2.5;
+
     // Shot 4: Tower Clear Shot
     this.cameraDirector.playShot({
       id: "shot4_tower_clear",
-      fromPosition: { x: -2.0, y: -0.2, z: 4.5 },
-      toPosition: { x: -2.0, y: 0.5, z: 5.5 },
-      fromTarget: { x: 0, y: 3.0, z: 0 },
-      toTarget: { x: 0, y: 18.0, z: 0 },
+      fromPosition: { x: -2.0, y: padY - 1.5, z: 4.5 },
+      toPosition: { x: -2.0, y: padY + 0.5, z: 5.5 },
+      fromTarget: { x: 0, y: padY + 2.0, z: 0 },
+      toTarget: { x: 0, y: padY + 20.0, z: 0 },
       duration: (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.liftoff) || 4.0,
       easing: "easeInOutCubic",
       shake: 0.2
@@ -719,13 +729,14 @@ class LaunchSequence {
     if (this.isEventPaused || this.currentStage === "idle" || this.currentStage === "countdown") return;
 
     this.timelineElapsed += dt;
+    const padY = this.padRocketY || 2.5;
 
     // 1. LIFTOFF STAGE (0 to 4s)
     if (this.currentStage === "liftoff") {
       const dur = (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.liftoff) || 4.0;
       const prog = Math.min(1.0, this.timelineElapsed / dur);
 
-      this.rocket.position.y = prog * prog * 50;
+      this.rocket.position.y = padY + prog * prog * 50;
 
       if (this.particleSystem) {
         this.particleSystem.emitFlightTrail(this.rocket.position, 2);
@@ -741,10 +752,10 @@ class LaunchSequence {
         this.timelineElapsed = 0;
         this.cameraDirector.playShot({
           id: "shot5_cloud_tracking",
-          fromPosition: { x: 12.0, y: 65, z: 12.0 },
-          toPosition: { x: 8.0, y: 95, z: 8.0 },
-          fromTarget: { x: 0, y: 65, z: 0 },
-          toTarget: { x: 0, y: 110, z: 0 },
+          fromPosition: { x: 12.0, y: padY + 65, z: 12.0 },
+          toPosition: { x: 8.0, y: padY + 95, z: 8.0 },
+          fromTarget: { x: 0, y: padY + 65, z: 0 },
+          toTarget: { x: 0, y: padY + 110, z: 0 },
           duration: (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.atmosphere) || 4.5,
           easing: "easeOutQuart",
           shake: 0.15
@@ -757,7 +768,7 @@ class LaunchSequence {
       const dur = (CONFIG.CINEMATIC_TIMING && CONFIG.CINEMATIC_TIMING.atmosphere) || 4.5;
       const prog = Math.min(1.0, this.timelineElapsed / dur);
 
-      this.rocket.position.y = 50 + prog * 70;
+      this.rocket.position.y = padY + 50 + prog * 70;
       this.rocket.rotation.z = -prog * 0.22;
 
       if (this.engineVfx) {
@@ -1441,6 +1452,7 @@ class LaunchSequence {
     this.hasShownTowerClear = false;
     this.hasTriggeredFlightEvent = false;
     this.timelineElapsed = 0;
+    const padY = this.padRocketY || 2.5;
 
     if (stageName === "pad" || stageName === "idle") {
       this.currentStage = "idle";
@@ -1450,17 +1462,17 @@ class LaunchSequence {
       if (this.earthGroup) this.earthGroup.visible = false;
       if (this.surfaceGroup) this.surfaceGroup.visible = false;
       if (this.rocket) {
-        this.rocket.position.set(0, 0, 0);
+        this.rocket.position.set(0, padY, 0);
         this.rocket.rotation.set(0, 0, 0);
       }
       if (this.engineVfx) this.engineVfx.setVisible(false);
       if (this.warpVfx) this.warpVfx.setWarpIntensity(0, true);
       this.cameraDirector.playShot({
         id: "shot1_hero_pad",
-        fromPosition: { x: 4.5, y: 1.2, z: 9.5 },
-        toPosition: { x: 3.5, y: 1.8, z: 8.5 },
-        fromTarget: { x: 0, y: 2.5, z: 0 },
-        toTarget: { x: 0, y: 3.0, z: 0 },
+        fromPosition: { x: 4.5, y: padY + 1.2, z: 9.5 },
+        toPosition: { x: 3.5, y: padY + 1.8, z: 8.5 },
+        fromTarget: { x: 0, y: padY + 1.5, z: 0 },
+        toTarget: { x: 0, y: padY + 2.0, z: 0 },
         duration: 2.0,
         easing: "easeInOutCubic"
       });
@@ -1474,7 +1486,7 @@ class LaunchSequence {
       if (this.earthGroup) this.earthGroup.visible = false;
       if (this.surfaceGroup) this.surfaceGroup.visible = false;
       if (this.rocket) {
-        this.rocket.position.set(0, 0, 0);
+        this.rocket.position.set(0, padY, 0);
         this.rocket.rotation.set(0, 0, 0);
       }
       if (this.warpVfx) this.warpVfx.setWarpIntensity(0, true);
@@ -1488,7 +1500,7 @@ class LaunchSequence {
       if (this.earthGroup) this.earthGroup.visible = false;
       if (this.surfaceGroup) this.surfaceGroup.visible = false;
       if (this.rocket) {
-        this.rocket.position.set(0, 0, 0);
+        this.rocket.position.set(0, padY, 0);
         this.rocket.rotation.set(0, 0, 0);
       }
       if (this.warpVfx) this.warpVfx.setWarpIntensity(0, true);
@@ -1502,7 +1514,7 @@ class LaunchSequence {
       if (this.earthGroup) this.earthGroup.visible = false;
       if (this.surfaceGroup) this.surfaceGroup.visible = false;
       if (this.rocket) {
-        this.rocket.position.set(0, 50, 0);
+        this.rocket.position.set(0, padY + 50, 0);
         this.rocket.rotation.set(0, 0, -0.15);
       }
       if (this.engineVfx) {
@@ -1513,10 +1525,10 @@ class LaunchSequence {
       if (this.warpVfx) this.warpVfx.setWarpIntensity(0, true);
       this.cameraDirector.playShot({
         id: "shot5_cloud_tracking",
-        fromPosition: { x: 12.0, y: 65, z: 12.0 },
-        toPosition: { x: 8.0, y: 95, z: 8.0 },
-        fromTarget: { x: 0, y: 65, z: 0 },
-        toTarget: { x: 0, y: 110, z: 0 },
+        fromPosition: { x: 12.0, y: padY + 65, z: 12.0 },
+        toPosition: { x: 8.0, y: padY + 95, z: 8.0 },
+        fromTarget: { x: 0, y: padY + 65, z: 0 },
+        toTarget: { x: 0, y: padY + 110, z: 0 },
         duration: 4.5,
         easing: "easeOutQuart",
         shake: 0.15
