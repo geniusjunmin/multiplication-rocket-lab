@@ -84,6 +84,8 @@ class I18nManager {
         // Blueprint & Assembly
         blueprintTitle: "📐 Rocket Engineering Blueprint",
         blueprintSubtitle: "Answer math challenges to collect all 10 rocket parts!",
+        assemblyBlueprintTitle: "Design Blueprint",
+        assemblyProgress: "Assembly Ready",
         partsCollected: "Parts Collected:",
         btnStartAnswering: "✏️ Start Quiz to Collect Parts",
         btnGoAssembly: "🔧 3D Assembly Dock",
@@ -243,6 +245,8 @@ class I18nManager {
         // Blueprint & Assembly
         blueprintTitle: "📐 火箭工程设计蓝图",
         blueprintSubtitle: "回答数学计算挑战，解锁全部 10 个火箭精密部件！",
+        assemblyBlueprintTitle: "设计蓝图",
+        assemblyProgress: "装配就绪率",
         partsCollected: "已解锁零件:",
         btnStartAnswering: "✏️ 答题解锁零件",
         btnGoAssembly: "🔧 3D 组装车间",

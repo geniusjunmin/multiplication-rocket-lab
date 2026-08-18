@@ -757,7 +757,80 @@
             </div>
 
             <div class="assembly-right-panel card">
-              <h3 class="panel-section-title"><span class="icon">⭐</span> <span>设计蓝图</span></h3>
+              <h3 class="panel-section-title"><span class="icon">📐</span> <span data-i18n="assemblyBlueprintTitle">设计蓝图</span></h3>
+
+              <!-- Blueprint Installation Progress -->
+              <div class="blueprint-summary-box">
+                <div class="blueprint-stat-row">
+                  <span class="blueprint-stat-label" data-i18n="assemblyProgress">装配就绪率</span>
+                  <span id="assembly-blueprint-pct" class="blueprint-stat-val">0%</span>
+                </div>
+                <div class="stat-bar-track">
+                  <div id="assembly-blueprint-bar" class="stat-bar-fill blueprint" style="width: 0%;"></div>
+                </div>
+              </div>
+
+              <!-- Interactive 2D Vector Rocket Blueprint Wireframe -->
+              <div class="blueprint-wireframe-box">
+                <svg id="assembly-blueprint-svg" class="blueprint-wireframe-svg" viewBox="0 0 160 230" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <pattern id="bp-grid-pattern" width="16" height="16" patternUnits="userSpaceOnUse">
+                      <path d="M 16 0 L 0 0 0 16" fill="none" stroke="rgba(56, 189, 248, 0.12)" stroke-width="0.75" />
+                    </pattern>
+                  </defs>
+                  <!-- Blueprint Grid Background -->
+                  <rect width="160" height="230" fill="url(#bp-grid-pattern)" rx="6" />
+
+                  <!-- Center Guideline & Dimension Marks -->
+                  <line x1="80" y1="8" x2="80" y2="222" stroke="rgba(56, 189, 248, 0.25)" stroke-dasharray="3, 3" stroke-width="0.8" />
+                  <line x1="20" y1="65" x2="140" y2="65" stroke="rgba(56, 189, 248, 0.12)" stroke-dasharray="2, 2" stroke-width="0.5" />
+                  <line x1="20" y1="165" x2="140" y2="165" stroke="rgba(56, 189, 248, 0.12)" stroke-dasharray="2, 2" stroke-width="0.5" />
+
+                  <!-- 1. Nose Cone -->
+                  <path id="bp-part-noseCone" class="bp-svg-part locked" data-part="noseCone" d="M80,14 L105,62 L55,62 Z" />
+
+                  <!-- 2. Guidance / Control Module -->
+                  <rect id="bp-part-controlModule" class="bp-svg-part locked" data-part="controlModule" x="55" y="65" width="50" height="18" rx="2" />
+
+                  <!-- 3. Porthole Window -->
+                  <circle id="bp-part-window" class="bp-svg-part locked" data-part="window" cx="80" cy="98" r="8" />
+
+                  <!-- 4. Rocket Body Fuselage -->
+                  <path id="bp-part-body" class="bp-svg-part locked" data-part="body" d="M55,86 L105,86 L105,166 L55,166 Z" />
+
+                  <!-- 5. Fuel Tank -->
+                  <rect id="bp-part-fuelTank" class="bp-svg-part locked" data-part="fuelTank" x="61" y="112" width="38" height="46" rx="3" />
+
+                  <!-- 6. Left Booster -->
+                  <g id="bp-part-leftBooster" class="bp-svg-part locked" data-part="leftBooster">
+                    <path d="M33,102 L42,86 L51,102 Z" />
+                    <rect x="33" y="102" width="18" height="68" rx="2" />
+                  </g>
+
+                  <!-- 7. Right Booster -->
+                  <g id="bp-part-rightBooster" class="bp-svg-part locked" data-part="rightBooster">
+                    <path d="M109,102 L118,86 L127,102 Z" />
+                    <rect x="109" y="102" width="18" height="68" rx="2" />
+                  </g>
+
+                  <!-- 8. Left Aero Fin -->
+                  <path id="bp-part-leftFin" class="bp-svg-part locked" data-part="leftFin" d="M33,160 L14,192 L33,192 Z" />
+
+                  <!-- 9. Right Aero Fin -->
+                  <path id="bp-part-rightFin" class="bp-svg-part locked" data-part="rightFin" d="M127,160 L146,192 L127,192 Z" />
+
+                  <!-- 10. Main Engine -->
+                  <g id="bp-part-engine" class="bp-svg-part locked" data-part="engine">
+                    <path d="M59,168 L53,198 L71,198 L67,168 Z" />
+                    <path d="M69,168 L65,198 L95,198 L91,168 Z" />
+                    <path d="M93,168 L89,198 L107,198 L101,168 Z" />
+                  </g>
+                </svg>
+              </div>
+
+              <!-- Compact Blueprint Checklist List -->
+              <div id="assembly-blueprint-list" class="assembly-blueprint-list"></div>
+
               <button id="btn-reset-assembly-cam" class="btn btn-outline btn-sm reset-cam-btn">
                 🔄 3D 视角复位
               </button>

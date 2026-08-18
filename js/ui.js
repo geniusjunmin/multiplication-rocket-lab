@@ -1052,16 +1052,21 @@ class UIManager {
     if (!grid || !window.storageManager || !window.rocketBuilder) return;
 
     const unlocked = window.storageManager.get("unlockedParts") || [];
+    const installed = window.storageManager.get("installedParts") || [];
     const parts = window.rocketBuilder.partDefinitions;
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
 
     grid.innerHTML = parts.map(part => {
       const isUnlocked = unlocked.includes(part.id);
+      const isInstalled = installed.includes(part.id);
+      const statusClass = isInstalled ? 'installed' : (isUnlocked ? 'unlocked' : 'locked');
+      const statusText = isInstalled ? (isZh ? '✅ 已装配' : '✅ Installed') : (isUnlocked ? (isZh ? '⚡ 已解锁' : '⚡ Unlocked') : (isZh ? '🔒 未解锁' : '🔒 Locked'));
+
       return `
-        <div class="blueprint-slot ${isUnlocked ? 'unlocked' : 'locked'}">
-          <div class="blueprint-icon">${part.icon}</div>
-          <div class="blueprint-name">${isZh ? part.nameZh : part.nameEn}</div>
-          <div class="blueprint-status">${isUnlocked ? '✓' : '🔒'}</div>
+        <div class="blueprint-card-item ${statusClass}">
+          <div class="part-icon">${part.icon}</div>
+          <div class="part-name">${isZh ? part.nameZh : part.nameEn}</div>
+          <div class="part-status ${statusClass}">${statusText}</div>
         </div>
       `;
     }).join("");
@@ -1072,7 +1077,106 @@ class UIManager {
     if (progressFill) progressFill.style.width = `${(unlocked.length / parts.length) * 100}%`;
   }
 
+  renderAssemblyBlueprint() {
+    if (!window.storageManager || !window.rocketBuilder) return;
+
+    const unlocked = window.storageManager.get("unlockedParts") || [];
+    const installed = window.storageManager.get("installedParts") || [];
+    const allParts = window.rocketBuilder.partDefinitions;
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+
+    const pct = Math.round((installed.length / allParts.length) * 100);
+    const pctEl = document.getElementById("assembly-blueprint-pct");
+    const barEl = document.getElementById("assembly-blueprint-bar");
+    if (pctEl) pctEl.innerText = `${pct}% (${installed.length}/${allParts.length})`;
+    if (barEl) barEl.style.width = `${pct}%`;
+
+    // 1. Update SVG Wireframe Parts
+    allParts.forEach(p => {
+      const svgEl = document.getElementById(`bp-part-${p.id}`);
+      if (svgEl) {
+        svgEl.classList.remove("locked", "unlocked", "installed");
+        if (installed.includes(p.id)) {
+          svgEl.classList.add("installed");
+        } else if (unlocked.includes(p.id)) {
+          svgEl.classList.add("unlocked");
+        } else {
+          svgEl.classList.add("locked");
+        }
+      }
+    });
+
+    // 2. Render Blueprint Checklist
+    const checklistEl = document.getElementById("assembly-blueprint-list");
+    if (checklistEl) {
+      checklistEl.innerHTML = allParts.map(p => {
+        const isInstalled = installed.includes(p.id);
+        const isUnlocked = unlocked.includes(p.id);
+        const statusClass = isInstalled ? 'installed' : (isUnlocked ? 'unlocked' : 'locked');
+        const statusText = isInstalled ? (isZh ? '✅ 已就位' : '✅ Ready') : (isUnlocked ? (isZh ? '⚡ 待安装' : '⚡ Fit') : (isZh ? '🔒 未解锁' : '🔒 Locked'));
+
+        return `
+          <div class="bp-checklist-item ${statusClass}" data-part="${p.id}">
+            <span class="bp-item-icon">${p.icon}</span>
+            <span class="bp-item-name">${isZh ? p.nameZh : p.nameEn}</span>
+            <span class="bp-item-status ${statusClass}">${statusText}</span>
+          </div>
+        `;
+      }).join("");
+
+      // Bind click on checklist items to install
+      checklistEl.querySelectorAll(".bp-checklist-item").forEach(item => {
+        item.addEventListener("click", () => {
+          const partId = item.getAttribute("data-part");
+          this.triggerInstallPartFromUI(partId);
+        });
+      });
+    }
+
+    // Bind click on SVG parts to install
+    document.querySelectorAll(".bp-svg-part").forEach(svgEl => {
+      svgEl.onclick = () => {
+        const partId = svgEl.getAttribute("data-part");
+        this.triggerInstallPartFromUI(partId);
+      };
+    });
+
+    // Reset Cam button
+    const resetCamBtn = document.getElementById("btn-reset-assembly-cam");
+    if (resetCamBtn && !resetCamBtn._camResetBound && typeof resetCamBtn.addEventListener === "function") {
+      resetCamBtn._camResetBound = true;
+      resetCamBtn.addEventListener("click", () => {
+        if (window.rocketBuilder) {
+          window.rocketBuilder.fitCameraToRocket();
+          if (window.audioManager) window.audioManager.playClick();
+        }
+      });
+    }
+  }
+
+  triggerInstallPartFromUI(partId) {
+    if (!window.storageManager || !window.rocketBuilder) return;
+    const unlocked = window.storageManager.get("unlockedParts") || [];
+    const installed = window.storageManager.get("installedParts") || [];
+
+    if (unlocked.includes(partId) && !installed.includes(partId)) {
+      if (this.installingParts.has(partId)) return;
+      this.installingParts.add(partId);
+
+      window.rocketBuilder.animateInstallPart(partId, () => {
+        this.installingParts.delete(partId);
+        window.storageManager.installPart(partId);
+        this.renderAssemblyDock();
+        if ((window.storageManager.get("installedParts") || []).length >= CONFIG.PART_COUNT) {
+          this.triggerAssemblyCelebration();
+        }
+      });
+    }
+  }
+
   renderAssemblyDock() {
+    this.renderAssemblyBlueprint();
+
     const listContainer = document.getElementById("assembly-parts-list");
     if (!listContainer || !window.storageManager || !window.rocketBuilder) return;
 
@@ -1096,21 +1200,7 @@ class UIManager {
     listContainer.querySelectorAll(".part-item").forEach(btn => {
       btn.addEventListener("click", () => {
         const partId = btn.getAttribute("data-part");
-        if (unlocked.includes(partId) && !installed.includes(partId)) {
-          if (this.installingParts.has(partId)) return;
-          this.installingParts.add(partId);
-
-          if (window.rocketBuilder) {
-            window.rocketBuilder.animateInstallPart(partId, () => {
-              this.installingParts.delete(partId);
-              window.storageManager.installPart(partId);
-              this.renderAssemblyDock();
-              if ((window.storageManager.get("installedParts") || []).length >= CONFIG.PART_COUNT) {
-                this.triggerAssemblyCelebration();
-              }
-            });
-          }
-        }
+        this.triggerInstallPartFromUI(partId);
       });
     });
 

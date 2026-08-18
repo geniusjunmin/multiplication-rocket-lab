@@ -41,6 +41,7 @@ function createMockElement(id = "") {
     setAttribute() {},
     removeAttribute() {},
     getAttribute() { return ""; },
+    hasAttribute() { return false; },
     addEventListener() {},
     removeEventListener() {},
     querySelectorAll() { return [createMockElement(), createMockElement(), createMockElement()]; },
