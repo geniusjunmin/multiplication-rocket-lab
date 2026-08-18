@@ -1,8 +1,8 @@
 /**
  * Multiplication Rocket Lab - UI & Screen Rendering Engine (js/ui.js)
- * Version 4.0.0 Space Adventure Progression Architecture
- * Coordinates Home Progression HUD, Mission Board, Space Museum, Rocket Garage,
- * Mascot Nova Telemetry, Flight Events, and Mission Debrief Results.
+ * Version 4.1.0 — Gameplay Integration & Progression Integrity
+ * Coordinates Home Progression HUD, Weekly Expedition, Mission Board with Level Gates,
+ * Unlock Reward Ceremony, In-Flight Event Modals, and Mission Debrief Ceremony.
  */
 class UIManager {
   constructor() {
@@ -13,7 +13,10 @@ class UIManager {
     this.selectedBriefingPayload = "probe";
     this.selectedBriefingRoute = "safe";
     this.activeEventData = null;
+    this.activeEventCallback = null;
     this.activeEventQuestion = null;
+    this.unlockCeremonyQueue = [];
+    this.debriefAnimTimer = null;
   }
 
   showScreen(screenId) {
@@ -96,6 +99,9 @@ class UIManager {
     const museumValEl = document.getElementById("home-museum-count");
     if (museumValEl) museumValEl.innerText = `${collectibles} / 18`;
 
+    // Render Weekly Expedition Card
+    this.renderWeeklyExpedition();
+
     // Recommended Mission Card
     const recMission = window.progressionManager.getRecommendedMission();
     const recTitleEl = document.getElementById("rec-mission-title");
@@ -133,7 +139,7 @@ class UIManager {
             <span class="daily-icon">${dest.icon || '🚀'}</span>
             <div class="daily-info">
               <span class="daily-title">${isZh ? m.titleZh : m.titleEn}</span>
-              <span class="daily-sub">${m.questionTarget} ${isZh ? '道题' : 'Questions'} • +${m.reward.xp + m.dailyBonusXP} XP</span>
+              <span class="daily-sub">${m.questionTarget} ${isZh ? '道题' : 'Questions'} • +${m.reward.xp + (isDone ? 0 : m.dailyBonusXP)} XP ${isDone ? '✓' : ''}</span>
             </div>
             <button class="btn btn-sm ${isDone ? 'btn-outline' : 'btn-primary'} btn-daily-launch" data-mission="${m.id}">
               ${isDone ? (isZh ? '已完成' : 'Done') : (isZh ? '出航' : 'Launch')}
@@ -145,10 +151,25 @@ class UIManager {
       dailyContainer.querySelectorAll(".btn-daily-launch").forEach(btn => {
         btn.addEventListener("click", () => {
           const mId = btn.getAttribute("data-mission");
-          if (mId) this.showMissionBriefingModal(mId);
+          if (mId) {
+            this.showMissionBriefingModal(mId, { isDaily: true });
+          }
         });
       });
     }
+
+    // Update Home 3D Rocket Preview info & badge
+    const modelNames = {
+      classic: { en: "Classic Explorer", zh: "经典探险家号" },
+      starship: { en: "SpaceX Starship", zh: "星舰重型航天器" },
+      falconHeavy: { en: "Falcon Heavy", zh: "重型猎鹰号" },
+      longMarch: { en: "Long March 5", zh: "长征五号火箭" },
+      cyber: { en: "Cyber Starship", zh: "赛博量子星舰" }
+    };
+    const equippedModel = (profile && profile.currentRocketModel) || "classic";
+    const modelInfo = modelNames[equippedModel] || { en: equippedModel, zh: equippedModel };
+    const rNameEl = document.getElementById("home-rocket-name");
+    if (rNameEl) rNameEl.innerText = isZh ? modelInfo.zh : modelInfo.en;
 
     // 3D Rocket Preview in Home Viewport
     if (window.rocketBuilder) {
@@ -157,7 +178,59 @@ class UIManager {
   }
 
   /**
-   * Render Mission Board & Solar System Map
+   * Render Weekly Solar Expedition on Home Screen
+   */
+  renderWeeklyExpedition() {
+    if (!window.progressionManager) return;
+    const state = window.progressionManager.getWeeklyExpeditionState();
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+
+    const statusBadge = document.getElementById("weekly-exp-status");
+    if (statusBadge) {
+      statusBadge.innerText = isZh ? `${state.progress} / ${state.totalRequired} 星球` : `${state.progress} / ${state.totalRequired} Planets`;
+    }
+
+    const nodesContainer = document.getElementById("weekly-exp-nodes");
+    if (nodesContainer) {
+      const destIcons = {
+        earthOrbit: "🌍",
+        moon: "🌙",
+        mars: "🔴",
+        jupiter: "🪐",
+        saturn: "🪐"
+      };
+
+      nodesContainer.innerHTML = state.route.map((destId, idx) => {
+        const isDone = state.completedDestinations.includes(destId);
+        const icon = destIcons[destId] || "🪐";
+        const hasNext = idx < state.route.length - 1;
+        return `
+          <span class="node ${isDone ? 'completed' : ''}">${icon}</span>
+          ${hasNext ? `<span class="line ${isDone ? 'completed' : ''}">━</span>` : ''}
+        `;
+      }).join("");
+    }
+
+    const claimBtn = document.getElementById("btn-claim-weekly-expedition");
+    if (claimBtn) {
+      if (state.isCompleted && !state.claimed) {
+        claimBtn.classList.remove("hidden");
+        claimBtn.onclick = () => {
+          const res = window.progressionManager.claimWeeklyExpeditionReward();
+          if (res.success) {
+            if (window.audioManager) window.audioManager.playLevelUp();
+            alert(isZh ? "🎉 恭喜完成本周太阳系远征！获得 +300 XP 与 +50 RP！" : "🎉 Congratulations on completing the Weekly Solar Expedition! +300 XP and +50 RP awarded!");
+            this.updateHomeProgressHUD();
+          }
+        };
+      } else {
+        claimBtn.classList.add("hidden");
+      }
+    }
+  }
+
+  /**
+   * Render Mission Board & Solar System Map with Progression Level Gates
    */
   renderMissionBoard(selectedDest = "moon") {
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
@@ -165,16 +238,21 @@ class UIManager {
     const gridContainer = document.getElementById("mission-cards-grid");
     if (!mapNav || !gridContainer || !window.progressionManager) return;
 
-    // 1. Destination Navigation Tabs
+    // 1. Destination Navigation Tabs with Level Gates
     mapNav.innerHTML = Object.keys(CONFIG.DESTINATIONS).map(destId => {
       const dest = CONFIG.DESTINATIONS[destId];
       const prog = window.progressionManager.getPlanetProgress(destId);
+      const isUnlocked = window.progressionManager.isPlanetUnlocked(destId);
+      const reqLevel = (CONFIG.DESTINATION_LEVEL_REQUIREMENTS && CONFIG.DESTINATION_LEVEL_REQUIREMENTS[destId]) || 1;
       const isSelected = (destId === selectedDest);
+
       return `
-        <button class="dest-tab-btn ${isSelected ? 'active' : ''}" data-dest="${destId}">
+        <button class="dest-tab-btn ${isSelected ? 'active' : ''} ${!isUnlocked ? 'locked' : ''}" data-dest="${destId}">
           <span class="dest-tab-icon">${dest.icon}</span>
           <span class="dest-tab-name">${isZh ? dest.nameZh : dest.nameEn}</span>
-          <span class="dest-tab-progress">${prog.completedMissions}/${prog.totalMissions}</span>
+          ${isUnlocked
+            ? `<span class="dest-tab-progress">${prog.completedMissions}/${prog.totalMissions}</span>`
+            : `<span class="dest-tab-badge-lock">🔒 Lv.${reqLevel}</span>`}
         </button>
       `;
     }).join("");
@@ -186,10 +264,20 @@ class UIManager {
       });
     });
 
+    // Free Practice Action
+    const freePracticeBtn = document.getElementById("btn-board-free-practice");
+    if (freePracticeBtn) {
+      freePracticeBtn.onclick = () => {
+        if (window.game) window.game.startNewGameRound(GAME_MODES.NORMAL);
+      };
+    }
+
     // 2. Mission Cards for Selected Destination
     const missions = Object.values(CONFIG.MISSION_DEFINITIONS).filter(m => m.destination === selectedDest);
     const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
     const records = profile ? (profile.missionRecords || {}) : {};
+    const isPlanetUnlocked = window.progressionManager.isPlanetUnlocked(selectedDest);
+    const reqLevel = (CONFIG.DESTINATION_LEVEL_REQUIREMENTS && CONFIG.DESTINATION_LEVEL_REQUIREMENTS[selectedDest]) || 1;
 
     gridContainer.innerHTML = missions.map(m => {
       const rec = records[m.id] || { completedCount: 0, bestStars: 0, bestFirstTryAccuracy: 0, bestGrade: "C" };
@@ -199,7 +287,8 @@ class UIManager {
       const collIcon = coll ? coll.icon : "🪨";
 
       return `
-        <div class="mission-board-card card ${isCleared ? 'cleared' : ''}" data-mission="${m.id}">
+        <div class="mission-board-card card ${isCleared ? 'cleared' : ''} ${!isPlanetUnlocked ? 'locked-gate' : ''}" data-mission="${m.id}">
+          ${!isPlanetUnlocked ? `<div class="gate-lock-overlay">🔒 ${isZh ? `需指挥官 Lv.${reqLevel}` : `Requires Lv.${reqLevel}`}</div>` : ''}
           <div class="card-top-row">
             <span class="mission-star-badge">${starsStr}</span>
             <span class="mission-grade-badge grade-${rec.bestGrade}">${isCleared ? rec.bestGrade : 'NEW'}</span>
@@ -211,7 +300,7 @@ class UIManager {
             <span class="meta-tag">🎁 +${m.reward.xp} XP</span>
             <span class="meta-tag">${collIcon} ${isZh ? '标本' : 'Sample'}</span>
           </div>
-          <button class="btn btn-primary btn-launch-card" data-mission="${m.id}">
+          <button class="btn btn-primary btn-launch-card ${!isPlanetUnlocked ? 'disabled' : ''}" data-mission="${m.id}" ${!isPlanetUnlocked ? 'disabled' : ''}>
             ${isCleared ? (isZh ? '重新挑战' : 'Replay Mission') : (isZh ? '查看简报' : 'Briefing')} ➔
           </button>
         </div>
@@ -221,7 +310,9 @@ class UIManager {
     gridContainer.querySelectorAll(".btn-launch-card").forEach(btn => {
       btn.addEventListener("click", () => {
         const mId = btn.getAttribute("data-mission");
-        this.showMissionBriefingModal(mId);
+        if (mId && isPlanetUnlocked) {
+          this.showMissionBriefingModal(mId);
+        }
       });
     });
   }
@@ -229,7 +320,7 @@ class UIManager {
   /**
    * Show Mission Flight Briefing Modal
    */
-  showMissionBriefingModal(missionId) {
+  showMissionBriefingModal(missionId, options = {}) {
     const mission = CONFIG.MISSION_DEFINITIONS[missionId] || CONFIG.MISSION_DEFINITIONS.moon_crater_survey;
     this.selectedBriefingMissionId = mission.id;
     this.selectedBriefingPayload = mission.recommendedPayload || "probe";
@@ -282,7 +373,7 @@ class UIManager {
       });
     }
 
-    // Route Options
+    // Route Options with Clear Comparison
     const routeSafe = document.getElementById("route-opt-safe");
     const routeBoost = document.getElementById("route-opt-boost");
     if (routeSafe && routeBoost) {
@@ -305,7 +396,8 @@ class UIManager {
         if (window.game) {
           window.game.startMission(this.selectedBriefingMissionId, {
             payload: this.selectedBriefingPayload,
-            route: this.selectedBriefingRoute
+            route: this.selectedBriefingRoute,
+            dailyMissionContext: options.isDaily ? { date: window.progressionManager.getTodayDateString(), missionId: this.selectedBriefingMissionId } : null
           });
         }
       };
@@ -317,9 +409,9 @@ class UIManager {
   /**
    * In-Flight Dynamic Event Modal
    */
-  triggerFlightEventModal(eventDef) {
+  triggerFlightEventModal(eventDef, onResolved) {
     this.activeEventData = eventDef;
-    this.activeEventMistakes = 0;
+    this.activeEventCallback = onResolved;
 
     const modal = document.getElementById("modal-flight-event");
     if (!modal || !eventDef) return;
@@ -373,14 +465,17 @@ class UIManager {
               feedbackEl.innerText = isZh ? "✨ 计算修正成功！航向已锁定！" : "✨ Trajectory corrected! Vector locked!";
             }
 
+            const bonusXP = this.activeEventData.bonusXP || 20;
             if (window.progressionManager) {
-              window.progressionManager.addXP(this.activeEventData.bonusXP || 20, "Event Resolved");
+              window.progressionManager.addXP(bonusXP, "Flight Event Resolved");
             }
 
             setTimeout(() => {
               document.getElementById("modal-flight-event")?.classList.add("hidden");
-              if (window.game) window.game.nextQuestion();
-            }, 800);
+              if (this.activeEventCallback) {
+                this.activeEventCallback(bonusXP);
+              }
+            }, 750);
           } else {
             if (window.audioManager) window.audioManager.playWrong();
             const feedbackEl = document.getElementById("event-feedback-msg");
@@ -393,6 +488,88 @@ class UIManager {
         });
       });
     }
+  }
+
+  /**
+   * Unlock Reward Ceremony Queue & Modal
+   */
+  showUnlockCeremonyQueue(newUnlocks) {
+    if (!newUnlocks) return;
+    const items = [];
+
+    if (newUnlocks.newRockets && Array.isArray(newUnlocks.newRockets)) {
+      newUnlocks.newRockets.forEach(r => items.push({ type: "rocket", id: r }));
+    }
+    if (newUnlocks.newThemes && Array.isArray(newUnlocks.newThemes)) {
+      newUnlocks.newThemes.forEach(t => items.push({ type: "theme", id: t }));
+    }
+
+    if (items.length === 0) return;
+    this.unlockCeremonyQueue = items;
+    this.presentNextUnlockCeremony();
+  }
+
+  presentNextUnlockCeremony() {
+    if (this.unlockCeremonyQueue.length === 0) {
+      document.getElementById("modal-new-unlock")?.classList.add("hidden");
+      return;
+    }
+
+    const item = this.unlockCeremonyQueue.shift();
+    const modal = document.getElementById("modal-new-unlock");
+    if (!modal) return;
+
+    const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+    const titleEl = document.getElementById("unlock-modal-title");
+    const descEl = document.getElementById("unlock-modal-desc");
+    const equipBtn = document.getElementById("btn-unlock-equip-now");
+    const contBtn = document.getElementById("btn-unlock-continue");
+
+    if (item.type === "rocket") {
+      const names = {
+        starship: { en: "SpaceX Starship", zh: "星舰重型航天器" },
+        falconHeavy: { en: "Falcon Heavy", zh: "重型猎鹰号火箭" },
+        longMarch: { en: "Long March 5", zh: "长征五号火箭" },
+        cyber: { en: "Cyber Starship", zh: "赛博量子星舰" }
+      };
+      const name = names[item.id] || { en: item.id, zh: item.id };
+      if (titleEl) titleEl.innerText = `🚀 ${isZh ? name.zh : name.en} ${isZh ? '解锁！' : 'UNLOCKED!'}`;
+      if (descEl) descEl.innerText = isZh ? "已达成里程碑！全新 3D 火箭型号已加入机库！" : "Milestone reached! New 3D rocket model added to garage!";
+
+      if (equipBtn) {
+        equipBtn.onclick = () => {
+          const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+          if (profile) {
+            profile.currentRocketModel = item.id;
+            window.profileManager.save();
+          }
+          this.presentNextUnlockCeremony();
+        };
+      }
+    } else if (item.type === "theme") {
+      if (titleEl) titleEl.innerText = `🎨 ${item.id} ${isZh ? '涂装解锁！' : 'THEME UNLOCKED!'}`;
+      if (descEl) descEl.innerText = isZh ? "全新火箭机体涂装已加入机库！" : "New rocket skin added to garage!";
+
+      if (equipBtn) {
+        equipBtn.onclick = () => {
+          const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+          if (profile) {
+            profile.currentRocketTheme = item.id;
+            window.profileManager.save();
+          }
+          this.presentNextUnlockCeremony();
+        };
+      }
+    }
+
+    if (contBtn) {
+      contBtn.onclick = () => {
+        this.presentNextUnlockCeremony();
+      };
+    }
+
+    if (window.audioManager) window.audioManager.playLevelUp();
+    modal.classList.remove("hidden");
   }
 
   /**
@@ -431,7 +608,6 @@ class UIManager {
     if (!profile) return;
 
     const activeModel = profile.currentRocketModel || "classic";
-    const activeTheme = profile.currentRocketTheme || "explorer";
     const activeTrail = (profile.rocketCosmetics && profile.rocketCosmetics.trail) || "trail_standard";
 
     // 1. Model Selector
@@ -538,16 +714,13 @@ class UIManager {
   }
 
   /**
-   * Overhauled Mission Debrief Results Screen
+   * Overhauled Mission Debrief Results Screen (Sequential Reward Ceremony)
    */
   renderMissionDebrief(debriefData) {
     const isZh = window.i18n && window.i18n.currentLanguage === "zh";
-    const session = window.mathEngine ? window.mathEngine.sessionStats : {};
-    const firstTryAcc = window.mathEngine ? window.mathEngine.getFirstTryAccuracy() : 100;
-    const finalCompletion = window.mathEngine ? window.mathEngine.getFinalCompletionRate() : 100;
     const mission = debriefData.mission;
 
-    // Header & Stars
+    // Header
     const titleEl = document.getElementById("debrief-mission-title");
     if (titleEl) titleEl.innerText = isZh ? mission.titleZh : mission.titleEn;
 
@@ -555,13 +728,13 @@ class UIManager {
     const star2 = document.getElementById("star-2");
     const star3 = document.getElementById("star-3");
 
-    if (star1) star1.className = debriefData.starsEarned >= 1 ? "star active" : "star";
-    if (star2) star2.className = debriefData.starsEarned >= 2 ? "star active" : "star";
-    if (star3) star3.className = debriefData.starsEarned >= 3 ? "star active" : "star";
+    // Reset stars initially for sequential pop-in
+    if (star1) star1.className = "star";
+    if (star2) star2.className = "star";
+    if (star3) star3.className = "star";
 
-    // Numbers & Metrics
     const accEl = document.getElementById("res-accuracy");
-    if (accEl) accEl.innerText = `${firstTryAcc}%`;
+    if (accEl) accEl.innerText = `${debriefData.firstTryAccuracy}%`;
 
     const scoreEl = document.getElementById("res-score");
     if (scoreEl) scoreEl.innerText = window.game ? window.game.score : 0;
@@ -588,6 +761,7 @@ class UIManager {
         <div class="reward-pill">+${debriefData.xpEarned} XP</div>
         <div class="reward-pill">+${debriefData.starsEarned} ${isZh ? '任务之星' : 'Stars'}</div>
         <div class="reward-pill">+${debriefData.rpEarned} ${isZh ? '科研点' : 'RP'}</div>
+        ${debriefData.dailyBonusAwarded ? `<div class="reward-pill rare">+${debriefData.dailyBonusAwarded} ${isZh ? '每日首航奖励' : 'Daily Bonus'}</div>` : ''}
         ${debriefData.collectibleUnlocked && coll ? `<div class="reward-pill rare">${coll.icon} ${isZh ? coll.nameZh : coll.nameEn}</div>` : ''}
       `;
     }
@@ -618,6 +792,35 @@ class UIManager {
           if (window.game) window.game.startMission(nextRec.id);
         };
       }
+    }
+
+    // Sequential Stars Chime
+    setTimeout(() => {
+      if (star1 && debriefData.starsEarned >= 1) {
+        star1.className = "star active";
+        if (window.audioManager) window.audioManager.playStarEarned();
+      }
+    }, 400);
+
+    setTimeout(() => {
+      if (star2 && debriefData.starsEarned >= 2) {
+        star2.className = "star active";
+        if (window.audioManager) window.audioManager.playStarEarned();
+      }
+    }, 900);
+
+    setTimeout(() => {
+      if (star3 && debriefData.starsEarned >= 3) {
+        star3.className = "star active";
+        if (window.audioManager) window.audioManager.playStarEarned();
+      }
+    }, 1400);
+
+    // Present unlock ceremony if new rockets / themes unlocked
+    if (debriefData.newUnlocks && (debriefData.newUnlocks.newRockets?.length > 0 || debriefData.newUnlocks.newThemes?.length > 0)) {
+      setTimeout(() => {
+        this.showUnlockCeremonyQueue(debriefData.newUnlocks);
+      }, 2000);
     }
   }
 

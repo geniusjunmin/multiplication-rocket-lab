@@ -185,6 +185,7 @@ const appFiles = [
   'js/launch.js',
   'js/ui.js',
   'js/game.js',
+  'js/animlab.js',
   'tests/runner.js',
   'tests/test-math.js',
   'tests/test-storage.js',

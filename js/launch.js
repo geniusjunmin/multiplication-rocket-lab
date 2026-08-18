@@ -63,6 +63,11 @@ class LaunchSequence {
 
     this.boundVisibilityHandler = null;
     this.boundResizeHandler = null;
+
+    this.isEventPaused = false;
+    this.hasTriggeredFlightEvent = false;
+    this.isPayloadDeployed = false;
+    this.speedMultiplier = 1.0;
   }
 
   requestTrackedRaf(callback) {
@@ -178,6 +183,13 @@ class LaunchSequence {
   }
 
   resetHUDUI() {
+    this.hasRecordedVisit = false;
+    if (this.launchPadGroup) this.launchPadGroup.visible = true;
+    if (this.cloudsGroup) this.cloudsGroup.visible = true;
+    if (this.surfaceGroup) this.surfaceGroup.visible = false;
+    if (this.destinationMesh) this.destinationMesh.visible = false;
+    if (this.earthMesh) this.earthMesh.visible = false;
+
     document.getElementById("launch-checklist")?.classList.remove("hidden");
     document.getElementById("launch-countdown-box")?.classList.add("hidden");
     document.getElementById("space-victory-banner")?.classList.add("hidden");
@@ -687,6 +699,9 @@ class LaunchSequence {
     this.onCompleteCallback = onComplete;
     this.resetHUDUI();
     this.timelineElapsed = 0;
+    this.isEventPaused = false;
+    this.hasTriggeredFlightEvent = false;
+    this.isPayloadDeployed = false;
     
     const checkItems = [1, 2, 3, 4];
     checkItems.forEach((item, idx) => {
@@ -992,7 +1007,7 @@ class LaunchSequence {
       }
     }
 
-    // 4. Phase D: Touchdown Hold (1.5s Hero Angle Inspection)
+    // 4. Phase D: Touchdown Hold (1.5s Hero Angle Inspection & Payload Deployment)
     else if (this.landingPhase === "touchdownHold") {
       this.rocket.position.y = this.touchdownRocketY;
       this.currentVerticalSpeed = 0;
@@ -1000,6 +1015,23 @@ class LaunchSequence {
       if (this.engineLight) this.engineLight.intensity = 0;
 
       const progress = Math.min(1, this.landingPhaseElapsed / 1.5);
+
+      // Payload Deployment Animation on Touchdown
+      if (this.payloadMesh) {
+        const payloadType = (window.storageManager ? window.storageManager.get("selectedPayload") : "probe") || "probe";
+        if (payloadType === "rover") {
+          // Rover rolls out onto planetary surface
+          this.payloadMesh.position.z = progress * 6.5;
+          this.payloadMesh.position.y = 0.25;
+        } else if (payloadType === "probe") {
+          // Probe lifts off and scans
+          this.payloadMesh.position.y = 0.8 + progress * 2.5;
+          this.payloadMesh.rotation.y += 0.03;
+        } else if (payloadType === "satellite") {
+          this.payloadMesh.position.y = 0.8 + progress * 3.5;
+          this.payloadMesh.scale.x = 0.65 + progress * 0.4;
+        }
+      }
 
       // Low-Angle Slow Hero Orbit Camera
       if (this.camera) {
@@ -1022,24 +1054,71 @@ class LaunchSequence {
   updateFlybyOrOrbit(dt) {
     this.timelineElapsed += dt;
     const destConfig = CONFIG.DESTINATIONS[this.destinationId] || {};
-    const destSeconds = destConfig.cinematic?.destinationSeconds || 7.0;
+    const destSeconds = destConfig.cinematic?.destinationSeconds || 6.5;
+    const progress = Math.min(1, this.timelineElapsed / destSeconds);
 
-    if (this.destinationId === "jupiter") {
-      const progress = Math.min(1, this.timelineElapsed / destSeconds);
-      const altitude = progress * 24;
-      this.rocket.rotation.z = Math.sin(progress * Math.PI) * 0.55;
-      this.rocket.rotation.y += 0.018;
+    // Ensure ground launch pad & clouds are hidden
+    if (this.launchPadGroup) this.launchPadGroup.visible = false;
+    if (this.cloudsGroup) this.cloudsGroup.visible = false;
 
-      if (this.destinationMesh) {
-        this.destinationMesh.rotation.y += 0.022;
-        // Slowly move Great Red Spot toward camera
-        this.destinationMesh.position.x = -15 + progress * 25;
+    if (this.destinationId === "earthOrbit") {
+      const altitude = 160 + Math.sin(progress * Math.PI * 0.5) * 12;
+      this.rocket.position.y = altitude;
+      this.rocket.rotation.z = -0.15 + Math.sin(progress * Math.PI) * 0.08;
+      this.rocket.rotation.y += 0.01;
+
+      if (this.earthMesh) {
+        this.earthMesh.visible = true;
+        this.earthMesh.position.set(0, altitude - 68, -40);
+        this.earthMesh.rotation.y += 0.004;
+      }
+
+      if (this.payloadMesh) {
+        this.payloadMesh.visible = true;
+        const payloadType = (window.storageManager ? window.storageManager.get("selectedPayload") : "probe") || "probe";
+        this.payloadMesh.position.set(
+          Math.sin(progress * Math.PI * 0.7) * 3.5,
+          altitude + 1.2 + progress * 2.0,
+          progress * 4.5
+        );
+        this.payloadMesh.rotation.y += 0.02;
+        if (payloadType === "satellite") {
+          this.payloadMesh.scale.x = 0.65 + Math.min(1, progress * 1.5) * 0.45;
+        }
       }
 
       if (this.camera) {
-        // Dramatic banking flyby camera
+        const camAngle = 0.3 + progress * Math.PI * 0.65;
+        this.camera.position.set(Math.sin(camAngle) * 12, altitude + 1.5, Math.cos(camAngle) * 13);
+        this.camera.lookAt(0, altitude + 0.8, 0);
+      }
+
+      if (progress >= 1 && !this.hasRecordedVisit) {
+        this.showMilestoneBanner("🌍 EARTH ORBIT INSERTION COMPLETE");
+        this.hasRecordedVisit = true;
+        this.finishMissionSuccess();
+      }
+    } else if (this.destinationId === "jupiter") {
+      const altitude = 180 + progress * 24;
+      this.rocket.position.y = altitude;
+      this.rocket.rotation.z = Math.sin(progress * Math.PI) * 0.45;
+      this.rocket.rotation.y += 0.018;
+
+      if (this.destinationMesh) {
+        this.destinationMesh.visible = true;
+        this.destinationMesh.rotation.y += 0.018;
+        this.destinationMesh.position.set(-15 + progress * 28, altitude - 18, -100 + progress * 35);
+      }
+
+      if (this.payloadMesh) {
+        this.payloadMesh.visible = true;
+        this.payloadMesh.position.set(progress * 4.0, altitude + 1.5 + progress * 2.0, progress * 6.0);
+        this.payloadMesh.rotation.y += 0.03;
+      }
+
+      if (this.camera) {
         const camAngle = progress * Math.PI * 0.8;
-        this.camera.position.set(Math.sin(camAngle) * 12, altitude + 1.2, Math.cos(camAngle) * 14 + 2);
+        this.camera.position.set(Math.sin(camAngle) * 13, altitude + 1.6, Math.cos(camAngle) * 14 + 2);
         this.camera.lookAt(0, altitude, 0);
       }
 
@@ -1049,18 +1128,27 @@ class LaunchSequence {
         this.finishMissionSuccess();
       }
     } else if (this.destinationId === "saturn") {
-      const progress = Math.min(1, this.timelineElapsed / destSeconds);
-      const altitude = Math.sin(progress * Math.PI * 0.5) * 8;
+      const altitude = 180 + Math.sin(progress * Math.PI * 0.5) * 12;
+      this.rocket.position.y = altitude;
+      this.rocket.rotation.z = Math.sin(progress * Math.PI) * 0.2;
+      this.rocket.rotation.y += 0.015;
 
       if (this.destinationMesh) {
-        this.destinationMesh.rotation.y += 0.015;
+        this.destinationMesh.visible = true;
+        this.destinationMesh.rotation.y += 0.012;
+        this.destinationMesh.position.set(0, altitude - 15, -95 + progress * 30);
+      }
+
+      if (this.payloadMesh) {
+        this.payloadMesh.visible = true;
+        this.payloadMesh.position.set(Math.sin(progress * Math.PI) * 3, altitude + 1.0 + progress * 2.0, progress * 5.0);
+        this.payloadMesh.rotation.y += 0.03;
       }
 
       if (this.camera) {
-        // Dive near ring plane, tilt up to view golden planetary sphere
         const angle = 0.2 + progress * Math.PI * 0.75;
-        this.camera.position.set(Math.sin(angle) * 14, altitude + 1.5, Math.cos(angle) * 14);
-        this.camera.lookAt(0, altitude + 2.0, 0);
+        this.camera.position.set(Math.sin(angle) * 14, altitude + 2.0, Math.cos(angle) * 14);
+        this.camera.lookAt(0, altitude, 0);
       }
 
       if (progress >= 1 && !this.hasRecordedVisit) {
@@ -1069,16 +1157,30 @@ class LaunchSequence {
         this.finishMissionSuccess();
       }
     } else {
-      const progress = Math.min(1, this.timelineElapsed / destSeconds);
-      if (this.destinationMesh) this.destinationMesh.rotation.y += 0.015;
+      const altitude = 180 + progress * 35;
+      this.rocket.position.y = altitude;
+      this.rocket.rotation.y += 0.02;
+
+      if (this.destinationMesh) {
+        this.destinationMesh.visible = true;
+        this.destinationMesh.rotation.y += 0.015;
+        this.destinationMesh.position.set(0, altitude, -85 + progress * 25);
+      }
+
+      if (this.payloadMesh) {
+        this.payloadMesh.visible = true;
+        this.payloadMesh.position.set(0, altitude + progress * 3.0, progress * 7.0);
+        this.payloadMesh.rotation.y += 0.04;
+      }
 
       if (this.camera) {
-        const camAngle = progress * Math.PI * 0.6;
-        this.camera.position.set(Math.sin(camAngle) * 9, 1.5, Math.cos(camAngle) * 9);
-        this.camera.lookAt(0, 1.5, 0);
+        const angle = progress * Math.PI * 0.7;
+        this.camera.position.set(Math.sin(angle) * 12, altitude + 2.0, Math.cos(angle) * 13);
+        this.camera.lookAt(0, altitude, 0);
       }
 
       if (progress >= 1 && !this.hasRecordedVisit) {
+        this.showMilestoneBanner("🌌 DEEP SPACE EXPEDITION ACHIEVED");
         this.hasRecordedVisit = true;
         this.finishMissionSuccess();
       }
@@ -1089,6 +1191,7 @@ class LaunchSequence {
    * Unified Launch & Interplanetary Timeline Loop
    */
   updateTimeline(dt) {
+    if (this.isEventPaused) return;
     if (!this.rocket || this.currentStage === "idle" || this.currentStage === "checking" || this.currentStage === "countdown") {
       return;
     }
@@ -1139,6 +1242,11 @@ class LaunchSequence {
       this.rocket.position.y = altitude;
       this.rocket.rotation.z = -progress * 0.45; // Gravity turn tilt
 
+      // Once above initial atmosphere, hide ground launch pad
+      if (progress >= 0.35 && this.launchPadGroup) {
+        this.launchPadGroup.visible = false;
+      }
+
       if (!isReducedMotion) {
         this.cameraShakeIntensity = 0.12 * (1 - progress);
       }
@@ -1157,6 +1265,8 @@ class LaunchSequence {
       if (progress >= 1) {
         this.currentStage = "earthOrbit";
         this.timelineElapsed = 0;
+        if (this.launchPadGroup) this.launchPadGroup.visible = false;
+        if (this.cloudsGroup) this.cloudsGroup.visible = false;
         if (this.earthMesh) this.earthMesh.visible = true;
         this.showMilestoneBanner(window.i18n ? window.i18n.t("orbitAchievedBanner") : "🌍 ORBIT ACHIEVED");
         if (window.audioManager) window.audioManager.playUnlock();
@@ -1172,17 +1282,26 @@ class LaunchSequence {
       this.rocket.position.y = altitude;
       this.cameraShakeIntensity = 0;
 
+      if (this.launchPadGroup) this.launchPadGroup.visible = false;
+      if (this.cloudsGroup) this.cloudsGroup.visible = false;
+      if (this.earthMesh) this.earthMesh.visible = true;
+
       if (this.camera) {
         this.camera.position.set(7 * (1 - progress * 0.3), altitude - 1.2, 13 + progress * 2);
         this.camera.lookAt(0, altitude, 0);
       }
 
       if (progress >= 1) {
-        this.currentStage = "transfer";
-        this.timelineElapsed = 0;
-        this.showMilestoneBanner(window.i18n ? window.i18n.t("transferBurnBanner") : "⚡ INTERPLANETARY BOOST");
-        if (this.destinationMesh) this.destinationMesh.visible = true;
-        if (window.audioManager) window.audioManager.playIgnition();
+        if (this.destinationId === "earthOrbit") {
+          this.currentStage = "destinationAction";
+          this.timelineElapsed = 0;
+        } else {
+          this.currentStage = "transfer";
+          this.timelineElapsed = 0;
+          this.showMilestoneBanner(window.i18n ? window.i18n.t("transferBurnBanner") : "⚡ INTERPLANETARY BOOST");
+          if (this.destinationMesh) this.destinationMesh.visible = true;
+          if (window.audioManager) window.audioManager.playIgnition();
+        }
       }
     }
 
@@ -1193,6 +1312,36 @@ class LaunchSequence {
       const progress = Math.min(1, this.timelineElapsed / transferDuration);
       const altitude = 170 + progress * 70;
       this.rocket.position.y = altitude;
+
+      if (this.launchPadGroup) this.launchPadGroup.visible = false;
+      if (this.cloudsGroup) this.cloudsGroup.visible = false;
+
+      // In-Flight Dynamic Space Event Triggering (~45% of transfer timeline)
+      if (!this.hasTriggeredFlightEvent && progress >= 0.45) {
+        this.hasTriggeredFlightEvent = true;
+        const routeConfig = (window.game && window.game.routeConfig) || CONFIG.ROUTE_CONFIGS.safe;
+        const eventChance = (routeConfig && routeConfig.eventChance !== undefined) ? routeConfig.eventChance : 0.35;
+        const mission = window.game ? window.game.activeMission : null;
+        const eventPool = (mission && mission.eventPool && mission.eventPool.length > 0)
+          ? mission.eventPool
+          : ["asteroid_alert", "engine_overheat", "course_correction", "solar_storm", "unknown_signal"];
+
+        if (Math.random() < eventChance) {
+          const eventKey = eventPool[Math.floor(Math.random() * eventPool.length)];
+          const eventDef = CONFIG.EVENT_DEFINITIONS[eventKey];
+          if (eventDef && window.uiManager) {
+            this.isEventPaused = true;
+            window.uiManager.triggerFlightEventModal(eventDef, (bonusXP) => {
+              this.isEventPaused = false;
+              if (window.game) {
+                window.game.sessionStats = window.game.sessionStats || {};
+                window.game.sessionStats.eventBonusXP = (window.game.sessionStats.eventBonusXP || 0) + (bonusXP || 20);
+              }
+            });
+            return;
+          }
+        }
+      }
 
       if (this.flameMesh) {
         this.flameThrottle = 1.35;
@@ -1228,6 +1377,9 @@ class LaunchSequence {
       const approachDuration = destConfig.cinematic?.approachSeconds || 5.0;
       const progress = Math.min(1, this.timelineElapsed / approachDuration);
 
+      if (this.launchPadGroup) this.launchPadGroup.visible = false;
+      if (this.cloudsGroup) this.cloudsGroup.visible = false;
+
       if (this.destinationMesh) {
         const distZ = -140 + progress * 85;
         this.destinationMesh.position.z = distZ;
@@ -1255,21 +1407,28 @@ class LaunchSequence {
 
     // 6. Destination Specific Action (Landing or Flyby/Orbit)
     else if (this.currentStage === "destinationAction") {
-      this.updateLandingSystem(dt);
+      const isLanding = CONFIG.DESTINATIONS[this.destinationId]?.type === "landing";
+      if (isLanding) {
+        this.updateLandingSystem(dt);
+      } else {
+        this.updateFlybyOrOrbit(dt);
+      }
     }
 
     // 7. Mission Complete Ambient Hero Camera
     else if (this.currentStage === "missionComplete") {
       this.timelineElapsed += dt;
-      if (this.camera) {
+      if (this.camera && this.rocket) {
+        const isLanding = CONFIG.DESTINATIONS[this.destinationId]?.type === "landing";
         const heroAngle = 0.7 + this.timelineElapsed * 0.12;
         const camDist = 11.5;
+        const targetY = isLanding ? (this.touchdownRocketY || 2.5) : (this.rocket ? this.rocket.position.y : 160);
         this.camera.position.set(
           Math.sin(heroAngle) * camDist,
-          2.8 + Math.sin(this.timelineElapsed * 0.4) * 0.3,
+          targetY + 2.0 + Math.sin(this.timelineElapsed * 0.4) * 0.3,
           Math.cos(heroAngle) * camDist
         );
-        this.camera.lookAt(0, (this.touchdownRocketY || 0) + (this.rocketCenterY || 1.5), 0);
+        this.camera.lookAt(0, targetY + (this.rocketCenterY || 1.5), 0);
       }
     }
   }
@@ -1281,13 +1440,9 @@ class LaunchSequence {
     this.currentStage = "missionComplete";
     this.timelineElapsed = 0;
 
-    if (window.profileManager) {
-      window.profileManager.recordDestinationVisited(this.destinationId);
-      const active = window.profileManager.getActiveProfile();
-      if (active) {
-        active.gamesCompleted = (active.gamesCompleted || 0) + 1;
-        window.profileManager.save();
-      }
+    // Single Source of Truth: Finalize mission settlement immediately upon arrival / victory
+    if (window.game && window.game.finalizeMissionRun) {
+      window.game.finalizeMissionRun();
     }
 
     // Hide interim touchdown toast and stage banner
@@ -1334,33 +1489,96 @@ class LaunchSequence {
     document.getElementById("touchdown-banner")?.classList.add("hidden");
 
     this.hasRecordedVisit = true;
-    this.rocket.position.set(0, 32, 0);
-    this.rocket.rotation.set(0, 0, 0);
-    if (this.flameMesh) this.flameMesh.visible = true;
-    if (this.engineLight) this.engineLight.intensity = 4.0;
+    const isLanding = CONFIG.DESTINATIONS[this.destinationId]?.type === "landing";
 
-    this.camera.position.set(14, 12, 22);
-    this.camera.lookAt(0, 10, 0);
+    if (isLanding) {
+      this.rocket.position.set(0, 32, 0);
+      this.rocket.rotation.set(0, 0, 0);
+      if (this.flameMesh) this.flameMesh.visible = true;
+      if (this.engineLight) this.engineLight.intensity = 4.0;
 
-    this.currentStage = "destinationAction";
-    this.landingPhase = "highDescent";
-    this.landingPhaseElapsed = 0;
+      this.camera.position.set(14, 12, 22);
+      this.camera.lookAt(0, 10, 0);
+
+      this.currentStage = "destinationAction";
+      this.landingPhase = "highDescent";
+      this.landingPhaseElapsed = 0;
+    } else {
+      this.currentStage = "destinationAction";
+      this.timelineElapsed = 0;
+    }
   }
 
   /**
    * Developer Shortcut to jump directly to any mission stage
    */
-  jumpToStage(stageName, destId = "moon") {
-    this.initScene("canvas-container-launch", destId);
+  jumpToStage(stageName, destId = "moon", containerId = "canvas-container-launch") {
+    this.initScene(containerId, destId);
     document.getElementById("launch-checklist")?.classList.add("hidden");
     document.getElementById("launch-countdown-box")?.classList.add("hidden");
 
-    if (stageName === "approach") {
-      this.currentStage = "destinationApproach";
-      this.timelineElapsed = 1.0;
+    if (stageName === "liftoff") {
+      this.currentStage = "liftoff";
+      this.timelineElapsed = 0;
+      if (this.flameMesh) this.flameMesh.visible = true;
+      if (this.engineLight) this.engineLight.intensity = 4.0;
+    } else if (stageName === "atmospheric") {
+      this.currentStage = "atmospheric";
+      this.timelineElapsed = 0;
+      this.rocket.position.y = 50;
+      if (this.flameMesh) this.flameMesh.visible = true;
+      if (this.launchPadGroup) this.launchPadGroup.visible = false;
+    } else if (stageName === "earthOrbit") {
+      this.currentStage = "earthOrbit";
+      this.timelineElapsed = 0;
+      this.rocket.position.y = 130;
+      if (this.launchPadGroup) this.launchPadGroup.visible = false;
+      if (this.cloudsGroup) this.cloudsGroup.visible = false;
+      if (this.earthMesh) this.earthMesh.visible = true;
+    } else if (stageName === "transfer") {
+      this.currentStage = "transfer";
+      this.timelineElapsed = 0;
+      this.rocket.position.y = 170;
+      if (this.launchPadGroup) this.launchPadGroup.visible = false;
+      if (this.cloudsGroup) this.cloudsGroup.visible = false;
       if (this.destinationMesh) this.destinationMesh.visible = true;
-    } else if (stageName === "landing") {
-      this.transitionToSurfaceScene();
+    } else if (stageName === "destinationApproach" || stageName === "approach") {
+      this.currentStage = "destinationApproach";
+      this.timelineElapsed = 0;
+      if (this.launchPadGroup) this.launchPadGroup.visible = false;
+      if (this.cloudsGroup) this.cloudsGroup.visible = false;
+      if (this.destinationMesh) this.destinationMesh.visible = true;
+    } else if (stageName === "destinationAction" || stageName === "landing") {
+      const isLanding = CONFIG.DESTINATIONS[destId]?.type === "landing";
+      if (isLanding) {
+        if (this.launchPadGroup) this.launchPadGroup.visible = false;
+        if (this.cloudsGroup) this.cloudsGroup.visible = false;
+        if (this.destinationMesh) this.destinationMesh.visible = false;
+        this.createLandingSurface(destId);
+        if (this.surfaceGroup) this.surfaceGroup.visible = true;
+        this.calculateRocketDimensions();
+        this.rocket.position.set(0, 32, 0);
+        this.rocket.rotation.set(0, 0, 0);
+        if (this.flameMesh) this.flameMesh.visible = true;
+        this.currentStage = "destinationAction";
+        this.landingPhase = "highDescent";
+        this.timelineElapsed = 0;
+        this.landingPhaseElapsed = 0;
+      } else {
+        this.currentStage = "destinationAction";
+        this.timelineElapsed = 0;
+      }
+    } else if (stageName === "missionComplete") {
+      const isLanding = CONFIG.DESTINATIONS[destId]?.type === "landing";
+      if (isLanding) {
+        this.createLandingSurface(destId);
+        if (this.surfaceGroup) this.surfaceGroup.visible = true;
+        this.calculateRocketDimensions();
+        this.rocket.position.set(0, this.touchdownRocketY, 0);
+      } else {
+        this.rocket.position.set(0, 160, 0);
+      }
+      this.finishMissionSuccess();
     }
   }
 
@@ -1390,7 +1608,7 @@ class LaunchSequence {
     this.animationId = this.requestTrackedRaf(() => this.animate());
 
     const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-    const dt = this.lastTime ? Math.min(0.1, (now - this.lastTime) / 1000) : 0.016;
+    const dt = (this.lastTime ? Math.min(0.1, (now - this.lastTime) / 1000) : 0.016) * (this.speedMultiplier || 1.0);
     this.lastTime = now;
 
     this.updateTimeline(dt);

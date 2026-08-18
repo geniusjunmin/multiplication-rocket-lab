@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title data-i18n="appTitle">Multiplication Rocket Lab 4.0 🚀</title>
+  <title data-i18n="appTitle">Multiplication Rocket Lab 4.1 🚀</title>
   
   <meta name="description" content="Master Times Tables & Division, Build 3D Rockets & Explore the Solar System with Missions & Progression!">
   <meta name="theme-color" content="#6366f1">
@@ -38,6 +38,7 @@
   <script src="js/launch.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/animlab.js"></script>
   <script src="js/main.js"></script>
 </head>
 <body>
@@ -53,7 +54,7 @@
     <header id="global-header" class="global-header">
       <div class="header-brand">
         <button id="btn-home" class="btn-icon" aria-label="Home">🏠</button>
-        <h1 class="game-logo" data-i18n="appTitle">Multiplication Rocket Lab 4.0 🚀</h1>
+        <h1 class="game-logo" data-i18n="appTitle">Multiplication Rocket Lab 4.1 🚀</h1>
       </div>
 
       <!-- Progression Badges & Profile Selector HUD -->
@@ -73,6 +74,7 @@
         <button id="btn-nav-mission-board" class="btn-chip-nav" data-i18n="btnStartGame">🪐 Mission Board</button>
         <button id="btn-nav-museum" class="btn-chip-nav" data-i18n="btnMuseum">🏛️ Museum</button>
         <button id="btn-nav-garage" class="btn-chip-nav" data-i18n="btnGarage">🚀 Garage</button>
+        <button id="btn-nav-anim-lab" class="btn-chip-nav btn-anim-lab-nav" style="background: linear-gradient(135deg, #9333ea, #6366f1); color: #fff; font-weight: 800; border: 1px solid rgba(168, 85, 247, 0.5);">🎬 动画测试 (Anim Lab)</button>
 
         <button id="btn-dev-skip-quiz" class="btn-chip-sm dev-btn-shortcut hidden" style="background: #f59e0b; color: #000; font-weight: 900; border: none;" data-i18n="devSkipQuiz">⚡ 快速完成答题 (测试)</button>
         <button id="btn-dev-moon-landing" class="btn-chip-sm dev-btn-shortcut hidden" style="background: #38bdf8; color: #000; font-weight: 900; border: none;">🌙 Dev: Moon</button>
@@ -88,7 +90,7 @@
     <!-- Main Views Container -->
     <main class="main-content">
 
-      <!-- 1. HOME SCREEN (With Progression, Daily Missions & Recommended Expedition) -->
+      <!-- 1. HOME SCREEN (With Progression, Daily Missions, Weekly Expedition & Recommended Expedition) -->
       <section id="screen-home" class="screen screen-home">
         <div class="home-grid-layout">
           
@@ -138,6 +140,28 @@
               </div>
             </div>
 
+            <!-- Weekly Expedition Card -->
+            <div class="weekly-expedition-card card">
+              <div class="expedition-head">
+                <div class="head-left">
+                  <span class="icon">🗺️</span>
+                  <span class="exp-title">WEEKLY SOLAR EXPEDITION</span>
+                </div>
+                <span id="weekly-exp-status" class="exp-badge">0 / 5 Planets</span>
+              </div>
+              <div id="weekly-exp-nodes" class="expedition-steps-row">
+                <span class="node active">🌍</span><span class="line">━</span>
+                <span class="node">🌙</span><span class="line">━</span>
+                <span class="node">🔴</span><span class="line">━</span>
+                <span class="node">🪐</span><span class="line">━</span>
+                <span class="node">🪐</span>
+              </div>
+              <div class="expedition-footer">
+                <span class="exp-reward-hint">🎁 Complete route for +300 XP & +50 RP</span>
+                <button id="btn-claim-weekly-expedition" class="btn btn-sm btn-outline hidden">🎉 Claim Reward</button>
+              </div>
+            </div>
+
             <!-- Primary Home Actions -->
             <div class="home-nav-actions-grid">
               <button id="btn-start-game" class="btn btn-primary btn-large" data-i18n="btnStartGame">
@@ -158,6 +182,9 @@
               <button id="btn-open-report" class="btn btn-outline" data-i18n="btnReport">
                 📊 Parent Dashboard
               </button>
+              <button id="btn-home-anim-lab" class="btn btn-outline" style="grid-column: span 2; border-color: rgba(168, 85, 247, 0.45); background: linear-gradient(135deg, rgba(147, 51, 234, 0.15), rgba(99, 102, 241, 0.15)); color: #c084fc; font-weight: 800;">
+                🎬 动画测试实验室 (Animation Lab)
+              </button>
             </div>
 
           </div>
@@ -167,6 +194,10 @@
             
             <!-- 3D Rocket Preview -->
             <div class="hero-3d-preview card">
+              <div class="hero-3d-header">
+                <span class="hero-rocket-badge">🚀 <span id="home-rocket-name">Classic Explorer</span></span>
+                <button id="btn-home-switch-garage" class="btn btn-chip-sm" title="Rocket Garage">🔧 Customize</button>
+              </div>
               <div id="canvas-container-home" class="canvas-wrapper"></div>
             </div>
 
@@ -181,7 +212,7 @@
         </div>
       </section>
 
-      <!-- 2. MISSION BOARD SCREEN (Solar System Map & Planet Missions) -->
+      <!-- 2. MISSION BOARD SCREEN (Solar System Map & Planet Missions with Level Gates) -->
       <section id="screen-missionBoard" class="screen screen-mission-board hidden">
         <div class="mission-board-container card">
           <div class="board-header">
@@ -189,7 +220,10 @@
               <h2 class="board-title" data-i18n="missionBoardTitle">🪐 Solar System Mission Board</h2>
               <p class="board-subtitle" data-i18n="missionBoardSubtitle">Choose an interplanetary expedition to launch!</p>
             </div>
-            <button class="btn btn-outline" onclick="window.game.setGameState(GAME_STATES.HOME)">🏠 Home</button>
+            <div class="board-header-actions">
+              <button id="btn-board-free-practice" class="btn btn-secondary">⚡ Free Practice</button>
+              <button class="btn btn-outline" onclick="window.game.setGameState(GAME_STATES.HOME)">🏠 Home</button>
+            </div>
           </div>
 
           <!-- Planet Navigation Nodes Tabs -->
@@ -242,7 +276,170 @@
         </div>
       </section>
 
-      <!-- 5. SETTINGS SCREEN -->
+      <!-- 5. ANIMATION TEST LAB SCREEN (🎬 动画测试实验室) -->
+      <section id="screen-animLab" class="screen screen-anim-lab hidden">
+        <div class="anim-lab-container card">
+          
+          <!-- Header -->
+          <div class="anim-lab-header">
+            <div>
+              <h2 class="anim-lab-title">🎬 动画效果测试实验室 (Animation Lab)</h2>
+              <p class="anim-lab-subtitle">无需答题，一键快速测试与调试所有 3D 发射、轨道巡航、地表着陆、载荷展开与组装特效！</p>
+            </div>
+            <div class="anim-lab-header-actions">
+              <button id="btn-anim-speed-05" class="btn btn-chip-sm speed-btn">0.5x 慢放</button>
+              <button id="btn-anim-speed-1" class="btn btn-chip-sm speed-btn active">1x 正常</button>
+              <button id="btn-anim-speed-2" class="btn btn-chip-sm speed-btn">2x 倍速</button>
+              <button id="btn-anim-speed-4" class="btn btn-chip-sm speed-btn">4x 极速</button>
+              <button class="btn btn-outline" onclick="window.game.setGameState(GAME_STATES.HOME)">🏠 返回首页</button>
+            </div>
+          </div>
+
+          <!-- Main Split View -->
+          <div class="anim-lab-grid">
+            
+            <!-- Left: 3D Viewport with Live HUD -->
+            <div class="anim-lab-viewport-box card">
+              <div id="canvas-container-anim-lab" class="canvas-wrapper"></div>
+              
+              <!-- Floating Telemetry HUD -->
+              <div class="anim-lab-hud-overlay">
+                <span class="anim-hud-badge" id="anim-hud-dest">🪐 目的地: 🌍 近地轨道</span>
+                <span class="anim-hud-badge" id="anim-hud-stage">🚀 阶段: 待命中 (Idle)</span>
+                <span class="anim-hud-badge" id="anim-hud-model">🛸 型号: 经典探险家</span>
+                <span class="anim-hud-badge" id="anim-hud-payload">📦 载荷: 太阳能卫星</span>
+              </div>
+
+              <!-- Quick Viewport Toolbar -->
+              <div class="anim-lab-view-toolbar">
+                <button id="btn-anim-play-all" class="btn btn-primary btn-sm">▶️ 完整发射全流程</button>
+                <button id="btn-anim-pause-resume" class="btn btn-secondary btn-sm">⏸️ 暂停/继续</button>
+                <button id="btn-anim-reset" class="btn btn-outline btn-sm">🔄 重置场景</button>
+              </div>
+            </div>
+
+            <!-- Right: Categorized One-Click Test Dashboard -->
+            <div class="anim-lab-controls-panel">
+              
+              <!-- Group 1: 🪐 星球全流程飞行测试 (Full Destination Flights) -->
+              <div class="anim-control-group">
+                <h4 class="anim-group-title">🪐 1. 六大星球全流程飞行动画 (免答题快速启动)</h4>
+                <div class="anim-btn-grid">
+                  <button class="btn btn-anim-action" data-dest="earthOrbit">
+                    <span class="btn-emoji">🌍</span>
+                    <span class="btn-text"><strong>近地轨道</strong><small>太阳能卫星展开+地球特写</small></span>
+                  </button>
+                  <button class="btn btn-anim-action" data-dest="moon">
+                    <span class="btn-emoji">🌙</span>
+                    <span class="btn-text"><strong>月球着陆</strong><small>4阶段反推+月表漫游车</small></span>
+                  </button>
+                  <button class="btn btn-anim-action" data-dest="mars">
+                    <span class="btn-emoji">🔴</span>
+                    <span class="btn-text"><strong>火星着陆</strong><small>火星红土反推+漫游车巡视</small></span>
+                  </button>
+                  <button class="btn btn-anim-action" data-dest="jupiter">
+                    <span class="btn-emoji">🪐</span>
+                    <span class="btn-text"><strong>木星引力弹弓</strong><small>大红斑飞越+探测器发射</small></span>
+                  </button>
+                  <button class="btn btn-anim-action" data-dest="saturn">
+                    <span class="btn-emoji">🪐</span>
+                    <span class="btn-text"><strong>土星光环轨道</strong><small>卡西尼光环平面穿越</small></span>
+                  </button>
+                  <button class="btn btn-anim-action" data-dest="deepSpace">
+                    <span class="btn-emoji">🌌</span>
+                    <span class="btn-text"><strong>深空星云跃迁</strong><small>星际脉冲+空间望远镜</small></span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Group 2: ⚡ 关键子阶段精准直达 (Direct Stage Jump) -->
+              <div class="anim-control-group">
+                <h4 class="anim-group-title">⚡ 2. 关键飞行阶段精准直达</h4>
+                <div class="anim-btn-grid cols-4">
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="liftoff">🚀 1. 点火升空</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="atmospheric">☁️ 2. 大气转弯</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="earthOrbit">🌍 3. 轨道切入</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="transfer">⚡ 4. 转移加速</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="destinationApproach">🪐 5. 进场接近</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="destinationAction">🛬 6. 着陆/巡航</button>
+                  <button class="btn btn-anim-chip" data-action="stage" data-stage="missionComplete">🏆 7. 胜利镜头</button>
+                  <button class="btn btn-anim-chip" data-action="eventModal">🚨 8. 特情弹窗</button>
+                </div>
+              </div>
+
+              <!-- Group 3: 🛠️ 组装、燃料与庆典特效 (Assembly & Fuel VFX) -->
+              <div class="anim-control-group">
+                <h4 class="anim-group-title">🛠️ 3. 组装车间、燃料注入与解锁庆典</h4>
+                <div class="anim-btn-grid cols-2">
+                  <button id="btn-anim-test-assembly" class="btn btn-secondary">
+                    ✨ 10 零件连续吸附组装特效
+                  </button>
+                  <button id="btn-anim-test-fuel" class="btn btn-secondary">
+                    ⛽ 燃料加注管道流动 (0→100%)
+                  </button>
+                  <button id="btn-anim-test-unlock-starship" class="btn btn-secondary">
+                    🎉 解锁星舰 (Starship) 庆典模态框
+                  </button>
+                  <button id="btn-anim-test-unlock-cyber" class="btn btn-secondary">
+                    🎉 解锁赛博星舰 (Cyber) 庆典模态框
+                  </button>
+                </div>
+              </div>
+
+              <!-- Group 4: 🎨 实时换装与载荷测试 (Real-time Customization) -->
+              <div class="anim-control-group">
+                <h4 class="anim-group-title">🎨 4. 火箭型号、涂装、载荷与尾迹即时切换</h4>
+                <div class="anim-customizer-row">
+                  <div class="custom-select-item">
+                    <label>🚀 火箭型号:</label>
+                    <select id="anim-select-model" class="input-select">
+                      <option value="classic">经典探险家 (Classic)</option>
+                      <option value="starship">SpaceX 星舰 (Starship)</option>
+                      <option value="falconHeavy">重型猎鹰 (Falcon Heavy)</option>
+                      <option value="longMarch">长征五号 (Long March 5)</option>
+                      <option value="cyber">赛博量子星舰 (Cyber)</option>
+                    </select>
+                  </div>
+                  <div class="custom-select-item">
+                    <label>🎨 涂装配色:</label>
+                    <select id="anim-select-theme" class="input-select">
+                      <option value="explorer">经典探索蓝白 (Explorer)</option>
+                      <option value="fire">烈焰深红 (Fire)</option>
+                      <option value="forest">极光翡翠绿 (Forest)</option>
+                      <option value="lightning">雷霆量子紫 (Lightning)</option>
+                      <option value="galaxy">深空星系黑 (Galaxy)</option>
+                    </select>
+                  </div>
+                  <div class="custom-select-item">
+                    <label>📦 任务载荷:</label>
+                    <select id="anim-select-payload" class="input-select">
+                      <option value="satellite">🛰️ 太阳能卫星 (Satellite)</option>
+                      <option value="rover">🚙 探测漫游车 (Rover)</option>
+                      <option value="probe">📡 深空探测器 (Probe)</option>
+                      <option value="cargo">📦 补给货舱 (Cargo)</option>
+                    </select>
+                  </div>
+                  <div class="custom-select-item">
+                    <label>🔥 离子尾迹:</label>
+                    <select id="anim-select-trail" class="input-select">
+                      <option value="trail_standard">🔥 标准化学尾焰</option>
+                      <option value="trail_plasma_blue">⚡ 等离子蔚蓝尾迹</option>
+                      <option value="trail_ion_green">🌿 离子翠绿辉光</option>
+                      <option value="trail_solar_flare">☀️ 太阳耀斑深红</option>
+                      <option value="trail_starlight">✨ 星光幻紫粒子</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- 6. SETTINGS SCREEN -->
       <section id="screen-settings" class="screen screen-settings hidden">
         <div class="settings-card card">
           <h2 data-i18n="settingsTitle">⚙️ Math Challenge & Mission Settings</h2>
@@ -763,6 +960,23 @@
 
     <!-- MODALS -->
 
+    <!-- Unlock Reward Ceremony Modal -->
+    <div id="modal-new-unlock" class="modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal-card unlock-modal-card card">
+        <div class="unlock-glow-burst">✨ ⭐ 🚀 ⭐ ✨</div>
+        <span class="badge-pill">NEW UNLOCK</span>
+        <h2 id="unlock-modal-title" class="unlock-title">🚀 FALCON HEAVY UNLOCKED!</h2>
+        <p id="unlock-modal-desc" class="unlock-desc">Achieved 12 Mission Stars across the solar system!</p>
+        <div class="unlock-preview-viewport">
+          <div id="canvas-container-unlock-modal" class="canvas-wrapper"></div>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-unlock-equip-now" class="btn btn-primary btn-large btn-pulse">⚡ EQUIP NOW</button>
+          <button id="btn-unlock-continue" class="btn btn-outline">CONTINUE ➔</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Mission Flight Briefing Modal -->
     <div id="modal-mission-briefing" class="modal-overlay hidden" role="dialog" aria-modal="true">
       <div class="modal-card briefing-modal-card card">
@@ -786,11 +1000,13 @@
         <div class="briefing-section">
           <h4 data-i18n="routeChoiceHeader">ROUTE DECISION</h4>
           <div class="route-options-grid">
-            <button id="route-opt-safe" class="route-btn active" data-i18n="safeRoute">
-              🟢 Safe Route (Standard Questions)
+            <button id="route-opt-safe" class="route-btn active">
+              <div class="route-title">🟢 Safe Route</div>
+              <div class="route-desc">15 Questions • Standard Math • 100% Rewards</div>
             </button>
-            <button id="route-opt-boost" class="route-btn" data-i18n="boostRoute">
-              ⚡ Boost Route (Challenging Math + Bonus Star Chance)
+            <button id="route-opt-boost" class="route-btn">
+              <div class="route-title">⚡ Boost Route</div>
+              <div class="route-desc">15 Questions • Harder Facts • +35% XP & +10 RP • High Events</div>
             </button>
           </div>
         </div>

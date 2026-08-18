@@ -1,8 +1,8 @@
 /**
  * Multiplication Rocket Lab - State Machine & Adventure Flow Manager (js/game.js)
- * Version 4.0.0 Space Adventure Progression Architecture
+ * Version 4.1.0 — Gameplay Integration & Progression Integrity
  * Coordinates Mission Board, Dynamic In-Flight Events, Nova Mascot Telemetry,
- * Combo Engine Power, Non-Punitive Objective Checking & Mission Debrief.
+ * Combo Engine Power, Non-Punitive Objective Checking, Route Dynamics & Mission Debrief.
  */
 const GAME_STATES = {
   HOME: "home",
@@ -23,6 +23,7 @@ const GAME_STATES = {
   MISSION_COMPLETE: "missionComplete",
   RESULTS: "results",
   REPORT: "report",
+  ANIM_LAB: "animLab",
   PAUSED: "paused"
 };
 
@@ -47,15 +48,17 @@ class MultiplicationGame {
     this.totalQuestionsCount = CONFIG.DEFAULT_QUESTION_COUNT;
     this.correctAnswersCount = 0;
     
-    // Active Mission State
+    // Active Mission & Single-Settlement State
     this.activeMission = null;
+    this.missionRunId = null;
+    this.missionSettled = false;
+    this.missionSettlementResult = null;
     this.routeOption = "safe"; // "safe" | "boost"
+    this.routeConfig = CONFIG.ROUTE_CONFIGS.safe;
     this.selectedPayload = "probe"; // "probe" | "rover" | "cargo" | "satellite"
+    this.dailyMissionContext = null;
     this.objectivesStatus = [];
-    this.hasTriggeredMidFlightEvent = false;
-    this.activeEvent = null;
-    this.activeEventQuestionIdx = 0;
-    this.eventMistakes = 0;
+    this.sessionStats = { eventBonusXP: 0 };
 
     // Fuel Economy Framework
     this.fuelLoaded = 0;
@@ -68,7 +71,7 @@ class MultiplicationGame {
     this.questionShownAt = 0;
     this.isAnswerLocked = false;
 
-    // Hard Mode Timer
+    // Hard Mode & Speed Modifier Timer
     this.timerSeconds = 8;
     this.timerRemainingMs = 8000;
     this.timerInterval = null;
@@ -92,8 +95,10 @@ class MultiplicationGame {
       [GAME_STATES.MISSION_COMPLETE]: [GAME_STATES.RESULTS, GAME_STATES.HOME, GAME_STATES.QUESTION, GAME_STATES.BLUEPRINT],
       [GAME_STATES.RESULTS]: [GAME_STATES.HOME, GAME_STATES.MISSION_BOARD, GAME_STATES.QUESTION, GAME_STATES.BLUEPRINT, GAME_STATES.REPORT],
       [GAME_STATES.REPORT]: [GAME_STATES.HOME, GAME_STATES.SETTINGS, GAME_STATES.QUESTION],
+      [GAME_STATES.ANIM_LAB]: Object.values(GAME_STATES),
       [GAME_STATES.PAUSED]: Object.values(GAME_STATES)
     };
+    this.validTransitions[GAME_STATES.HOME].push(GAME_STATES.ANIM_LAB);
   }
 
   init() {
@@ -173,6 +178,9 @@ class MultiplicationGame {
         break;
       case GAME_STATES.GARAGE:
         if (window.uiManager) window.uiManager.renderRocketGarage();
+        break;
+      case GAME_STATES.ANIM_LAB:
+        if (window.animationLab) window.animationLab.initViewport();
         break;
       case GAME_STATES.BLUEPRINT:
         if (window.uiManager) window.uiManager.updateBlueprintView();
@@ -266,16 +274,27 @@ class MultiplicationGame {
    * Start a Mission with full configuration, story objectives, payload and route
    */
   startMission(missionId, options = {}) {
+    const profile = window.profileManager ? window.profileManager.getActiveProfile() : null;
+    const pId = profile ? profile.id : "player";
     const mission = (window.missionManager ? window.missionManager.getMission(missionId) : null) || CONFIG.MISSION_DEFINITIONS[missionId] || CONFIG.MISSION_DEFINITIONS.moon_crater_survey;
+    
     this.activeMission = mission;
+    this.missionRunId = `${pId}_${mission.id}_${Date.now()}`;
+    this.missionSettled = false;
+    this.missionSettlementResult = null;
+
     this.routeOption = options.route || "safe";
+    this.routeConfig = CONFIG.ROUTE_CONFIGS[this.routeOption] || CONFIG.ROUTE_CONFIGS.safe;
     this.selectedPayload = options.payload || mission.recommendedPayload || "probe";
-    this.hasTriggeredMidFlightEvent = false;
+    this.dailyMissionContext = options.dailyMissionContext || null;
+    this.gameMode = options.gameMode || (this.dailyMissionContext ? GAME_MODES.DAILY_MISSION : GAME_MODES.NORMAL);
+    this.sessionStats = { eventBonusXP: 0 };
 
     if (window.storageManager) {
       window.storageManager.set("selectedMissionId", mission.id);
       window.storageManager.set("selectedDestination", mission.destination);
       window.storageManager.set("selectedPayload", this.selectedPayload);
+      window.storageManager.set("selectedRoute", this.routeOption);
     }
 
     // Initialize Objectives
@@ -284,12 +303,8 @@ class MultiplicationGame {
       completed: false
     }));
 
-    // Math Question Counts
-    let qTarget = mission.questionTarget || 15;
-    if (this.routeOption === "boost") {
-      qTarget = Math.max(10, qTarget - 2);
-    }
-    this.totalQuestionsCount = qTarget;
+    // Math Question Counts (True question target from mission definition)
+    this.totalQuestionsCount = mission.questionTarget || 15;
 
     this.score = 0;
     this.comboCount = 0;
@@ -301,7 +316,7 @@ class MultiplicationGame {
       window.mathEngine.resetSessionStats();
     }
 
-    // Clear session parts so child can build / quick prep
+    // Clear session parts so child can build / assemble
     if (window.storageManager) {
       window.storageManager.set("unlockedParts", []);
       window.storageManager.set("installedParts", []);
@@ -309,9 +324,12 @@ class MultiplicationGame {
     }
 
     if (window.uiManager) {
-      window.uiManager.showMascotDialogue(`🚀 NOVA: "${mission.titleZh || mission.titleEn} 航天任务准备就绪！"`);
+      const isZh = window.i18n && window.i18n.currentLanguage === "zh";
+      const mTitle = isZh ? mission.titleZh : mission.titleEn;
+      window.uiManager.showMascotDialogue(`🚀 NOVA: "${mTitle} 航天任务准备就绪！"`);
     }
 
+    this.saveActiveSession();
     this.nextQuestion();
     this.setGameState(GAME_STATES.QUESTION);
   }
@@ -319,13 +337,15 @@ class MultiplicationGame {
   startNewGameRound(mode = GAME_MODES.NORMAL) {
     this.gameMode = mode;
     const mId = window.storageManager ? (window.storageManager.get("selectedMissionId") || "moon_crater_survey") : "moon_crater_survey";
-    this.startMission(mId);
+    this.startMission(mId, { gameMode: mode });
   }
 
   getMissionMathFilter() {
     if (!this.activeMission) return null;
     return {
       focusTables: this.activeMission.mathFocus || null,
+      modifier: this.activeMission.modifier || null,
+      route: this.routeOption,
       operations: (this.activeMission.modifier === "mixed") ? ["multiply", "divide"] : null
     };
   }
@@ -368,16 +388,6 @@ class MultiplicationGame {
       }
     }
 
-    // Mid-Flight Surprise Event Trigger (at ~50% of quiz progress)
-    if (!this.hasTriggeredMidFlightEvent && this.currentQuestionIdx >= Math.floor(this.totalQuestionsCount * 0.5) && this.activeMission && this.activeMission.eventPool && this.activeMission.eventPool.length > 0) {
-      this.hasTriggeredMidFlightEvent = true;
-      const eventKey = this.activeMission.eventPool[Math.floor(Math.random() * this.activeMission.eventPool.length)];
-      if (CONFIG.EVENT_DEFINITIONS[eventKey] && window.uiManager) {
-        window.uiManager.triggerFlightEventModal(CONFIG.EVENT_DEFINITIONS[eventKey]);
-        return;
-      }
-    }
-
     this.currentQuestionIdx++;
 
     if (window.mathEngine) {
@@ -402,20 +412,23 @@ class MultiplicationGame {
   }
 
   getComboPowerLevel() {
-    if (this.comboCount >= 10) return { level: 3, label: "⚡ HYPER BOOST", color: "#38bdf8" };
+    if (this.comboCount >= 8) return { level: 3, label: "⚡ HYPER BOOST", color: "#38bdf8" };
     if (this.comboCount >= 5) return { level: 2, label: "🔥🔥 BOOSTER LV.2", color: "#f59e0b" };
     if (this.comboCount >= 3) return { level: 1, label: "🔥 BOOSTER LV.1", color: "#10b981" };
     return { level: 0, label: "NORMAL", color: "#94a3b8" };
   }
 
   startQuestionTimerIfNeeded() {
+    const isSpeedModifier = (this.activeMission && this.activeMission.modifier === "speed");
     const difficulty = window.storageManager ? window.storageManager.get("difficulty") : "normal";
-    if (difficulty !== "hard") {
+
+    if (difficulty !== "hard" && !isSpeedModifier) {
       if (window.uiManager) window.uiManager.hideQuizTimer();
       return;
     }
 
-    this.timerSeconds = window.storageManager ? (window.storageManager.get("timerSeconds") || 8) : 8;
+    const baseSec = window.storageManager ? (window.storageManager.get("timerSeconds") || 8) : 8;
+    this.timerSeconds = isSpeedModifier ? Math.min(baseSec, 8) : baseSec;
     this.timerRemainingMs = this.timerSeconds * 1000;
     
     if (window.uiManager) window.uiManager.showQuizTimer(this.timerSeconds);
@@ -465,7 +478,7 @@ class MultiplicationGame {
     setTimeout(() => {
       if (window.rocketBuilder) window.rocketBuilder.setNavWarning(false);
       this.nextQuestion();
-    }, 3500);
+    }, 2800);
   }
 
   submitAnswer(userAnswer) {
@@ -497,8 +510,8 @@ class MultiplicationGame {
       if (this.comboCount > this.maxCombo) this.maxCombo = this.comboCount;
 
       // Audio & Visual milestones on combo tier upgrades
-      if ((prevCombo < 3 && this.comboCount >= 3) || (prevCombo < 5 && this.comboCount >= 5) || (prevCombo < 10 && this.comboCount >= 10)) {
-        if (window.audioManager) window.audioManager.playComboMilestone(this.comboCount >= 10 ? 3 : (this.comboCount >= 5 ? 2 : 1));
+      if ((prevCombo < 3 && this.comboCount >= 3) || (prevCombo < 5 && this.comboCount >= 5) || (prevCombo < 8 && this.comboCount >= 8)) {
+        if (window.audioManager) window.audioManager.playComboMilestone(this.comboCount >= 8 ? 3 : (this.comboCount >= 5 ? 2 : 1));
       }
 
       const basePoints = this.attemptCount <= 1 ? 100 : (this.attemptCount === 2 ? 70 : 50);
@@ -549,7 +562,7 @@ class MultiplicationGame {
       setTimeout(() => {
         this.attemptCount = 0;
         this.nextQuestion();
-      }, 750);
+      }, 700);
 
     } else {
       this.comboCount = 0;
@@ -578,7 +591,7 @@ class MultiplicationGame {
     const curAcc = window.mathEngine ? window.mathEngine.getFirstTryAccuracy() : 100;
 
     this.objectivesStatus.forEach(obj => {
-      if (obj.type === "complete") {
+      if (obj.type === "complete" || obj.id === "primary") {
         obj.completed = true;
       } else if (obj.type === "accuracy") {
         if (curAcc >= (obj.target || 80)) obj.completed = true;
@@ -657,7 +670,7 @@ class MultiplicationGame {
             window.uiManager.renderQuestion(this.currentQuestion, "normal");
           }
         }
-      }, 700);
+      }, 650);
 
     } else {
       this.comboCount = 0;
@@ -673,17 +686,64 @@ class MultiplicationGame {
     }
   }
 
+  /**
+   * Finalize Mission Run (Idempotent Single Settlement Bridge)
+   */
+  finalizeMissionRun() {
+    if (this.missionSettled && this.missionSettlementResult) {
+      return this.missionSettlementResult;
+    }
+
+    const firstTryAcc = window.mathEngine ? window.mathEngine.getFirstTryAccuracy() : 100;
+    const sessionStats = {
+      firstTryAccuracy: firstTryAcc,
+      score: this.score,
+      maxCombo: this.maxCombo,
+      questionsPresented: this.totalQuestionsCount,
+      wrongAttempts: window.mathEngine ? window.mathEngine.sessionStats.wrongAttempts : 0,
+      eventBonusXP: (this.sessionStats && this.sessionStats.eventBonusXP) || 0
+    };
+
+    const missionId = this.activeMission ? this.activeMission.id : "moon_crater_survey";
+
+    if (window.progressionManager) {
+      this.missionSettlementResult = window.progressionManager.finalizeMissionRun({
+        missionRunId: this.missionRunId,
+        missionId,
+        sessionStats,
+        objectivesStatus: this.objectivesStatus,
+        routeOption: this.routeOption,
+        routeConfig: this.routeConfig,
+        gameMode: this.gameMode,
+        dailyMissionContext: this.dailyMissionContext,
+        selectedPayload: this.selectedPayload
+      });
+      this.missionSettled = true;
+    }
+
+    this.saveActiveSession();
+    return this.missionSettlementResult;
+  }
+
   saveActiveSession() {
     if (!window.storageManager) return;
     window.storageManager.set("lastActiveSession", {
+      missionRunId: this.missionRunId,
       state: this.currentState,
       gameMode: this.gameMode,
       missionId: this.activeMission ? this.activeMission.id : "moon_crater_survey",
+      route: this.routeOption,
+      payload: this.selectedPayload,
       score: this.score,
       currentQuestionIdx: this.currentQuestionIdx,
+      totalQuestionsCount: this.totalQuestionsCount,
+      unlockedParts: window.storageManager.get("unlockedParts") || [],
+      installedParts: window.storageManager.get("installedParts") || [],
       fuelLoaded: this.fuelLoaded,
       fuelRequired: this.fuelRequired,
       fuelPercentage: this.fuelPercentage,
+      missionSettled: this.missionSettled,
+      missionSettlementResult: this.missionSettlementResult,
       savedAt: Date.now()
     });
   }

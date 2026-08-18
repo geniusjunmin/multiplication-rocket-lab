@@ -1,6 +1,6 @@
 {
   "name": "multiplication-rocket-lab",
-  "version": "2.0.0",
+  "version": "4.1.0",
   "description": "Learn Times Tables, Build 3D Rockets & Launch to Deep Space!",
   "main": "js/main.js",
   "scripts": {

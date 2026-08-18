@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initDevMode();
   if (window.i18n) window.i18n.updateDOM();
   if (window.game) window.game.init();
+  if (window.animationLab) window.animationLab.init();
 
   if ("serviceWorker" in navigator && typeof window !== "undefined" && window.location && window.location.protocol.startsWith("http")) {
     navigator.serviceWorker.register("./sw.js").then(reg => {
@@ -62,6 +63,21 @@ function bindGlobalNavEvents() {
   document.getElementById("btn-nav-garage")?.addEventListener("click", () => {
     if (window.audioManager) window.audioManager.playClick();
     if (window.game) window.game.setGameState(GAME_STATES.GARAGE);
+  });
+
+  document.getElementById("btn-home-switch-garage")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playClick();
+    if (window.game) window.game.setGameState(GAME_STATES.GARAGE);
+  });
+
+  document.getElementById("btn-nav-anim-lab")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playClick();
+    if (window.animationLab) window.animationLab.openScreen();
+  });
+
+  document.getElementById("btn-home-anim-lab")?.addEventListener("click", () => {
+    if (window.audioManager) window.audioManager.playClick();
+    if (window.animationLab) window.animationLab.openScreen();
   });
 
   // Developer Testing Shortcut: Instantly skip all quiz questions and unlock all 10 rocket parts!
@@ -640,25 +656,11 @@ function bindResultsAndReportEvents() {
 }
 
 function showMissionDebriefResults() {
-  if (!window.game || !window.progressionManager) return;
+  if (!window.game) return;
 
-  const missionId = window.game.activeMission ? window.game.activeMission.id : (window.storageManager ? window.storageManager.get("selectedMissionId") : "moon_crater_survey");
-  const firstTryAcc = window.mathEngine ? window.mathEngine.getFirstTryAccuracy() : 100;
-  const sessionStats = {
-    firstTryAccuracy: firstTryAcc,
-    score: window.game.score,
-    maxCombo: window.game.maxCombo,
-    questionsPresented: window.game.totalQuestionsCount,
-    wrongAttempts: window.mathEngine ? window.mathEngine.sessionStats.wrongAttempts : 0
-  };
+  const debriefData = window.game.finalizeMissionRun();
 
-  const debriefData = window.progressionManager.recordMissionComplete(
-    missionId,
-    sessionStats,
-    window.game.objectivesStatus || []
-  );
-
-  if (window.uiManager) {
+  if (window.uiManager && debriefData) {
     window.uiManager.renderMissionDebrief(debriefData);
   }
 

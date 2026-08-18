@@ -140,4 +140,22 @@ describe("4. Interplanetary Launch Engine & Planet Arrival Scenes (LaunchSequenc
     Assert.isTrue(deepSpaceTime >= saturnTime, "Deep space duration must equal or exceed Saturn");
   });
 
+  it("4.11 Should support AnimationLab and jumpToStage for instant animation testing", () => {
+    const launch = new LaunchSequence();
+    launch.speedMultiplier = 2.0;
+    Assert.equal(launch.speedMultiplier, 2.0, "Speed multiplier should be set");
+
+    const testStages = ["liftoff", "atmospheric", "earthOrbit", "transfer", "destinationApproach", "destinationAction", "missionComplete"];
+    testStages.forEach(st => {
+      launch.jumpToStage(st, "mars", "canvas-container-launch");
+      Assert.isTrue(launch.currentStage !== "idle", `Stage ${st} should be active`);
+    });
+    launch.destroy();
+
+    const animLab = new AnimationLab();
+    Assert.equal(animLab.currentDest, "earthOrbit", "Default destination should be earthOrbit");
+    animLab.setSpeed(4.0);
+    Assert.equal(animLab.speedMultiplier, 4.0, "Animation lab speed should be 4x");
+  });
+
 });

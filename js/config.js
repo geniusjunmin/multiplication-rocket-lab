@@ -3,10 +3,62 @@
  * Version 4.0.0 Space Adventure Progression Architecture
  */
 const CONFIG = {
-  APP_VERSION: "4.0.0",
+  APP_VERSION: "4.1.0",
   SCHEMA_VERSION: 4,
   PART_COUNT: 10,
   DEFAULT_QUESTION_COUNT: 15,
+
+  // Destination Commander Level Progression Gates
+  DESTINATION_LEVEL_REQUIREMENTS: {
+    earthOrbit: 1,
+    moon: 1,
+    mars: 2,
+    jupiter: 4,
+    saturn: 5,
+    deepSpace: 8
+  },
+
+  // Safe vs Boost Route Profiles
+  ROUTE_CONFIGS: {
+    safe: {
+      id: "safe",
+      nameEn: "🟢 Safe Route",
+      nameZh: "🟢 稳妥航线",
+      questionMultiplier: 1.0,
+      difficultyModifier: 0,
+      rewardMultiplier: 1.0,
+      eventChance: 0.35,
+      bonusXP: 0,
+      bonusRP: 0,
+      bonusStarAvailable: false,
+      descEn: "Standard math facts • 100% Rewards • Regular flight events",
+      descZh: "标准难度题目 • 100% 基础奖励 • 常规空情事件"
+    },
+    boost: {
+      id: "boost",
+      nameEn: "⚡ Boost Route",
+      nameZh: "⚡ 极速高能航线",
+      questionMultiplier: 1.0,
+      difficultyModifier: 1,
+      rewardMultiplier: 1.35,
+      eventChance: 0.70,
+      bonusXP: 50,
+      bonusRP: 10,
+      bonusStarAvailable: true,
+      descEn: "Harder facts & mixed math • +35% XP & +10 RP • High event rate • Bonus Star Chance",
+      descZh: "高阶挑战题与混合运算 • +35% XP 及 +10 RP • 高频突发特情 • 额外星级机会"
+    }
+  },
+
+  // Weekly Expedition Definition
+  WEEKLY_EXPEDITION_DEFINITIONS: {
+    route: ["earthOrbit", "moon", "mars", "jupiter", "saturn"],
+    reward: {
+      xp: 300,
+      researchPoints: 50,
+      badge: "expedition_master"
+    }
+  },
 
   // Commander Progression & Ranks
   COMMANDER_RANKS: [

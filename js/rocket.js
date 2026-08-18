@@ -15,6 +15,8 @@ class RocketBuilder {
 
     this.currentModel = "classic";
     this.currentTheme = "explorer";
+    this.isShowcase = false;
+    this.currentContainerId = null;
 
     this.partDefinitions = [
       { id: "body", nameEn: "Rocket Body", nameZh: "主火箭箭体", icon: "🚀" },
@@ -208,7 +210,8 @@ class RocketBuilder {
       this.scene.add(pointLight);
 
       this.createAssemblyPlatform();
-      this.checkDebugFlags();
+      this.currentContainerId = containerId;
+      this.isShowcase = (containerId === "canvas-container-home" || containerId === "canvas-container-garage" || containerId === "canvas-container-unlock-modal");
 
       // Sync active model & theme from profile/storage if available
       if (window.storageManager) {
@@ -352,8 +355,14 @@ class RocketBuilder {
       this.fitCameraToRocket();
     }
 
-    const installed = window.storageManager ? (window.storageManager.get("installedParts") || []) : [];
-    this.updateInstalledParts(installed);
+    if (this.isShowcase) {
+      Object.keys(this.parts).forEach(key => {
+        if (this.parts[key]) this.parts[key].visible = true;
+      });
+    } else {
+      const installed = window.storageManager ? (window.storageManager.get("installedParts") || []) : [];
+      this.updateInstalledParts(installed);
+    }
   }
 
   alignRocketToPlatform() {

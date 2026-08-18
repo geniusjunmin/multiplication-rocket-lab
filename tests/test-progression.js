@@ -158,4 +158,163 @@ testRunner.describe("8. Space Adventure Progression & Mission Tests", () => {
     Assert.equal(profile.missionHistory.length, 100, "Mission history must be capped at 100");
   });
 
+  testRunner.it("8.9 Idempotent Settlement: finalizeMissionRun with same runId must not duplicate rewards or counts", () => {
+    const mgr = new ProgressionManager();
+    const profile = profileManager.getActiveProfile();
+    profile.gamesCompleted = 0;
+    profile.progression = { commanderLevel: 1, xp: 0, totalStars: 0, researchPoints: 0 };
+    profile.missionRecords = {};
+    profile._settledRuns = {};
+    profileManager.save();
+
+    const runId = "test_cadet_run_12345";
+    const opts = {
+      missionRunId: runId,
+      missionId: "moon_crater_survey",
+      sessionStats: { firstTryAccuracy: 100, score: 1500, maxCombo: 8 },
+      objectivesStatus: [
+        { id: "primary", completed: true, stars: 1 },
+        { id: "first_try", completed: true, stars: 1 }
+      ],
+      routeOption: "safe"
+    };
+
+    const res1 = mgr.finalizeMissionRun(opts);
+    Assert.equal(profile.gamesCompleted, 1, "First settlement should increment gamesCompleted to 1");
+    const xp1 = profile.progression.xp;
+    Assert.isTrue(xp1 > 0, "First settlement should award XP");
+
+    // Second call with same missionRunId (e.g. user clicked View Results multiple times or replayed landing)
+    const res2 = mgr.finalizeMissionRun(opts);
+    Assert.equal(profile.gamesCompleted, 1, "Duplicate settlement must NOT increment gamesCompleted");
+    Assert.equal(profile.progression.xp, xp1, "Duplicate settlement must NOT add extra XP");
+    Assert.equal(res1.missionRunId, res2.missionRunId, "Must return identical cached settlement");
+  });
+
+  testRunner.it("8.10 Daily Mission closed loop should award +50 XP bonus only once per day", () => {
+    const mgr = new ProgressionManager();
+    const profile = profileManager.getActiveProfile();
+    profile.dailyMissionState = { date: mgr.getTodayDateString(), completedIds: [] };
+    profile.progression = { commanderLevel: 1, xp: 0, totalStars: 0, researchPoints: 0 };
+    profile._settledRuns = {};
+    profileManager.save();
+
+    const dailyList = mgr.getDailyMissions();
+    const targetDaily = dailyList[0];
+
+    // 1st daily run
+    const res1 = mgr.finalizeMissionRun({
+      missionRunId: "daily_run_1",
+      missionId: targetDaily.id,
+      gameMode: "daily_mission",
+      dailyMissionContext: { date: mgr.getTodayDateString(), missionId: targetDaily.id },
+      sessionStats: { firstTryAccuracy: 90, score: 1000 },
+      objectivesStatus: [{ id: "primary", completed: true, stars: 1 }]
+    });
+
+    Assert.equal(res1.dailyBonusAwarded, 50, "First clear should award +50 daily bonus XP");
+    Assert.isTrue(profile.dailyMissionState.completedIds.includes(targetDaily.id), "Should record missionId in daily completedIds");
+
+    const updatedDailyList = mgr.getDailyMissions();
+    const updatedTarget = updatedDailyList.find(d => d.id === targetDaily.id);
+    Assert.isTrue(updatedTarget.isCompleted, "Daily mission card should now report isCompleted = true");
+
+    // 2nd daily run of same mission today
+    const res2 = mgr.finalizeMissionRun({
+      missionRunId: "daily_run_2",
+      missionId: targetDaily.id,
+      gameMode: "daily_mission",
+      dailyMissionContext: { date: mgr.getTodayDateString(), missionId: targetDaily.id },
+      sessionStats: { firstTryAccuracy: 90, score: 1000 },
+      objectivesStatus: [{ id: "primary", completed: true, stars: 1 }]
+    });
+
+    Assert.equal(res2.dailyBonusAwarded, 0, "Subsequent run of same daily mission today must NOT award bonus XP");
+  });
+
+  testRunner.it("8.11 Boost Route should award 1.35x rewards and flat bonuses", () => {
+    const mgr = new ProgressionManager();
+    const profile = profileManager.getActiveProfile();
+    profile.progression = { commanderLevel: 1, xp: 0, totalStars: 0, researchPoints: 0 };
+    profile._settledRuns = {};
+    profileManager.save();
+
+    const res = mgr.finalizeMissionRun({
+      missionRunId: "boost_run_1",
+      missionId: "mars_rover_deployment",
+      routeOption: "boost",
+      routeConfig: CONFIG.ROUTE_CONFIGS.boost,
+      sessionStats: { firstTryAccuracy: 90, score: 1000 },
+      objectivesStatus: [{ id: "primary", completed: true, stars: 1 }]
+    });
+
+    // Mars rover deployment base XP: 140. With 1.35x = 189 + 15 bonus = 204 XP
+    Assert.isTrue(res.xpEarned >= 200, `Boost route should award elevated XP, got ${res.xpEarned}`);
+    Assert.isTrue(res.rpEarned >= 15, `Boost route should award elevated RP, got ${res.rpEarned}`);
+  });
+
+  testRunner.it("8.12 Planetary Progression Gates: isPlanetUnlocked should enforce Commander Level", () => {
+    const mgr = new ProgressionManager();
+    const profile = profileManager.getActiveProfile();
+    
+    // Level 1: 0 XP
+    profile.progression = { commanderLevel: 1, xp: 0, totalStars: 0, researchPoints: 0 };
+    Assert.isTrue(mgr.isPlanetUnlocked("earthOrbit"), "Earth Orbit unlocked at Lv.1");
+    Assert.isTrue(mgr.isPlanetUnlocked("moon"), "Moon unlocked at Lv.1");
+    Assert.isFalse(mgr.isPlanetUnlocked("mars"), "Mars requires Lv.2");
+    Assert.isFalse(mgr.isPlanetUnlocked("jupiter"), "Jupiter requires Lv.4");
+    Assert.isFalse(mgr.isPlanetUnlocked("saturn"), "Saturn requires Lv.5");
+
+    // Upgrade to Level 5: 1400 XP
+    profile.progression = { commanderLevel: 5, xp: 1400, totalStars: 10, researchPoints: 50 };
+    Assert.isTrue(mgr.isPlanetUnlocked("mars"), "Mars unlocked at Lv.5");
+    Assert.isTrue(mgr.isPlanetUnlocked("jupiter"), "Jupiter unlocked at Lv.5");
+    Assert.isTrue(mgr.isPlanetUnlocked("saturn"), "Saturn unlocked at Lv.5");
+  });
+
+  testRunner.it("8.13 Weekly Solar Expedition should track route progress and claim reward upon completion", () => {
+    const mgr = new ProgressionManager();
+    const profile = profileManager.getActiveProfile();
+    profile.weeklyExpedition = { weekId: mgr.getCurrentWeekId(), completedDestinations: [], claimed: false };
+    profile.progression = { commanderLevel: 1, xp: 0, totalStars: 0, researchPoints: 0 };
+    profileManager.save();
+
+    CONFIG.WEEKLY_EXPEDITION_DEFINITIONS.route.forEach(dest => {
+      mgr.updateWeeklyExpedition(dest);
+    });
+
+    const state = mgr.getWeeklyExpeditionState();
+    Assert.isTrue(state.isCompleted, "All 5 destinations should mark expedition completed");
+    Assert.isFalse(state.claimed, "Should not be claimed yet");
+
+    const claimRes = mgr.claimWeeklyExpeditionReward();
+    Assert.isTrue(claimRes.success, "Should successfully claim reward");
+    Assert.isTrue(profile.progression.xp >= 300, "Should award +300 XP");
+    Assert.isTrue(profile.progression.researchPoints >= 50, "Should award +50 RP");
+  });
+
+  testRunner.it("8.14 MathEngine Adaptive Weak Facts: should return user weak facts and handle weak_facts modifier", () => {
+    const math = new MathEngine();
+    const profile = profileManager.getActiveProfile();
+    
+    // Simulate wrong fact for 7x8
+    const fact7x8 = profile.facts["mul:7x8"];
+    if (fact7x8) {
+      fact7x8.attempts = 5;
+      fact7x8.wrongCount = 3;
+      fact7x8.firstTryCorrect = 2;
+      fact7x8.masteryScore = 30;
+      fact7x8.lastWrongAt = Date.now();
+    }
+
+    const weakList = math.getAdaptiveFocusFacts(profile, 5);
+    Assert.isTrue(weakList.length > 0, "Should find at least 1 weak fact");
+    Assert.equal(weakList[0].id, "mul:7x8", "7x8 should be highest priority weak fact");
+
+    // Generate question with weak_facts modifier
+    const q = math.generateQuestion("normal", { modifier: "weak_facts" });
+    Assert.isTrue(q.operandA > 0 && q.operandB > 0, "Generated question must be valid");
+  });
+
 });
+

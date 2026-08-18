@@ -152,6 +152,27 @@ class MathEngine {
   }
 
   /**
+   * Adaptive Weak Facts Selector (Pulls directly from learner's history)
+   */
+  getAdaptiveFocusFacts(profile = null, count = 5) {
+    const prof = profile || (window.profileManager ? window.profileManager.getActiveProfile() : null);
+    if (!prof || !prof.facts) return [];
+
+    const weakList = Object.values(prof.facts).filter(f => {
+      return (f.attempts > 0 && f.firstTryCorrect / f.attempts < 0.8) || f.wrongCount > 0 || (f.masteryScore || 0) < 60;
+    });
+
+    weakList.sort((a, b) => {
+      const aWrong = a.wrongCount || 0;
+      const bWrong = b.wrongCount || 0;
+      if (bWrong !== aWrong) return bWrong - aWrong;
+      return (a.masteryScore || 0) - (b.masteryScore || 0);
+    });
+
+    return weakList.slice(0, count);
+  }
+
+  /**
    * Universal Question Generator (Supports Multiply, Divide, Custom Ranges & Adaptive Weak Facts)
    */
   generateQuestion(mode = "normal", customFilter = null) {
@@ -160,15 +181,37 @@ class MathEngine {
       return this.formatQuestionObject(wrongItem.operation, wrongItem.operandA, wrongItem.operandB);
     }
 
+    // Adaptive Weak Facts Modifier
+    if (customFilter && customFilter.modifier === "weak_facts") {
+      const weakFacts = this.getAdaptiveFocusFacts(null, 8);
+      if (weakFacts.length > 0 && this.random() > 0.25) {
+        const picked = weakFacts[Math.floor(this.random() * weakFacts.length)];
+        return this.formatQuestionObject(picked.operation, picked.operandA, picked.operandB);
+      }
+    }
+
     const cfg = this.challengeConfig;
-    const ops = (customFilter && customFilter.operations) ? customFilter.operations : (cfg.operations || ["multiply"]);
-    const isDivision = ops.includes("divide") && (ops.length === 1 || this.random() > 0.45);
+    let ops = (customFilter && customFilter.operations) ? customFilter.operations : (cfg.operations || ["multiply"]);
+    if (customFilter && customFilter.modifier === "mixed") {
+      ops = ["multiply", "divide"];
+    }
+
+    const isDivision = ops.includes("divide") && (ops.length === 1 || this.random() > 0.5);
 
     let tablesA = customFilter && customFilter.focusTables ? customFilter.focusTables : null;
     let minA = cfg.factorAMin || 1;
     let maxA = cfg.factorAMax || 12;
     let minB = cfg.factorBMin || 1;
     let maxB = cfg.factorBMax || 12;
+
+    // Boost Route Difficulty Elevation
+    if (customFilter && customFilter.route === "boost") {
+      minA = Math.max(3, minA);
+      minB = Math.max(3, minB);
+      if (!tablesA && maxA <= 12) {
+        tablesA = [6, 7, 8, 9, 11, 12];
+      }
+    }
 
     const candidatePairs = [];
     if (tablesA && Array.isArray(tablesA) && tablesA.length > 0) {

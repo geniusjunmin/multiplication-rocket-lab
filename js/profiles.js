@@ -206,7 +206,8 @@ class ProfileManager {
     if (!Array.isArray(merged.unlockedResearch)) merged.unlockedResearch = ["trail_standard"];
     if (!merged.rocketCosmetics) merged.rocketCosmetics = { trail: "trail_standard", decal: "default", platform: "default" };
     if (!merged.dailyMissionState) merged.dailyMissionState = { date: "", completedIds: [] };
-    if (!merged.weeklyExpedition) merged.weeklyExpedition = { weekKey: "", currentStageIdx: 0, stagesCompleted: [] };
+    if (!merged.weeklyExpedition) merged.weeklyExpedition = { weekId: "", completedDestinations: [], claimed: false };
+    if (!merged._settledRuns) merged._settledRuns = {};
 
     // Migrate old keys like "7x8" to "mul:7x8"
     if (profile.facts) {
