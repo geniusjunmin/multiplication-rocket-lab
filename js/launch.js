@@ -527,7 +527,30 @@ class LaunchSequence {
     this.rocket.position.set(0, 0, 0);
     this.rocket.updateMatrixWorld(true);
 
-    const box = new THREE.Box3().setFromObject(this.rocket);
+    const box = new THREE.Box3();
+    let hasMesh = false;
+    this.rocket.traverse(child => {
+      // Strictly include solid rocket structural parts, ignore VFX groups, flames, trails, and lights
+      if (child.isMesh) {
+        if (child !== this.flameMesh &&
+            child !== this.engineVfx?.coreMesh &&
+            child !== this.engineVfx?.plumeMesh &&
+            child !== this.engineVfx?.outerPlumeMesh &&
+            child.parent !== this.engineVfx?.group &&
+            !child.name?.includes("vfx") &&
+            !child.name?.includes("flame") &&
+            !child.name?.includes("trail") &&
+            !child.name?.includes("particle")) {
+          box.expandByObject(child);
+          hasMesh = true;
+        }
+      }
+    });
+
+    if (!hasMesh || box.isEmpty()) {
+      box.setFromObject(this.rocket);
+    }
+
     this.rocketLocalMinY = box.min.y;
     this.rocketLocalMaxY = box.max.y;
     this.rocketHeight = Math.max(1.0, box.max.y - box.min.y);
@@ -1342,10 +1365,10 @@ class LaunchSequence {
         // Shot D: Touchdown Low-Angle Hero Orbit
         this.cameraDirector.playShot({
           id: "shot_touchdown_hero",
-          fromPosition: { x: 5.5, y: 1.5, z: 8.5 },
-          toPosition: { x: -6.0, y: 2.2, z: 9.0 },
-          fromTarget: { x: 0, y: 2.5, z: 0 },
-          toTarget: { x: 0, y: 2.5, z: 0 },
+          fromPosition: { x: 5.5, y: this.touchdownRocketY + 0.2, z: 8.5 },
+          toPosition: { x: -6.0, y: this.touchdownRocketY + 0.8, z: 9.0 },
+          fromTarget: { x: 0, y: this.touchdownRocketY + 0.8, z: 0 },
+          toTarget: { x: 0, y: this.touchdownRocketY + 0.8, z: 0 },
           duration: 3.8,
           easing: "easeInOutCubic"
         });
